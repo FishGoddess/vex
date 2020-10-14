@@ -52,5 +52,5 @@ fmt.Println(string(response))
 > R7-4700U，16GB 测试环境
 
 ```
-BenchmarkServer-8           8568            139309 ns/op            8593 B/op         22 allocs/op
+BenchmarkServer-8          16258             71458 ns/op            8593 B/op         22 allocs/op
 ```

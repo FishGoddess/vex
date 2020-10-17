@@ -21,16 +21,16 @@ var (
 
 type Server struct {
 	listener net.Listener
-	handlers map[byte]func(args [][]byte) (reply byte, body []byte, err error)
+	handlers map[byte]func(args [][]byte) (body []byte, err error)
 }
 
 func NewServer() *Server {
 	return &Server{
-		handlers: map[byte]func(args [][]byte) (reply byte, body []byte, err error){},
+		handlers: map[byte]func(args [][]byte) (body []byte, err error){},
 	}
 }
 
-func (s *Server) RegisterHandler(command byte, handler func(args [][]byte) (reply byte, body []byte, err error)) {
+func (s *Server) RegisterHandler(command byte, handler func(args [][]byte) (body []byte, err error)) {
 	s.handlers[command] = handler
 }
 
@@ -96,7 +96,12 @@ func (s *Server) handleRequest(command byte, args [][]byte) (reply byte, body []
 	if !ok {
 		return ErrorReply, nil, commandHandlerNotFoundErr
 	}
-	return handle(args)
+
+	body, err = handle(args)
+	if err != nil {
+		return ErrorReply, body, err
+	}
+	return SuccessReply, body, err
 }
 
 func (s *Server) Close() error {

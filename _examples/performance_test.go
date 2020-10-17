@@ -17,7 +17,7 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-// BenchmarkServer-8          45967             23805 ns/op             144 B/op         12 allocs/op
+// BenchmarkServer-8          53317             23556 ns/op             144 B/op         12 allocs/op
 
 const (
 	concurrency = 1
@@ -45,8 +45,8 @@ func testTask(task func(no int)) string {
 func TestVexServer(t *testing.T) {
 
 	server := vex.NewServer()
-	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (reply byte, body []byte, err error) {
-		return vex.SuccessReply, []byte("test"), nil
+	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
+		return []byte("test"), nil
 	})
 	defer server.Close()
 
@@ -81,8 +81,8 @@ func TestVexServer(t *testing.T) {
 func BenchmarkServer(b *testing.B) {
 
 	server := vex.NewServer()
-	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (reply byte, body []byte, err error) {
-		return vex.SuccessReply, []byte("test"), nil
+	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
+		return []byte("test"), nil
 	})
 	defer server.Close()
 

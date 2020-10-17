@@ -29,12 +29,12 @@ var (
 func TestNewServer(t *testing.T) {
 
 	server := NewServer()
-	server.RegisterHandler(testCommand, func(args [][]byte) (reply byte, body []byte, err error) {
+	server.RegisterHandler(testCommand, func(args [][]byte) (body []byte, err error) {
 		if len(args) < 2 {
-			return ErrorReply, nil, testArgumentErr
+			return nil, testArgumentErr
 		}
 		body = bytes.Join(args, []byte{' '})
-		return SuccessReply, body, nil
+		return body, nil
 	})
 	defer server.Close()
 

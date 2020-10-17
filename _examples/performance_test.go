@@ -20,7 +20,7 @@ import (
 // BenchmarkServer-8          45967             23805 ns/op             144 B/op         12 allocs/op
 
 const (
-	concurrency = 10
+	concurrency = 1
 
 	benchmarkCommand = byte(1)
 )
@@ -68,6 +68,7 @@ func TestVexServer(t *testing.T) {
 		body, err := client.Do(benchmarkCommand, [][]byte{
 			[]byte(data), []byte(data),
 		})
+
 		if err != nil {
 			t.Fatal(err, body)
 		}

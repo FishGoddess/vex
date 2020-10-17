@@ -10,6 +10,7 @@ package vex
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 )
 
@@ -26,13 +27,14 @@ func readResponseFrom(reader io.Reader) (reply byte, body []byte, err error) {
 
 	header := make([]byte, headerLengthInProtocol)
 	_, err = io.ReadFull(reader, header)
+
 	if err != nil {
 		return ErrorReply, nil, err
 	}
 
 	version := header[0]
 	if version != ProtocolVersion {
-		return ErrorReply, nil, ProtocolVersionMismatchErr
+		return ErrorReply, nil, errors.New("response " + ProtocolVersionMismatchErr.Error())
 	}
 
 	reply = header[1]

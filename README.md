@@ -35,8 +35,8 @@ version    reply    bodyLength    {body}
 服务端：
 ```go
 server := vex.NewServer()
-server.RegisterHandler(1, func(args [][]byte) (reply byte, body []byte, err error) {
-	return vex.SuccessReply, []byte("test"), nil
+server.RegisterHandler(1, func(args [][]byte) (body []byte, err error) {
+	return []byte("test"), nil
 })
 
 err := server.ListenAndServe("tcp", ":5837")

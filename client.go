@@ -38,6 +38,10 @@ func (c *Client) Do(command byte, args [][]byte) (body []byte, err error) {
 	}
 
 	reply, body, err := readResponseFrom(c.reader)
+	if err != nil {
+		return body, err
+	}
+
 	if reply == ErrorReply {
 		return body, errors.New(string(body))
 	}

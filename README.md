@@ -6,9 +6,9 @@
 
 ### 📃 协议描述
 
-ANBF 描述：
+ABNF 描述：
 
-```anbf
+```abnf
 HEADER = VERSION CMD LENGTH ; 头部，主要是协议版本号，指令和参数长度
 REQUESTBODY = *{ARGLENGTH ARG} ; 请求正文，主要是参数列表，每个参数都以长度开头
 RESPONSEBODY = *OCTET ; 响应正文，字节数组

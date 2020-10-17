@@ -4,95 +4,97 @@
 //
 // Author: FishGoddess
 // Email: fishgoddess@qq.com
-// Created at 2020/10/12 23:20:54
+// Created at 2020/10/17 16:11:56
 
 package vex
 
 import (
-	"io"
+	"errors"
 	"net"
 	"strings"
 	"sync"
-
-	"github.com/FishGoddess/logit"
 )
 
-func init() {
-	logit.Me().EnableFileInfo()
-}
+var (
+	commandHandlerNotFoundErr = errors.New("failed to find a handler of command")
+)
 
 type Server struct {
 	listener net.Listener
-	handlers map[string]Handler
+	handlers map[byte]func(args [][]byte) (reply byte, body []byte, err error)
 }
 
 func NewServer() *Server {
-	return &Server{
-		handlers: map[string]Handler{},
-	}
+	return &Server{}
 }
 
-func (s *Server) RegisterHandler(command string, handler Handler) {
+func (s *Server) RegisterHandler(command byte, handler func(args [][]byte) (reply byte, body []byte, err error)) {
 	s.handlers[command] = handler
 }
 
-func (s *Server) ListenAndServe(network string, address string) error {
+func (s *Server) ListenAndServe(network string, address string) (err error) {
 
-	listener, err := net.Listen(network, address)
+	s.listener, err = net.Listen(network, address)
 	if err != nil {
 		return err
 	}
-	s.listener = listener
 
-	connWg := &sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	for {
-		conn, err := listener.Accept()
+		conn, err := s.listener.Accept()
 		if err != nil {
-			// The err will be "use of closed network connection" if listener has been closed.
-			// Actually, this is a stupid way but em...
+			// This error means listener has been closed
+			// See src/internal/poll/fd.go@ErrNetClosing
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				break
 			}
-
-			// Ignore other error
 			continue
 		}
 
-		// Mark every connection.
-		connWg.Add(1)
-		go func(c net.Conn) {
-			defer connWg.Done()
-			defer conn.Close()
-			s.handleConn(c)
-		}(conn)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			s.handleConn(conn)
+		}()
 	}
 
-	// Wait for all connections have done.
-	connWg.Wait()
+	wg.Wait()
 	return nil
 }
 
 func (s *Server) handleConn(conn net.Conn) {
 
+	reader := conn
+	defer conn.Close()
+
 	for {
-		req, err := readRequest(conn)
+		command, args, err := readRequestFrom(reader)
 		if err != nil {
-			if err != io.EOF {
-				logit.Errorf("Failed to read request! Error is %s!", err.Error())
-				readRequestErrorHandler(newContext(conn, req))
+			if err == ProtocolVersionMismatchErr {
+				continue
 			}
 			return
 		}
 
-		handler, ok := s.handlers[req.command]
-		if !ok {
-			logit.Errorf("Failed to find handler %s!", req.command)
-			notFoundErrorHandler(newContext(conn, req))
-			return
+		reply, body, err := s.handleRequest(command, args)
+		if err != nil {
+			writeErrorResponseTo(conn, err.Error())
+			continue
 		}
 
-		handler(newContext(conn, req))
+		_, err = writeResponseTo(conn, reply, body)
+		if err != nil {
+			continue
+		}
 	}
+}
+
+func (s *Server) handleRequest(command byte, args [][]byte) (reply byte, body []byte, err error) {
+	handle, ok := s.handlers[command]
+	if !ok {
+		return ErrorReply, nil, commandHandlerNotFoundErr
+	}
+	return handle(args)
 }
 
 func (s *Server) Close() error {

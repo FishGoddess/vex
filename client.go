@@ -4,16 +4,18 @@
 //
 // Author: FishGoddess
 // Email: fishgoddess@qq.com
-// Created at 2020/10/13 21:45:22
+// Created at 2020/10/17 17:47:21
 
 package vex
 
 import (
+	"io"
 	"net"
 )
 
 type Client struct {
-	conn net.Conn
+	conn   net.Conn
+	reader io.Reader
 }
 
 func NewClient(network string, address string) (*Client, error) {
@@ -22,24 +24,18 @@ func NewClient(network string, address string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &Client{
-		conn: conn,
+		conn:   conn,
+		reader: conn,
 	}, nil
 }
 
-func (c *Client) Do(command string, args [][]byte) ([]byte, error) {
-
-	err := writeRequest(c.conn, &request{
-		version: ProtocolVersion,
-		command: command,
-		args:    args,
-	})
-
+func (c *Client) Do(command byte, args [][]byte) (reply byte, body []byte, err error) {
+	_, err = writeRequestTo(c.conn, command, args)
 	if err != nil {
-		return nil, err
+		return ErrorReply, nil, err
 	}
-	return readResponse(c.conn)
+	return readResponseFrom(c.reader)
 }
 
 func (c *Client) Close() error {

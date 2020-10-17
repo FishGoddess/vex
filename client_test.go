@@ -4,8 +4,12 @@
 //
 // Author: FishGoddess
 // Email: fishgoddess@qq.com
-// Created at 2020/10/13 22:39:27
+// Created at 2020/10/17 18:00:26
 
 package vex
 
-const VERSION = "v0.1.0"
+import "testing"
+
+func TestNewClient(t *testing.T) {
+
+}

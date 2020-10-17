@@ -64,15 +64,11 @@ func TestNewClient(t *testing.T) {
 	}
 	defer client.Close()
 
-	reply, body, err := client.Do(2, [][]byte{
+	body, err := client.Do(2, [][]byte{
 		[]byte("key"), []byte("value"),
 	})
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	if reply != SuccessReply {
-		t.Fatalf("Reply %d is wrong!", reply)
 	}
 
 	if string(body) != "ok" {

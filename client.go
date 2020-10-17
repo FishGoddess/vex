@@ -9,6 +9,7 @@
 package vex
 
 import (
+	"errors"
 	"io"
 	"net"
 )
@@ -30,12 +31,17 @@ func NewClient(network string, address string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Do(command byte, args [][]byte) (reply byte, body []byte, err error) {
+func (c *Client) Do(command byte, args [][]byte) (body []byte, err error) {
 	_, err = writeRequestTo(c.conn, command, args)
 	if err != nil {
-		return ErrorReply, nil, err
+		return nil, err
 	}
-	return readResponseFrom(c.reader)
+
+	reply, body, err := readResponseFrom(c.reader)
+	if reply == ErrorReply {
+		return body, errors.New(string(body))
+	}
+	return body, nil
 }
 
 func (c *Client) Close() error {

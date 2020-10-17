@@ -25,7 +25,9 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	return &Server{}
+	return &Server{
+		handlers: map[byte]func(args [][]byte) (reply byte, body []byte, err error){},
+	}
 }
 
 func (s *Server) RegisterHandler(command byte, handler func(args [][]byte) (reply byte, body []byte, err error)) {
@@ -98,5 +100,8 @@ func (s *Server) handleRequest(command byte, args [][]byte) (reply byte, body []
 }
 
 func (s *Server) Close() error {
+	if s.listener == nil {
+		return nil
+	}
 	return s.listener.Close()
 }

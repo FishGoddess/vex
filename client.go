@@ -9,6 +9,7 @@
 package vex
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"net"
@@ -27,7 +28,7 @@ func NewClient(network string, address string) (*Client, error) {
 	}
 	return &Client{
 		conn:   conn,
-		reader: conn,
+		reader: bufio.NewReader(conn),
 	}, nil
 }
 

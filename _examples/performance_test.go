@@ -17,7 +17,7 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-// BenchmarkServer-8          53317             23556 ns/op             144 B/op         12 allocs/op
+// BenchmarkServer-8          56590             20849 ns/op             144 B/op         12 allocs/op
 
 const (
 	concurrency = 1

@@ -9,6 +9,7 @@
 package vex
 
 import (
+	"bufio"
 	"errors"
 	"net"
 	"strings"
@@ -66,7 +67,7 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 
 func (s *Server) handleConn(conn net.Conn) {
 
-	reader := conn
+	reader := bufio.NewReader(conn)
 	defer conn.Close()
 
 	for {

@@ -6,17 +6,28 @@
 
 ### 📃 协议描述
 
-ABNF 描述：
+ABNF 描述请求：
 
 ```abnf
-HEADER = VERSION CMD LENGTH ; 头部，主要是协议版本号，指令和参数长度
-REQUESTBODY = *{ARGLENGTH ARG} ; 请求正文，主要是参数列表，每个参数都以长度开头
-RESPONSEBODY = *OCTET ; 响应正文，字节数组
-VERSION = OCTET ; 协议版本号，OCTET 是指 0x00-0xFF
-CMD = OCTET ; 指令，0x00-0xFF，所以单个服务最多只能支持到 255 个指令
-LENGTH = 4OCTET ; 参数个数，4 个字节
-ARGLENGTH = 4OCTET ; 参数个数，4 个字节
-ARG = *OCTET ; 参数，字节数组
+REQUEST = HEADER BODY ; 请求
+HEADER = VERSION COMMAND ARGSLENGTH ; 请求头，主要是版本号，命令以及参数个数
+BODY = *{ARGLENGTH ARG} ; 请求体，主要是参数，*{} 表示可能 {} 里面的东西可能没有，也可能有多个
+VERSION = OCTET ; 版本号，0x00-0xFF，一般从 1 开始，也就是最多 255 个版本号
+COMMAND = OCTET ; 命令，0x00-0xFF，一般从 1 开始，也就是最多 255 个命令
+ARGSLENGTH = 4OCTET ; 参数个数，4 个字节表示，也就是最多 uint32 个参数
+ARGLENGTH = 4OCTET ; 参数长度，4 个字节表示，也就是最长是 uint32 个字节
+ARG = *OCTET ; 参数内容，长度未知，需要靠 ARGLENGTH 明确
+```
+
+ABNF 描述响应：
+
+```abnf
+RESPONSE = HEADER BODY ; 响应
+HEADER = VERSION REPLY BODYLENGTH ; 响应头，主要是版本号，命令以及参数个数
+BODY = *OCTET ; 响应体，长度未知，需要靠 BODYLENGTH 明确
+VERSION = OCTET ; 版本号，0x00-0xFF，一般从 1 开始，也就是最多 255 个版本号
+REPLY = OCTET ; 命令，0x00-0xFF，一般从 1 开始，也就是最多 255 种答复含义
+BODYLENGTH = 4OCTET ; 参数长度，4 个字节表示，也就是最长是 uint32 个字节
 ```
 
 人类语言描述：

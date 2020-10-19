@@ -82,5 +82,7 @@ fmt.Println(string(response))
 > R7-4700U，16GB 测试环境
 
 ```
-BenchmarkServer-8          56590             20849 ns/op             144 B/op         12 allocs/op
+BenchmarkServer-8          58520             20673 ns/op             144 B/op         12 allocs/op
 ```
+
+**10000 个命令的执行耗时为 210.06ms，得到的 rps 为 47619。**

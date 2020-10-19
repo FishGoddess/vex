@@ -10,34 +10,28 @@ package main
 
 import (
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/FishGoddess/vex"
 )
 
-// BenchmarkServer-8          56590             20849 ns/op             144 B/op         12 allocs/op
+// BenchmarkServer-8          58520             20673 ns/op             144 B/op         12 allocs/op
 
 const (
-	concurrency = 1
+	// dataSize is the data size of test.
+	dataSize = 10000
 
+	// benchmarkCommand is the command of benchmark.
 	benchmarkCommand = byte(1)
 )
 
 // testTask is a wrapper wraps task to testTask.
 func testTask(task func(no int)) string {
-
 	beginTime := time.Now()
-	wg := &sync.WaitGroup{}
-	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go func(no int) {
-			defer wg.Done()
-			task(no)
-		}(i)
+	for i := 0; i < dataSize; i++ {
+		task(i)
 	}
-	wg.Wait()
 	return time.Now().Sub(beginTime).String()
 }
 

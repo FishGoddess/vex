@@ -1,6 +1,4 @@
-## ⛓ Vex
-
-> 基于 mit 协议开源
+## ⛓ Vex    [![License](./_icon/license.svg)](https://opensource.org/licenses/MIT)
 
 一个通用网络通信框架，可以作为参考案例进行交流学习哈哈。并发请求响应的支持需要比较复杂的协议设计，这个框架并不支持。
 

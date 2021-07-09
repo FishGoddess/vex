@@ -9,14 +9,13 @@
 package main
 
 import (
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/FishGoddess/vex"
 )
 
-// BenchmarkServer-8          58520             20673 ns/op             144 B/op         12 allocs/op
+// BenchmarkServer-16        110065             14936 ns/op             144 B/op         11 allocs/op
 
 const (
 	// dataSize is the data size of test.
@@ -38,16 +37,20 @@ func testTask(task func(no int)) string {
 // go test -v -run=^TestVexServer$
 func TestVexServer(t *testing.T) {
 
+	resp := []byte("test")
+	param1 := []byte("one")
+	param2 := []byte("two")
+
 	server := vex.NewServer()
 	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
-		return []byte("test"), nil
+		return resp, nil
 	})
 	defer server.Close()
 
 	go func() {
 		err := server.ListenAndServe("tcp", ":5837")
 		if err != nil {
-			t.Fatal(err)
+			panic(err)
 		}
 	}()
 
@@ -58,11 +61,7 @@ func TestVexServer(t *testing.T) {
 	defer client.Close()
 
 	takenTime := testTask(func(no int) {
-		data := strconv.Itoa(no)
-		body, err := client.Do(benchmarkCommand, [][]byte{
-			[]byte(data), []byte(data),
-		})
-
+		body, err := client.Do(benchmarkCommand, [][]byte{param1, param2})
 		if err != nil {
 			t.Fatal(err, body)
 		}
@@ -74,16 +73,20 @@ func TestVexServer(t *testing.T) {
 // go test -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
 func BenchmarkServer(b *testing.B) {
 
+	resp := []byte("test")
+	param1 := []byte("one")
+	param2 := []byte("two")
+
 	server := vex.NewServer()
 	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
-		return []byte("test"), nil
+		return resp, nil
 	})
 	defer server.Close()
 
 	go func() {
 		err := server.ListenAndServe("tcp", ":5837")
 		if err != nil {
-			b.Fatal(err)
+			panic(err)
 		}
 	}()
 
@@ -96,11 +99,7 @@ func BenchmarkServer(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.Do(benchmarkCommand, [][]byte{
-			[]byte("123"),
-			[]byte("456"),
-		})
-
+		_, err := client.Do(benchmarkCommand, [][]byte{param1, param2})
 		if err != nil {
 			b.Fatal(err)
 		}

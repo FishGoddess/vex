@@ -51,7 +51,7 @@ func (c *Client) Do(command byte, args [][]byte) (body []byte, err error) {
 	// 读取服务端返回的响应
 	reply, body, err := readResponseFrom(c.reader)
 	if err != nil {
-		return body, err
+		return nil, err
 	}
 
 	// 如果是错误答复码，将内容包装成 error 并返回

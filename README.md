@@ -1,6 +1,8 @@
 ## ⛓ Vex
 
-[![License](./_icon/license.svg)](https://opensource.org/licenses/MIT)
+[![License](./_icons/license.svg)](https://opensource.org/licenses/MIT)
+[![Build](./_icons/build.svg)](./_icons/build.svg)
+[![Coverage](./_icons/coverage.svg)](./_icons/coverage.svg)
 
 把 tcp 自定义通信协议做成一个模板，跟使用 http 框架类似，只不过他的性能非常强悍，也算是一个通用网络通信框架，大家可以作为参考案例进行交流学习哈哈。
 
@@ -33,6 +35,7 @@ BODYLENGTH = 4OCTET ; 参数长度，4 个字节表示，也就是最长是 uint
 ```
 
 人类语言描述：
+
 ```
 请求：
 version    command    argsLength    {argLength    arg}
@@ -46,43 +49,65 @@ version    reply    bodyLength    {body}
 ### ✒ 使用案例
 
 服务端：
-```go
-server := vex.NewServer()
-server.RegisterHandler(1, func(args [][]byte) (body []byte, err error) {
-	return []byte("test"), nil
-})
 
-err := server.ListenAndServe("tcp", ":5837")
-if err != nil {
-	panic(err)
+```go
+package main
+
+import "github.com/FishGoddess/vex"
+
+func main() {
+
+	server := vex.NewServer()
+	server.RegisterHandler(1, func(args [][]byte) (body []byte, err error) {
+		return []byte("test"), nil
+	})
+
+	err := server.ListenAndServe("tcp", ":5837")
+	if err != nil {
+		panic(err)
+	}
 }
 ```
 
 客户端：
 
 ```go
-client, err := vex.NewClient("tcp", "127.0.0.1:5837")
-if err != nil {
-	panic(err)
-}
-defer client.Close()
+package main
 
-response, err := client.Do(1, [][]byte{
-	[]byte("123"), []byte("456"),
-})
-if err != nil {
-	panic(err)
-}
+import (
+	"fmt"
 
-fmt.Println(string(response))
+	"github.com/FishGoddess/vex"
+)
+
+func main() {
+
+	client, err := vex.NewClient("tcp", "127.0.0.1:5837")
+	if err != nil {
+		panic(err)
+	}
+	defer client.Close()
+
+	response, err := client.Do(1, [][]byte{
+		[]byte("123"), []byte("456"),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(response))
+}
 ```
 
 ### 🛠 性能测试
 
-> R7-5800X，32GB 测试环境
-
+```bash
+$ go test -v ./_examples/performance_test.go -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
+BenchmarkServer-16        112126             12759 ns/op             144 B/op         11 allocs/op
 ```
-BenchmarkServer-16        110065             14936 ns/op             144 B/op         11 allocs/op
-```
 
-**10000 个命令的执行耗时为 114.02ms，得到的 rps 为 87704 w/s，单命令耗时 11.402 us。**
+_测试环境：R7-5800X@3.8GHZ CPU，32GB RAM。_
+
+_单连接：10000 个命令的执行耗时为 114.02ms，得到的 rps 为 **87704 w/s**，单命令耗时 11.402 us。_
+
+_连接池（64个连接）：并发 10000 个命令的执行耗时为 20.04ms，得到的 rps 为 **499001 w/s**，单命令耗时 2.004 us。_

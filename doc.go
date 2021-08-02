@@ -42,5 +42,5 @@ package vex
 
 const (
 	// Version is the version string representation of vex.
-	Version = "v0.0.1-alpha"
+	Version = "v0.2.0-alpha"
 )

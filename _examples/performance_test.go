@@ -19,141 +19,114 @@ import (
 // BenchmarkServer-16        112126             12759 ns/op             144 B/op         11 allocs/op
 
 const (
-	// dataSize is the data size of test.
-	dataSize = 10000
-
-	// concurrency is the concurrency of test.
-	concurrency = 10000
+	// address is the address of server.
+	address = "127.0.0.1:5837"
 
 	// benchmarkCommand is the command of benchmark.
 	benchmarkCommand = byte(1)
+
+	// loop is the loop of test.
+	loop = 100000
 )
 
-// testTask is a wrapper wraps task to testTask.
-func testTask(task func(no int)) string {
-	beginTime := time.Now()
-	for i := 0; i < dataSize; i++ {
-		task(i)
-	}
-	return time.Now().Sub(beginTime).String()
+func newServer() *vex.Server {
+	server := vex.NewServer()
+
+	resp := []byte("test")
+	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
+		return resp, nil
+	})
+
+	go func() {
+		err := server.ListenAndServe("tcp", address)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	return server
 }
 
-// testTaskConcurrent is a wrapper wraps task to testTask with concurrency.
-func testTaskConcurrent(task func(no int)) string {
-
-	wg := &sync.WaitGroup{}
-	beginTime := time.Now()
-	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go func(no int) {
-			defer wg.Done()
-			task(no)
-		}(i)
+func newClient() *vex.Client {
+	client, err := vex.NewClient("tcp", address)
+	if err != nil {
+		panic(err)
 	}
-	wg.Wait()
-	return time.Now().Sub(beginTime).String()
+	return client
+}
+
+func newClientPool(maxConnections int) *vex.ClientPool {
+	pool, err := vex.NewClientPool("tcp", address, maxConnections)
+	if err != nil {
+		panic(err)
+	}
+	return pool
 }
 
 // go test ./_examples/performance_test.go -v -run=^TestServerRPS$
 func TestServerRPS(t *testing.T) {
+	server := newServer()
+	defer server.Close()
 
-	resp := []byte("test")
+	client := newClient()
+	defer client.Close()
+
 	param1 := []byte("one")
 	param2 := []byte("two")
 
-	server := vex.NewServer()
-	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
-		return resp, nil
-	})
-	defer server.Close()
-
-	go func() {
-		err := server.ListenAndServe("tcp", ":5837")
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	client, err := vex.NewClient("tcp", "127.0.0.1:5837")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer client.Close()
-
-	takenTime := testTask(func(no int) {
+	beginTime := time.Now()
+	for i := 0; i < loop; i++ {
 		body, err := client.Do(benchmarkCommand, [][]byte{param1, param2})
 		if err != nil {
-			t.Fatal(err, body)
+			t.Error(err, body)
 		}
-	})
+	}
 
-	t.Logf("Taken time is %s!\n", takenTime)
+	t.Logf("Taken time is %s!\n", time.Since(beginTime).String())
 }
 
 // go test ./_examples/performance_test.go -v -run=^TestServerRPSWithPool$
 func TestServerRPSWithPool(t *testing.T) {
+	server := newServer()
+	defer server.Close()
 
-	resp := []byte("test")
+	pool := newClientPool(64)
+	defer pool.Close()
+
 	param1 := []byte("one")
 	param2 := []byte("two")
 
-	server := vex.NewServer()
-	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
-		return resp, nil
-	})
-	defer server.Close()
+	wg := &sync.WaitGroup{}
+	beginTime := time.Now()
+	for i := 0; i < loop; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			client := pool.Get()
+			defer pool.Put(client)
 
-	go func() {
-		err := server.ListenAndServe("tcp", ":5837")
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	pool, err := vex.NewClientPool("tcp", "127.0.0.1:5837", 64)
-	if err != nil {
-		t.Fatal(err)
+			body, err := client.Do(benchmarkCommand, [][]byte{param1, param2})
+			if err != nil {
+				t.Error(err, body)
+				return
+			}
+		}()
 	}
-	defer pool.Close()
 
-	takenTime := testTaskConcurrent(func(no int) {
-		client := pool.Get()
-		defer pool.Put(client)
-
-		body, err := client.Do(benchmarkCommand, [][]byte{param1, param2})
-		if err != nil {
-			t.Fatal(err, body)
-		}
-	})
-
-	t.Logf("Taken time is %s!\n", takenTime)
+	wg.Wait()
+	t.Logf("Taken time is %s!\n", time.Since(beginTime).String())
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
 func BenchmarkServer(b *testing.B) {
-
-	resp := []byte("test")
-	param1 := []byte("one")
-	param2 := []byte("two")
-
-	server := vex.NewServer()
-	server.RegisterHandler(benchmarkCommand, func(args [][]byte) (body []byte, err error) {
-		return resp, nil
-	})
+	server := newServer()
 	defer server.Close()
 
-	go func() {
-		err := server.ListenAndServe("tcp", ":5837")
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	client, err := vex.NewClient("tcp", "127.0.0.1:5837")
-	if err != nil {
-		b.Fatal(err)
-	}
+	client := newClient()
 	defer client.Close()
+
+	param1 := []byte("one")
+	param2 := []byte("two")
 
 	b.ReportAllocs()
 	b.ResetTimer()

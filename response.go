@@ -55,15 +55,15 @@ func readResponseFrom(reader io.Reader) (reply byte, body []byte, err error) {
 func writeResponseTo(writer io.Writer, reply byte, body []byte) (int, error) {
 
 	// 将响应体相关数据写入响应缓存区，并发送
-	bodyLengthBytes := make([]byte, bodyLengthInProtocol)
-	binary.BigEndian.PutUint32(bodyLengthBytes, uint32(len(body)))
-
-	response := make([]byte, 2, headerLengthInProtocol+len(body))
-	response[0] = ProtocolVersion
-	response[1] = reply
-	response = append(response, bodyLengthBytes...)
-	response = append(response, body...)
-	return writer.Write(response)
+	header := make([]byte, headerLengthInProtocol)
+	header[0] = ProtocolVersion
+	header[1] = reply
+	binary.BigEndian.PutUint32(header[2:6], uint32(len(body)))
+	n, err := writer.Write(header)
+	if err != nil {
+		return n, err
+	}
+	return writer.Write(body)
 }
 
 // 向 writer 写入错误信息为 msg 的响应。

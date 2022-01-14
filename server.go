@@ -81,10 +81,12 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 
 // 处理连接。
 func (s *Server) handleConn(conn net.Conn) {
+	defer conn.Close()
 
 	// 将连接包装成缓冲读取器，提高读取的性能
 	reader := bufio.NewReader(conn)
-	defer conn.Close()
+	writer := bufio.NewWriter(conn)
+	defer writer.Flush()
 
 	for {
 		// 读取并解析请求请求
@@ -99,15 +101,17 @@ func (s *Server) handleConn(conn net.Conn) {
 		// 处理请求
 		reply, body, err := s.handleRequest(command, args)
 		if err != nil {
-			writeErrorResponseTo(conn, err.Error())
+			writeErrorResponseTo(writer, err.Error())
+			writer.Flush()
 			continue
 		}
 
 		// 发送处理结果的响应
-		_, err = writeResponseTo(conn, reply, body)
+		_, err = writeResponseTo(writer, reply, body)
 		if err != nil {
 			continue
 		}
+		writer.Flush()
 	}
 }
 

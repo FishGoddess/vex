@@ -1,67 +1,64 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 Ye Zi Jie.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 //
 // Author: FishGoddess
 // Email: fishgoddess@qq.com
-// Created at 2020/10/17 17:47:21
+// Created at 2022/01/15 01:22:13
 
 package vex
 
 import (
 	"bufio"
 	"errors"
-	"io"
 	"net"
 )
 
-// 客户端结构。
 type Client struct {
-
-	// 和服务端建立的连接。
-	conn net.Conn
-
-	// 通往服务端的读取器。
-	reader io.Reader
+	conn   net.Conn
+	reader *bufio.Reader
+	writer *bufio.Writer
 }
 
-// 创建新的客户端。
 func NewClient(network string, address string) (*Client, error) {
-
-	// 和服务端建立连接
 	conn, err := net.Dial(network, address)
 	if err != nil {
 		return nil, err
 	}
+
 	return &Client{
 		conn:   conn,
 		reader: bufio.NewReader(conn),
+		writer: bufio.NewWriter(conn),
 	}, nil
 }
 
-// 执行命令。
-func (c *Client) Do(command byte, args [][]byte) (body []byte, err error) {
-
-	// 包装请求然后发送给服务端
-	_, err = writeRequestTo(c.conn, command, args)
+func (c *Client) Do(tag Tag, req []byte) (rsp []byte, err error) {
+	err = writeTo(c.writer, tag, req)
 	if err != nil {
 		return nil, err
 	}
 
-	// 读取服务端返回的响应
-	reply, body, err := readResponseFrom(c.reader)
+	err = c.writer.Flush()
 	if err != nil {
 		return nil, err
 	}
 
-	// 如果是错误答复码，将内容包装成 error 并返回
-	if reply == ErrorReply {
+	tag, body, err := readFrom(c.reader)
+	if err != nil {
+		return nil, err
+	}
+
+	if tag == errTag {
 		return body, errors.New(string(body))
 	}
 	return body, nil
 }
 
-// 关闭客户端。
 func (c *Client) Close() error {
+	err := c.writer.Flush()
+	if err != nil {
+		return err
+	}
 	return c.conn.Close()
 }

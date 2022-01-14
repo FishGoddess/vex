@@ -1,15 +1,14 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 Ye Zi Jie.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 //
 // Author: FishGoddess
 // Email: fishgoddess@qq.com
-// Created at 2020/10/17 18:16:51
+// Created at 2022/01/15 01:29:59
 
 package vex
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"net"
@@ -18,102 +17,102 @@ import (
 )
 
 const (
-	testCommand = byte(1)
+	testTag Tag = 1
 )
 
 var (
-	testArgumentErr = errors.New("test command needs more arguments")
+	errTestRequestFailed = errors.New("vex: test request failed")
 )
 
 // go test -v -cover -run=^TestNewServer$
 func TestNewServer(t *testing.T) {
+	address := "127.0.0.1:5837"
 
 	server := NewServer()
-	server.RegisterHandler(testCommand, func(args [][]byte) (body []byte, err error) {
-		if len(args) < 2 {
-			return nil, testArgumentErr
+	server.RegisterHandler(testTag, func(req []byte) (rsp []byte, err error) {
+		if len(req) <= 0 {
+			return nil, errTestRequestFailed
 		}
-		body = bytes.Join(args, []byte{' '})
-		return body, nil
+		return req, nil
 	})
 	defer server.Close()
 
 	go func() {
-		err := server.ListenAndServe("tcp", ":5837")
+		err := server.ListenAndServe("tcp", address)
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 
 	time.Sleep(time.Second)
 
-	conn, err := net.Dial("tcp", "127.0.0.1:5837")
+	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	defer conn.Close()
 
 	// failed test
 	_, err = conn.Write([]byte{
-		ProtocolVersion, testCommand, 0, 0, 0, 0,
+		ProtocolVersion, testTag, 0, 0, 0, 0,
 	})
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, 128)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if buffer[0] != ProtocolVersion {
-		t.Fatalf("Protocol version %d is wrong!", buffer[0])
+		t.Errorf("protocol version %d is wrong!", buffer[0])
 	}
 
-	if buffer[1] != ErrorReply {
-		t.Fatalf("Reply %d is wrong!", buffer[1])
+	if buffer[1] != errTag {
+		t.Errorf("tag %d is wrong!", buffer[1])
 	}
 
-	bodyLength := binary.BigEndian.Uint32(buffer[2:6])
-	if bodyLength != uint32(len([]byte(testArgumentErr.Error()))) {
-		t.Fatalf("Body length %d is wrong!", bodyLength)
+	bodySize := binary.BigEndian.Uint32(buffer[2:6])
+	if bodySize != uint32(len([]byte(errTestRequestFailed.Error()))) {
+		t.Errorf("body size %d is wrong!", bodySize)
 	}
 
 	buffer = buffer[6:n]
-	if string(buffer) != testArgumentErr.Error() {
-		t.Fatalf("Body %s is wrong!", string(buffer))
+	if string(buffer) != errTestRequestFailed.Error() {
+		t.Errorf("body %s is wrong!", string(buffer))
 	}
 
 	// successful test
 	_, err = conn.Write([]byte{
-		ProtocolVersion, testCommand, 0, 0, 0, 2, 0, 0, 0, 3, 'k', 'e', 'y', 0, 0, 0, 5, 'v', 'a', 'l', 'u', 'e',
+		ProtocolVersion, testTag, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e',
 	})
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
-	buffer = make([]byte, 1024)
+	buffer = make([]byte, 128)
 	n, err = conn.Read(buffer)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if buffer[0] != ProtocolVersion {
-		t.Fatalf("Protocol version %d is wrong!", buffer[0])
+		t.Errorf("protocol version %d is wrong!", buffer[0])
 	}
 
-	if buffer[1] != SuccessReply {
-		t.Fatalf("Reply %d is wrong!", buffer[1])
+	if buffer[1] != okTag {
+		t.Errorf("tag %d is wrong!", buffer[1])
 	}
 
-	bodyLength = binary.BigEndian.Uint32(buffer[2:6])
-	if bodyLength != uint32(9) {
-		t.Fatalf("Body length %d is wrong!", bodyLength)
+	bodySize = binary.BigEndian.Uint32(buffer[2:6])
+	if bodySize != uint32(9) {
+		t.Errorf("body size %d is wrong!", bodySize)
 	}
 
 	buffer = buffer[6:n]
 	if string(buffer) != "key value" {
-		t.Fatalf("Body %s is wrong!", string(buffer))
+		t.Errorf("body %s is wrong!", string(buffer))
 	}
 }

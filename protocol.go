@@ -1,32 +1,75 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 Ye Zi Jie.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 //
 // Author: FishGoddess
 // Email: fishgoddess@qq.com
-// Created at 2020/10/17 15:15:57
+// Created at 2022/01/15 00:23:09
 
 package vex
 
-import "errors"
-
-// Request:
-// version    command    argsLength    {argLength    arg}
-//  1byte      1byte       4byte          4byte    unknown
-
-// Response:
-// version    reply    bodyLength    {body}
-//  1byte     1byte      4byte      unknown
+import (
+	"encoding/binary"
+	"errors"
+	"io"
+)
 
 const (
-	ProtocolVersion        = byte(1) // 协议版本号
-	headerLengthInProtocol = 6       // 协议中头部占用的字节数
-	argsLengthInProtocol   = 4       // 协议中参数个数占用的字节数
-	argLengthInProtocol    = 4       // 协议中参数长度占用的字节数
-	bodyLengthInProtocol   = 4       // 协议体长度占用的字节数
+	versionSize = 1                                // 1 Byte
+	tagSize     = 1                                // 1 Byte
+	bodySize    = 4                                // 4 Byte
+	headerSize  = versionSize + tagSize + bodySize // 6 Byte
+
+	ProtocolVersion = 1 // v1
+)
+
+const (
+	okTag  Tag = 0
+	errTag Tag = 1
 )
 
 var (
-	// 协议版本不匹配错误，如果客户端和服务端的版本不一样就会返回这个错误
-	ProtocolVersionMismatchErr = errors.New("protocol version between client and server doesn't match")
+	errProtocolMismatch = errors.New("vex: protocol between client and server doesn't match")
 )
+
+type Tag = byte
+
+func readFrom(reader io.Reader) (tag Tag, body []byte, err error) {
+	header := make([]byte, headerSize)
+
+	_, err = reader.Read(header)
+	if err != nil {
+		return errTag, nil, err
+	}
+
+	if header[0] != ProtocolVersion {
+		return errTag, nil, errProtocolMismatch
+	}
+
+	bodySize := binary.BigEndian.Uint32(header[versionSize+tagSize : headerSize])
+
+	body = make([]byte, bodySize)
+	_, err = reader.Read(body)
+	if err != nil {
+		return errTag, nil, err
+	}
+	return header[1], body, nil
+}
+
+func writeTo(writer io.Writer, tag Tag, body []byte) (err error) {
+	header := make([]byte, headerSize)
+	header[0] = ProtocolVersion
+	header[1] = tag
+	binary.BigEndian.PutUint32(header[versionSize+tagSize:headerSize], uint32(len(body)))
+
+	_, err = writer.Write(header)
+	if err != nil {
+		return err
+	}
+
+	_, err = writer.Write(body)
+	if err != nil {
+		return err
+	}
+	return nil
+}

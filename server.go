@@ -1,10 +1,10 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 Ye Zi Jie.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 //
 // Author: FishGoddess
 // Email: fishgoddess@qq.com
-// Created at 2020/10/17 16:11:56
+// Created at 2022/01/15 00:53:37
 
 package vex
 
@@ -17,45 +17,65 @@ import (
 )
 
 var (
-	// 找不到对应的命令处理器错误
-	commandHandlerNotFoundErr = errors.New("failed to find a handler of command")
+	errHandlerNotFound = errors.New("vex: handler not found")
 )
 
-// 服务端结构。
+type Handler func(req []byte) (rsp []byte, err error)
+
 type Server struct {
-
-	// 监听器，这个应该大家都很熟悉了吧。
 	listener net.Listener
-
-	// 命令处理器，通过命令可以找到对应的处理器。
-	handlers map[byte]func(args [][]byte) (body []byte, err error)
+	handlers map[Tag]Handler
+	wg       sync.WaitGroup
 }
 
-// 创建新的服务端。
 func NewServer() *Server {
 	return &Server{
-		handlers: map[byte]func(args [][]byte) (body []byte, err error){},
+		handlers: make(map[Tag]Handler, 16),
 	}
 }
 
-// 注册命令处理器。
-func (s *Server) RegisterHandler(command byte, handler func(args [][]byte) (body []byte, err error)) {
-	s.handlers[command] = handler
+func (s *Server) RegisterHandler(tag Tag, handler Handler) {
+	s.handlers[tag] = handler
 }
 
-// 监听并服务于 network 和 address。
-func (s *Server) ListenAndServe(network string, address string) (err error) {
+func (s *Server) handleConn(conn net.Conn) {
+	defer conn.Close()
 
-	// 监听指定地址
-	s.listener, err = net.Listen(network, address)
-	if err != nil {
-		return err
-	}
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
+	defer writer.Flush()
 
-	// 使用 WaitGroup 记录连接数，并等待所有连接处理完毕
-	wg := &sync.WaitGroup{}
 	for {
-		// 等待客户端连接
+		tag, req, err := readFrom(reader)
+		if err == errProtocolMismatch {
+			continue
+		}
+
+		if err != nil {
+			return
+		}
+
+		handler, ok := s.handlers[tag]
+		if !ok {
+			writeTo(writer, errTag, []byte(errHandlerNotFound.Error()))
+			writer.Flush()
+			continue
+		}
+
+		rsp, err := handler(req)
+		if err != nil {
+			writeTo(writer, errTag, []byte(err.Error()))
+			writer.Flush()
+			continue
+		}
+
+		writeTo(writer, okTag, rsp)
+		writer.Flush()
+	}
+}
+
+func (s *Server) serve() error {
+	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
 			// This error means listener has been closed
@@ -66,73 +86,25 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 			continue
 		}
 
-		// 记录连接
-		wg.Add(1)
+		s.wg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer s.wg.Done()
 			s.handleConn(conn)
 		}()
 	}
 
-	// 等待所有连接处理完毕
-	wg.Wait()
+	s.wg.Wait()
 	return nil
 }
 
-// 处理连接。
-func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
-
-	// 将连接包装成缓冲读取器，提高读取的性能
-	reader := bufio.NewReader(conn)
-	writer := bufio.NewWriter(conn)
-	defer writer.Flush()
-
-	for {
-		// 读取并解析请求请求
-		command, args, err := readRequestFrom(reader)
-		if err != nil {
-			if err == ProtocolVersionMismatchErr {
-				continue
-			}
-			return
-		}
-
-		// 处理请求
-		reply, body, err := s.handleRequest(command, args)
-		if err != nil {
-			writeErrorResponseTo(writer, err.Error())
-			writer.Flush()
-			continue
-		}
-
-		// 发送处理结果的响应
-		_, err = writeResponseTo(writer, reply, body)
-		if err != nil {
-			continue
-		}
-		writer.Flush()
-	}
-}
-
-// 处理请求。
-func (s *Server) handleRequest(command byte, args [][]byte) (reply byte, body []byte, err error) {
-
-	// 从命令处理器集合中选出对应的处理器
-	handle, ok := s.handlers[command]
-	if !ok {
-		return ErrorReply, nil, commandHandlerNotFoundErr
-	}
-
-	// 将处理结果返回
-	body, err = handle(args)
+func (s *Server) ListenAndServe(network string, address string) (err error) {
+	s.listener, err = net.Listen(network, address)
 	if err != nil {
-		return ErrorReply, body, err
+		return err
 	}
-	return SuccessReply, body, err
+	return s.serve()
 }
 
-// 关闭服务端的方法。
 func (s *Server) Close() error {
 	if s.listener == nil {
 		return nil

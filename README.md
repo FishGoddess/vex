@@ -53,16 +53,20 @@ version    reply    bodyLength    {body}
 ```go
 package main
 
-import "github.com/FishGoddess/vex"
+import (
+	"fmt"
+
+	"github.com/FishGoddess/vex"
+)
 
 func main() {
-
 	server := vex.NewServer()
-	server.RegisterHandler(1, func(args [][]byte) (body []byte, err error) {
-		return []byte("test"), nil
+	server.RegisterHandler(1, func(req []byte) (rsp []byte, err error) {
+		fmt.Println(string(req))
+		return []byte("server test"), nil
 	})
 
-	err := server.ListenAndServe("tcp", ":5837")
+	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
 	if err != nil {
 		panic(err)
 	}
@@ -81,21 +85,18 @@ import (
 )
 
 func main() {
-
 	client, err := vex.NewClient("tcp", "127.0.0.1:5837")
 	if err != nil {
 		panic(err)
 	}
 	defer client.Close()
 
-	response, err := client.Do(1, [][]byte{
-		[]byte("123"), []byte("456"),
-	})
+	rsp, err := client.Do(1, []byte("client test"))
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(string(response))
+	fmt.Println(string(rsp))
 }
 ```
 
@@ -103,11 +104,11 @@ func main() {
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        166627              8602 ns/op             144 B/op         11 allocs/op
+BenchmarkServer-16        187090              6632 ns/op              32 B/op          6 allocs/op
 ```
 
 _测试环境：R7-5800X@3.8GHZ CPU，32GB RAM。_
 
-_单连接：100000 个命令的执行耗时为 818.65ms，结果为 **122152 rps**，单命令耗时 8.19 us。_
+_单连接：100000 个命令的执行耗时为 745.17ms，结果为 **134198 rps**，单命令耗时 7.45 us。_
 
-_连接池（64个连接）：并发 100000 个命令的执行耗时为 144.03ms，结果为 **694299 rps**，单命令耗时 1.44 us。_
+_连接池（64个连接）：并发 100000 个命令的执行耗时为 133.03ms，结果为 **751710 rps**，单命令耗时 1.33 us。_

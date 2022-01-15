@@ -26,6 +26,7 @@ type Server struct {
 	listener net.Listener
 	handlers map[Tag]Handler
 	wg       sync.WaitGroup
+	lock     sync.RWMutex
 }
 
 func NewServer() *Server {
@@ -35,7 +36,9 @@ func NewServer() *Server {
 }
 
 func (s *Server) RegisterHandler(tag Tag, handler Handler) {
+	s.lock.Lock()
 	s.handlers[tag] = handler
+	s.lock.Unlock()
 }
 
 func (s *Server) handleConn(conn net.Conn) {
@@ -55,7 +58,10 @@ func (s *Server) handleConn(conn net.Conn) {
 			return
 		}
 
+		s.lock.RLock()
 		handler, ok := s.handlers[tag]
+		s.lock.RUnlock()
+
 		if !ok {
 			writeTo(writer, errTag, []byte(errHandlerNotFound.Error()))
 			writer.Flush()

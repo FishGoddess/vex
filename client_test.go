@@ -39,25 +39,25 @@ func TestNewClient(t *testing.T) {
 			t.Error(err)
 		}
 
-		bodySize := binary.BigEndian.Uint32(buffer[versionSize+tagSize : headerSize])
+		bodyLength := binary.BigEndian.Uint32(buffer[versionLength+tagLength : headerLength])
 
-		buffer = buffer[headerSize : headerSize+bodySize]
+		buffer = buffer[headerLength : headerLength+bodyLength]
 		if string(buffer) != str {
 			t.Errorf("request %v is wrong!", string(buffer))
 		}
 
 		body := []byte(str)
-		bodySize = uint32(len(body))
-		header := make([]byte, headerSize)
+		bodyLength = uint32(len(body))
+		header := make([]byte, headerLength)
 		header[0] = ProtocolVersion
 		header[1] = okTag
-		binary.BigEndian.PutUint32(header[versionSize+tagSize:headerSize], bodySize)
+		binary.BigEndian.PutUint32(header[versionLength+tagLength:headerLength], bodyLength)
 		n, err = conn.Write(header)
 		if err != nil {
 			t.Error(err)
 		}
 
-		if n != headerSize {
+		if n != headerLength {
 			t.Errorf("written count %d is wrong!", n)
 		}
 
@@ -66,7 +66,7 @@ func TestNewClient(t *testing.T) {
 			t.Error(err)
 		}
 
-		if n != int(bodySize) {
+		if n != int(bodyLength) {
 			t.Errorf("written count %d is wrong!", n)
 		}
 	}()

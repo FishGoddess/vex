@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	versionSize = 1                                // 1 Byte
-	tagSize     = 1                                // 1 Byte
-	bodySize    = 4                                // 4 Byte
-	headerSize  = versionSize + tagSize + bodySize // 6 Byte
+	versionLength = 1                                      // 1 Byte
+	tagLength     = 1                                      // 1 Byte
+	bodyLength    = 4                                      // 4 Byte
+	headerLength  = versionLength + tagLength + bodyLength // 6 Byte
 
 	ProtocolVersion = 1 // v1
 )
@@ -35,7 +35,7 @@ var (
 type Tag = byte
 
 func readFrom(reader io.Reader) (tag Tag, body []byte, err error) {
-	header := make([]byte, headerSize)
+	header := make([]byte, headerLength)
 
 	_, err = reader.Read(header)
 	if err != nil {
@@ -46,9 +46,9 @@ func readFrom(reader io.Reader) (tag Tag, body []byte, err error) {
 		return errTag, nil, errProtocolMismatch
 	}
 
-	bodySize := binary.BigEndian.Uint32(header[versionSize+tagSize : headerSize])
+	bodyLength := binary.BigEndian.Uint32(header[versionLength+tagLength : headerLength])
 
-	body = make([]byte, bodySize)
+	body = make([]byte, bodyLength)
 	_, err = reader.Read(body)
 	if err != nil {
 		return errTag, nil, err
@@ -57,10 +57,10 @@ func readFrom(reader io.Reader) (tag Tag, body []byte, err error) {
 }
 
 func writeTo(writer io.Writer, tag Tag, body []byte) (err error) {
-	header := make([]byte, headerSize)
+	header := make([]byte, headerLength)
 	header[0] = ProtocolVersion
 	header[1] = tag
-	binary.BigEndian.PutUint32(header[versionSize+tagSize:headerSize], uint32(len(body)))
+	binary.BigEndian.PutUint32(header[versionLength+tagLength:headerLength], uint32(len(body)))
 
 	_, err = writer.Write(header)
 	if err != nil {

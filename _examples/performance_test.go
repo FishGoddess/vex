@@ -43,7 +43,7 @@ func newServer() *vex.Server {
 	return server
 }
 
-func newClient() *vex.Client {
+func newClient() vex.Client {
 	client, err := vex.NewClient("tcp", address)
 	if err != nil {
 		panic(err)
@@ -52,7 +52,9 @@ func newClient() *vex.Client {
 }
 
 func newClientPool(maxConnections int) *vex.ClientPool {
-	pool, err := vex.NewClientPool("tcp", address, maxConnections)
+	pool, err := vex.NewClientPool(maxConnections, func() (vex.Client, error) {
+		return vex.NewClient("tcp", address)
+	})
 	if err != nil {
 		panic(err)
 	}

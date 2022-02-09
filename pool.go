@@ -13,15 +13,17 @@ type ClientPool struct {
 	// maxConnections is the max count of connections.
 	maxConnections int
 
+	newClient func() (Client, error)
+
 	// clients stores all unused connections.
-	clients chan *Client
+	clients chan Client
 }
 
 // NewClientPool returns a client pool storing some clients.
-func NewClientPool(network string, address string, maxConnections int) (*ClientPool, error) {
-	clients := make(chan *Client, maxConnections)
+func NewClientPool(maxConnections int, newClient func() (Client, error)) (*ClientPool, error) {
+	clients := make(chan Client, maxConnections)
 	for i := 0; i < maxConnections; i++ {
-		client, err := NewClient(network, address)
+		client, err := newClient()
 		if err != nil {
 			return nil, err
 		}
@@ -35,12 +37,12 @@ func NewClientPool(network string, address string, maxConnections int) (*ClientP
 }
 
 // Get returns a client for use.
-func (cp *ClientPool) Get() *Client {
+func (cp *ClientPool) Get() Client {
 	return <-cp.clients
 }
 
 // Put stores a client to pool.
-func (cp *ClientPool) Put(client *Client) {
+func (cp *ClientPool) Put(client Client) {
 	cp.clients <- client
 }
 

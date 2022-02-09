@@ -14,26 +14,31 @@ import (
 	"net"
 )
 
-type Client struct {
+type Client interface {
+	Do(tag Tag, req []byte) (rsp []byte, err error)
+	Close() error
+}
+
+type defaultClient struct {
 	conn   net.Conn
 	reader *bufio.Reader
 	writer *bufio.Writer
 }
 
-func NewClient(network string, address string) (*Client, error) {
+func NewClient(network string, address string) (Client, error) {
 	conn, err := net.Dial(network, address)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Client{
+	return &defaultClient{
 		conn:   conn,
 		reader: bufio.NewReader(conn),
 		writer: bufio.NewWriter(conn),
 	}, nil
 }
 
-func (c *Client) Do(tag Tag, req []byte) (rsp []byte, err error) {
+func (c *defaultClient) Do(tag Tag, req []byte) (rsp []byte, err error) {
 	err = writeTo(c.writer, tag, req)
 	if err != nil {
 		return nil, err
@@ -55,7 +60,7 @@ func (c *Client) Do(tag Tag, req []byte) (rsp []byte, err error) {
 	return body, nil
 }
 
-func (c *Client) Close() error {
+func (c *defaultClient) Close() error {
 	err := c.writer.Flush()
 	if err != nil {
 		return err

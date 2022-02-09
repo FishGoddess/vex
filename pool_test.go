@@ -32,7 +32,9 @@ func TestNewClientPool(t *testing.T) {
 	runtime.Gosched()
 	time.Sleep(10 * time.Millisecond)
 
-	pool, err := NewClientPool("tcp", "127.0.0.1:5837", 64)
+	pool, err := NewClientPool(64, func() (Client, error) {
+		return NewClient("tcp", "127.0.0.1:5837")
+	})
 	if err != nil {
 		t.Fatal("new client pool failed", err)
 	}

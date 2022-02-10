@@ -57,6 +57,7 @@ func (c *defaultClient) Do(tag Tag, req []byte) (rsp []byte, err error) {
 	if tag == errTag {
 		return body, errors.New(string(body))
 	}
+
 	return body, nil
 }
 
@@ -65,5 +66,6 @@ func (c *defaultClient) Close() error {
 	if err != nil {
 		return err
 	}
+
 	return c.conn.Close()
 }

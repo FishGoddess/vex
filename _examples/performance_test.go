@@ -89,15 +89,23 @@ func TestRPS(t *testing.T) {
 	client := newClient()
 	defer client.Close()
 
+	var wg sync.WaitGroup
 	req := []byte("req")
 	beginTime := time.Now()
 	for i := 0; i < loop; i++ {
-		body, err := client.Do(benchmarkTag, req)
-		if err != nil {
-			t.Error(err, body)
-		}
+		wg.Add(1)
+
+		func() {
+			defer wg.Done()
+
+			body, err := client.Do(benchmarkTag, req)
+			if err != nil {
+				t.Error(err, body)
+			}
+		}()
 	}
 
+	wg.Wait()
 	t.Logf("Taken time is %s!\n", time.Since(beginTime).String())
 }
 
@@ -109,15 +117,17 @@ func TestRPSWithPool(t *testing.T) {
 	pool := newClientPool(64)
 	defer pool.Close()
 
-	req := []byte("req")
 	var wg sync.WaitGroup
+	req := []byte("req")
 	beginTime := time.Now()
 	for i := 0; i < loop; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			client := pool.Get()
-			defer pool.Put(client)
+			defer client.Close()
 
 			body, err := client.Do(benchmarkTag, req)
 			if err != nil {

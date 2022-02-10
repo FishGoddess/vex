@@ -41,18 +41,19 @@ func TestNewClientPool(t *testing.T) {
 	defer pool.Close()
 
 	for i := 0; i < 512; i++ {
-
 		client := pool.Get()
+
 		response, err := client.Do(1, []byte("test"))
 		if err != nil {
-			pool.Put(client)
+			client.Close()
 			t.Fatalf("do command %d failed with %+v", i, err)
 		}
 
 		if string(response) != "test" {
-			pool.Put(client)
+			client.Close()
 			t.Fatalf("response %s is wrong", string(response))
 		}
-		pool.Put(client)
+
+		client.Close()
 	}
 }

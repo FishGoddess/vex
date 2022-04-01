@@ -1,44 +1,52 @@
-// Copyright 2022 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2022/01/15 00:53:37
 
 package vex
 
 import (
 	"bufio"
 	"errors"
+	"io"
+	"log"
 	"net"
 	"strings"
 	"sync"
 )
 
 var (
-	errHandlerNotFound = errors.New("vex: handler not found")
+	errPacketHandlerNotFound = errors.New("vex: packet handler not found")
+
+	Log = log.Printf // Logger outputs some messages.
 )
 
-type Handler func(req []byte) (rsp []byte, err error)
+type PacketHandler func(requestBody []byte) (responseBody []byte, err error)
 
 type Server struct {
 	listener net.Listener
-	handlers map[Tag]Handler
+	handlers map[PacketType]PacketHandler
 	wg       sync.WaitGroup
 	lock     sync.RWMutex
 }
 
 func NewServer() *Server {
 	return &Server{
-		handlers: make(map[Tag]Handler, 16),
+		handlers: make(map[PacketType]PacketHandler, 16),
 	}
 }
 
-func (s *Server) RegisterHandler(tag Tag, handler Handler) {
+func (s *Server) RegisterPacketHandler(packetType PacketType, handler PacketHandler) {
 	s.lock.Lock()
-	s.handlers[tag] = handler
+	s.handlers[packetType] = handler
 	s.lock.Unlock()
+}
+
+func (s *Server) handleConnError(writer io.Writer, err error) {
+	Log("vex: read packet failed with err %+v", err)
+	err = writePacket(writer, packetTypeErr, []byte(err.Error()))
+	if err != nil {
+		Log("vex: write packet failed with err %+v", err)
+	}
 }
 
 func (s *Server) handleConn(conn net.Conn) {
@@ -49,34 +57,35 @@ func (s *Server) handleConn(conn net.Conn) {
 	defer writer.Flush()
 
 	for {
-		tag, req, err := readFrom(reader)
-		if err == errProtocolMismatch {
-			continue
+		if writer.Buffered() > 0 {
+			writer.Flush()
 		}
 
+		packetType, requestBody, err := readPacket(reader)
 		if err != nil {
+			s.handleConnError(writer, err)
 			return
 		}
 
 		s.lock.RLock()
-		handler, ok := s.handlers[tag]
+		handle, ok := s.handlers[packetType]
 		s.lock.RUnlock()
 
 		if !ok {
-			writeTo(writer, errTag, []byte(errHandlerNotFound.Error()))
-			writer.Flush()
+			s.handleConnError(writer, errPacketHandlerNotFound)
 			continue
 		}
 
-		rsp, err := handler(req)
+		responseBody, err := handle(requestBody)
 		if err != nil {
-			writeTo(writer, errTag, []byte(err.Error()))
-			writer.Flush()
+			s.handleConnError(writer, err)
 			continue
 		}
 
-		writeTo(writer, okTag, rsp)
-		writer.Flush()
+		err = writePacket(writer, packetTypeOK, responseBody)
+		if err != nil {
+			s.handleConnError(writer, err)
+		}
 	}
 }
 

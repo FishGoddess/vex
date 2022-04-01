@@ -1,10 +1,6 @@
-// Copyright 2022 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2022/01/15 02:08:38
 
 package vex
 
@@ -39,25 +35,25 @@ func TestNewClient(t *testing.T) {
 			t.Error(err)
 		}
 
-		bodyLength := binary.BigEndian.Uint32(buffer[versionLength+tagLength : headerLength])
+		bodySize := binary.BigEndian.Uint32(buffer[versionSize+typeSize : headerSize])
 
-		buffer = buffer[headerLength : headerLength+bodyLength]
+		buffer = buffer[headerSize : headerSize+bodySize]
 		if string(buffer) != str {
 			t.Errorf("request %v is wrong!", string(buffer))
 		}
 
 		body := []byte(str)
-		bodyLength = uint32(len(body))
-		header := make([]byte, headerLength)
-		header[0] = ProtocolVersion
-		header[1] = okTag
-		binary.BigEndian.PutUint32(header[versionLength+tagLength:headerLength], bodyLength)
+		bodySize = uint32(len(body))
+		header := make([]byte, headerSize)
+		header[0] = protocolVersion
+		header[1] = packetTypeTest
+		binary.BigEndian.PutUint32(header[versionSize+typeSize:headerSize], bodySize)
 		n, err = conn.Write(header)
 		if err != nil {
 			t.Error(err)
 		}
 
-		if n != headerLength {
+		if n != headerSize {
 			t.Errorf("written count %d is wrong!", n)
 		}
 
@@ -66,7 +62,7 @@ func TestNewClient(t *testing.T) {
 			t.Error(err)
 		}
 
-		if n != int(bodyLength) {
+		if n != int(bodySize) {
 			t.Errorf("written count %d is wrong!", n)
 		}
 	}()
@@ -79,7 +75,7 @@ func TestNewClient(t *testing.T) {
 	}
 	defer client.Close()
 
-	rsp, err := client.Do(testTag, []byte(str))
+	rsp, err := client.Send(packetTypeTest, []byte(str))
 	if err != nil {
 		t.Error(err)
 	}

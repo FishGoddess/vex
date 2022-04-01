@@ -1,10 +1,6 @@
-// Copyright 2022 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2022/01/15 01:29:59
 
 package vex
 
@@ -17,7 +13,7 @@ import (
 )
 
 const (
-	testTag Tag = 1
+	packetTypeTest PacketType = 1
 )
 
 var (
@@ -29,11 +25,11 @@ func TestNewServer(t *testing.T) {
 	address := "127.0.0.1:5837"
 
 	server := NewServer()
-	server.RegisterHandler(testTag, func(req []byte) (rsp []byte, err error) {
-		if len(req) <= 0 {
+	server.RegisterPacketHandler(packetTypeTest, func(requestBody []byte) (responseBody []byte, err error) {
+		if len(requestBody) <= 0 {
 			return nil, errTestRequestFailed
 		}
-		return req, nil
+		return requestBody, nil
 	})
 	defer server.Close()
 
@@ -54,7 +50,7 @@ func TestNewServer(t *testing.T) {
 
 	// failed test
 	_, err = conn.Write([]byte{
-		ProtocolVersion, testTag, 0, 0, 0, 0,
+		protocolVersion, packetTypeTest, 0, 0, 0, 0,
 	})
 	if err != nil {
 		t.Error(err)
@@ -66,11 +62,11 @@ func TestNewServer(t *testing.T) {
 		t.Error(err)
 	}
 
-	if buffer[0] != ProtocolVersion {
+	if buffer[0] != protocolVersion {
 		t.Errorf("protocol version %d is wrong!", buffer[0])
 	}
 
-	if buffer[1] != errTag {
+	if buffer[1] != packetTypeTest {
 		t.Errorf("tag %d is wrong!", buffer[1])
 	}
 
@@ -86,7 +82,7 @@ func TestNewServer(t *testing.T) {
 
 	// successful test
 	_, err = conn.Write([]byte{
-		ProtocolVersion, testTag, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e',
+		protocolVersion, packetTypeTest, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e',
 	})
 	if err != nil {
 		t.Error(err)
@@ -98,11 +94,11 @@ func TestNewServer(t *testing.T) {
 		t.Error(err)
 	}
 
-	if buffer[0] != ProtocolVersion {
+	if buffer[0] != protocolVersion {
 		t.Errorf("protocol version %d is wrong!", buffer[0])
 	}
 
-	if buffer[1] != okTag {
+	if buffer[1] != packetTypeTest {
 		t.Errorf("tag %d is wrong!", buffer[1])
 	}
 

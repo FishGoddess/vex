@@ -1,10 +1,6 @@
-// Copyright 2022 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2021/08/02 23:32:44
 
 package vex
 
@@ -17,8 +13,8 @@ type poolClient struct {
 	client Client
 }
 
-func (pc *poolClient) Do(tag Tag, req []byte) (rsp []byte, err error) {
-	return pc.client.Do(tag, req)
+func (pc *poolClient) Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error) {
+	return pc.client.Send(packetType, requestBody)
 }
 
 func (pc *poolClient) Close() error {

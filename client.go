@@ -1,10 +1,6 @@
-// Copyright 2022 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2022/01/15 01:22:13
 
 package vex
 
@@ -14,17 +10,23 @@ import (
 	"net"
 )
 
+// Client is the interface of vex client.
 type Client interface {
-	Do(tag Tag, req []byte) (rsp []byte, err error)
+	// Send sends a packet with requestBody to server and returns responseBody responded from server.
+	Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error)
+
+	// Close closes current client.
 	Close() error
 }
 
+// defaultClient is the default client implement which using one independent tcp connection.
 type defaultClient struct {
 	conn   net.Conn
 	reader *bufio.Reader
 	writer *bufio.Writer
 }
 
+// NewClient creates a new client to address with given network.
 func NewClient(network string, address string) (Client, error) {
 	conn, err := net.Dial(network, address)
 	if err != nil {
@@ -38,8 +40,9 @@ func NewClient(network string, address string) (Client, error) {
 	}, nil
 }
 
-func (c *defaultClient) Do(tag Tag, req []byte) (rsp []byte, err error) {
-	err = writeTo(c.writer, tag, req)
+// Send sends a packet with requestBody to server and returns responseBody responded from server.
+func (c *defaultClient) Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error) {
+	err = writePacket(c.writer, packetType, requestBody)
 	if err != nil {
 		return nil, err
 	}
@@ -49,18 +52,19 @@ func (c *defaultClient) Do(tag Tag, req []byte) (rsp []byte, err error) {
 		return nil, err
 	}
 
-	tag, body, err := readFrom(c.reader)
+	packetType, responseBody, err = readPacket(c.reader)
 	if err != nil {
 		return nil, err
 	}
 
-	if tag == errTag {
-		return body, errors.New(string(body))
+	if packetType == packetTypeErr {
+		return responseBody, errors.New(string(responseBody))
 	}
 
-	return body, nil
+	return responseBody, nil
 }
 
+// Close closes current client.
 func (c *defaultClient) Close() error {
 	err := c.writer.Flush()
 	if err != nil {

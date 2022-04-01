@@ -1,67 +1,75 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2020/10/17 17:47:21
 
 package vex
 
 import (
 	"bufio"
 	"errors"
-	"io"
 	"net"
 )
 
-// 客户端结构。
-type Client struct {
+// Client is the interface of vex client.
+type Client interface {
+	// Send sends a packet with requestBody to server and returns responseBody responded from server.
+	Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error)
 
-	// 和服务端建立的连接。
-	conn net.Conn
-
-	// 通往服务端的读取器。
-	reader io.Reader
+	// Close closes current client.
+	Close() error
 }
 
-// 创建新的客户端。
-func NewClient(network string, address string) (*Client, error) {
+// defaultClient is the default client implement which using one independent tcp connection.
+type defaultClient struct {
+	conn   net.Conn
+	reader *bufio.Reader
+	writer *bufio.Writer
+}
 
-	// 和服务端建立连接
-	conn, err := net.Dial(network, address)
+// NewClient creates a new client to address with given network.
+func NewClient(network string, address string) (Client, error) {
+	conn, err := Dial(network, address)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{
+
+	return &defaultClient{
 		conn:   conn,
 		reader: bufio.NewReader(conn),
+		writer: bufio.NewWriter(conn),
 	}, nil
 }
 
-// 执行命令。
-func (c *Client) Do(command byte, args [][]byte) (body []byte, err error) {
-
-	// 包装请求然后发送给服务端
-	_, err = writeRequestTo(c.conn, command, args)
+// Send sends a packet with requestBody to server and returns responseBody responded from server.
+func (c *defaultClient) Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error) {
+	err = writePacket(c.writer, packetType, requestBody)
 	if err != nil {
 		return nil, err
 	}
 
-	// 读取服务端返回的响应
-	reply, body, err := readResponseFrom(c.reader)
+	err = c.writer.Flush()
 	if err != nil {
 		return nil, err
 	}
 
-	// 如果是错误答复码，将内容包装成 error 并返回
-	if reply == ErrorReply {
-		return body, errors.New(string(body))
+	packetType, responseBody, err = readPacket(c.reader)
+	if err != nil {
+		return nil, err
 	}
-	return body, nil
+
+	if packetType == packetTypeErr {
+		return responseBody, errors.New(string(responseBody))
+	}
+
+	return responseBody, nil
 }
 
-// 关闭客户端。
-func (c *Client) Close() error {
+// Close closes current client.
+func (c *defaultClient) Close() error {
+	err := c.writer.Flush()
+	if err != nil {
+		return err
+	}
+
 	return c.conn.Close()
 }

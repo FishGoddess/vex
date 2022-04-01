@@ -1,119 +1,118 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2020/10/17 18:16:51
 
 package vex
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
-	"net"
 	"testing"
 	"time"
 )
 
 const (
-	testCommand = byte(1)
+	packetTypeTest PacketType = 1
 )
 
 var (
-	testArgumentErr = errors.New("test command needs more arguments")
+	errTestRequestFailed = errors.New("vex: test request failed")
 )
+
+func checkTestBytes(t *testing.T, buffer []byte, failedTest bool, expected string) {
+	//t.Log(buffer)
+	magic := int32(endian.Uint32(buffer[:magicSize]))
+	if magic != magicNumber {
+		t.Errorf("magic %d != magicNumber %d", magic, magicNumber)
+	}
+
+	version := buffer[magicSize]
+	if version != protocolVersion {
+		t.Errorf("version %d != protocolVersion %d", version, protocolVersion)
+	}
+
+	expectedPacketType := packetTypeOK
+	if failedTest {
+		expectedPacketType = packetTypeErr
+	}
+
+	packetType := buffer[magicSize+versionSize]
+	if packetType != expectedPacketType {
+		t.Errorf("packetType %d != expectedPacketType %d", packetType, expectedPacketType)
+	}
+
+	bodySize := endian.Uint32(buffer[magicSize+versionSize+typeSize : headerSize])
+	if bodySize != uint32(len([]byte(expected))) {
+		t.Errorf("bodySize %d != len([]byte(expected)) %d ", bodySize, len([]byte(expected)))
+	}
+
+	requestBody := buffer[headerSize : headerSize+bodySize]
+	if string(requestBody) != expected {
+		t.Errorf("requestBody %s != expected %s", string(requestBody), expected)
+	}
+}
+
+func runTestClient(t *testing.T, address string) {
+	conn, err := Dial("tcp", address)
+	if err != nil {
+		t.Error(err)
+	}
+	defer conn.Close()
+
+	// Err test
+	_, err = conn.Write([]byte{
+		0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 0,
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	buffer := make([]byte, 64)
+	_, err = conn.Read(buffer)
+	if err != nil {
+		t.Error(err)
+	}
+
+	checkTestBytes(t, buffer, true, errTestRequestFailed.Error())
+
+	// OK test
+	_, err = conn.Write([]byte{
+		0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e',
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	buffer = make([]byte, 64)
+	_, err = conn.Read(buffer)
+	if err != nil {
+		t.Error(err)
+	}
+
+	checkTestBytes(t, buffer, false, "key value")
+}
 
 // go test -v -cover -run=^TestNewServer$
 func TestNewServer(t *testing.T) {
+	address := "127.0.0.1:5837"
 
 	server := NewServer()
-	server.RegisterHandler(testCommand, func(args [][]byte) (body []byte, err error) {
-		if len(args) < 2 {
-			return nil, testArgumentErr
+	server.RegisterPacketHandler(packetTypeTest, func(requestBody []byte) (responseBody []byte, err error) {
+		if len(requestBody) <= 0 {
+			return nil, errTestRequestFailed
 		}
-		body = bytes.Join(args, []byte{' '})
-		return body, nil
+
+		responseBody = requestBody
+		return responseBody, nil
 	})
 	defer server.Close()
 
 	go func() {
-		err := server.ListenAndServe("tcp", ":5837")
+		err := server.ListenAndServe("tcp", address)
 		if err != nil {
-			t.Fatal(err)
+			t.Error(err)
 		}
 	}()
 
 	time.Sleep(time.Second)
-
-	conn, err := net.Dial("tcp", "127.0.0.1:5837")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-
-	// failed test
-	_, err = conn.Write([]byte{
-		ProtocolVersion, testCommand, 0, 0, 0, 0,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	buffer := make([]byte, 1024)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if buffer[0] != ProtocolVersion {
-		t.Fatalf("Protocol version %d is wrong!", buffer[0])
-	}
-
-	if buffer[1] != ErrorReply {
-		t.Fatalf("Reply %d is wrong!", buffer[1])
-	}
-
-	bodyLength := binary.BigEndian.Uint32(buffer[2:6])
-	if bodyLength != uint32(len([]byte(testArgumentErr.Error()))) {
-		t.Fatalf("Body length %d is wrong!", bodyLength)
-	}
-
-	buffer = buffer[6:n]
-	if string(buffer) != testArgumentErr.Error() {
-		t.Fatalf("Body %s is wrong!", string(buffer))
-	}
-
-	// successful test
-	_, err = conn.Write([]byte{
-		ProtocolVersion, testCommand, 0, 0, 0, 2, 0, 0, 0, 3, 'k', 'e', 'y', 0, 0, 0, 5, 'v', 'a', 'l', 'u', 'e',
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	buffer = make([]byte, 1024)
-	n, err = conn.Read(buffer)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if buffer[0] != ProtocolVersion {
-		t.Fatalf("Protocol version %d is wrong!", buffer[0])
-	}
-
-	if buffer[1] != SuccessReply {
-		t.Fatalf("Reply %d is wrong!", buffer[1])
-	}
-
-	bodyLength = binary.BigEndian.Uint32(buffer[2:6])
-	if bodyLength != uint32(9) {
-		t.Fatalf("Body length %d is wrong!", bodyLength)
-	}
-
-	buffer = buffer[6:n]
-	if string(buffer) != "key value" {
-		t.Fatalf("Body %s is wrong!", string(buffer))
-	}
+	runTestClient(t, address)
 }

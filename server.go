@@ -1,61 +1,108 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2020/10/17 16:11:56
 
 package vex
 
 import (
 	"bufio"
 	"errors"
+	"io"
 	"net"
 	"strings"
 	"sync"
 )
 
 var (
-	// 找不到对应的命令处理器错误
-	commandHandlerNotFoundErr = errors.New("failed to find a handler of command")
+	errPacketHandlerNotFound = errors.New("vex: packet handler not found")
 )
 
-// 服务端结构。
+// PacketHandler is a handler for handling packets.
+// You will receive a byte slice of request and should return a byte slice or error if necessary.
+type PacketHandler func(requestBody []byte) (responseBody []byte, err error)
+
+// Server is the vex server.
 type Server struct {
-
-	// 监听器，这个应该大家都很熟悉了吧。
 	listener net.Listener
-
-	// 命令处理器，通过命令可以找到对应的处理器。
-	handlers map[byte]func(args [][]byte) (body []byte, err error)
+	handlers map[PacketType]PacketHandler
+	wg       sync.WaitGroup
+	lock     sync.RWMutex
 }
 
-// 创建新的服务端。
+// NewServer returns a new vex server.
 func NewServer() *Server {
 	return &Server{
-		handlers: map[byte]func(args [][]byte) (body []byte, err error){},
+		handlers: make(map[PacketType]PacketHandler, 16),
 	}
 }
 
-// 注册命令处理器。
-func (s *Server) RegisterHandler(command byte, handler func(args [][]byte) (body []byte, err error)) {
-	s.handlers[command] = handler
+// RegisterPacketHandler registers handler of packetType.
+func (s *Server) RegisterPacketHandler(packetType PacketType, handler PacketHandler) {
+	s.lock.Lock()
+	s.handlers[packetType] = handler
+	s.lock.Unlock()
 }
 
-// 监听并服务于 network 和 address。
-func (s *Server) ListenAndServe(network string, address string) (err error) {
-
-	// 监听指定地址
-	s.listener, err = net.Listen(network, address)
+func (s *Server) handleConnOK(writer io.Writer, body []byte) {
+	err := writePacket(writer, packetTypeOK, body)
 	if err != nil {
-		return err
+		Log("vex: write ok packet failed with err %+v", err)
 	}
+}
 
-	// 使用 WaitGroup 记录连接数，并等待所有连接处理完毕
-	wg := &sync.WaitGroup{}
+func (s *Server) handleConnErr(writer io.Writer, err error) {
+	err = writePacket(writer, packetTypeErr, []byte(err.Error()))
+	if err != nil {
+		Log("vex: write err packet failed with err %+v", err)
+	}
+}
+
+func (s *Server) handleConn(conn net.Conn) {
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	writer := bufio.NewWriter(conn)
+	defer writer.Flush()
+
 	for {
-		// 等待客户端连接
+		if writer.Buffered() > 0 {
+			err := writer.Flush()
+			if err != nil {
+				Log("vex: writer flushes failed with err [%+v]", err)
+			}
+		}
+
+		packetType, requestBody, err := readPacket(reader)
+		if err != nil {
+			if err != io.EOF {
+				Log("vex: read packet failed with err [%+v]", err)
+				s.handleConnErr(writer, err)
+			}
+			return
+		}
+
+		s.lock.RLock()
+		handle, ok := s.handlers[packetType]
+		s.lock.RUnlock()
+
+		if !ok {
+			Log("vex: handler of %+v not found", packetType)
+			s.handleConnErr(writer, errPacketHandlerNotFound)
+			continue
+		}
+
+		responseBody, err := handle(requestBody)
+		if err != nil {
+			s.handleConnErr(writer, err)
+			continue
+		}
+
+		s.handleConnOK(writer, responseBody)
+	}
+}
+
+func (s *Server) serve() error {
+	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
 			// This error means listener has been closed
@@ -66,73 +113,27 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 			continue
 		}
 
-		// 记录连接
-		wg.Add(1)
+		s.wg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer s.wg.Done()
 			s.handleConn(conn)
 		}()
 	}
 
-	// 等待所有连接处理完毕
-	wg.Wait()
+	s.wg.Wait()
 	return nil
 }
 
-// 处理连接。
-func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
-
-	// 将连接包装成缓冲读取器，提高读取的性能
-	reader := bufio.NewReader(conn)
-	writer := bufio.NewWriter(conn)
-	defer writer.Flush()
-
-	for {
-		// 读取并解析请求请求
-		command, args, err := readRequestFrom(reader)
-		if err != nil {
-			if err == ProtocolVersionMismatchErr {
-				continue
-			}
-			return
-		}
-
-		// 处理请求
-		reply, body, err := s.handleRequest(command, args)
-		if err != nil {
-			writeErrorResponseTo(writer, err.Error())
-			writer.Flush()
-			continue
-		}
-
-		// 发送处理结果的响应
-		_, err = writeResponseTo(writer, reply, body)
-		if err != nil {
-			continue
-		}
-		writer.Flush()
-	}
-}
-
-// 处理请求。
-func (s *Server) handleRequest(command byte, args [][]byte) (reply byte, body []byte, err error) {
-
-	// 从命令处理器集合中选出对应的处理器
-	handle, ok := s.handlers[command]
-	if !ok {
-		return ErrorReply, nil, commandHandlerNotFoundErr
-	}
-
-	// 将处理结果返回
-	body, err = handle(args)
+// ListenAndServe listens on address in network and begins serving.
+func (s *Server) ListenAndServe(network string, address string) (err error) {
+	s.listener, err = net.Listen(network, address)
 	if err != nil {
-		return ErrorReply, body, err
+		return err
 	}
-	return SuccessReply, body, err
+	return s.serve()
 }
 
-// 关闭服务端的方法。
+// Close closes current server.
 func (s *Server) Close() error {
 	if s.listener == nil {
 		return nil

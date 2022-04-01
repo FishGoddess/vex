@@ -1,10 +1,6 @@
-// Copyright 2020 Ye Zi Jie.  All rights reserved.
+// Copyright 2022 FishGoddess.  All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
-//
-// Author: FishGoddess
-// Email: fishgoddess@qq.com
-// Created at 2020/10/17 18:00:26
 
 package vex
 
@@ -14,64 +10,92 @@ import (
 	"time"
 )
 
-// go test -v -cover -run=^TestNewClient$
-func TestNewClient(t *testing.T) {
-
-	listener, err := net.Listen("tcp", ":5837")
+func runTestServer(t *testing.T, address string, str string) {
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	defer listener.Close()
 
-	go func() {
-		conn, err := listener.Accept()
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer conn.Close()
+	conn, err := listener.Accept()
+	if err != nil {
+		t.Error(err)
+	}
+	defer conn.Close()
 
-		buffer := make([]byte, 1024)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			t.Fatal(err)
-		}
+	buffer := make([]byte, 64)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		t.Error(err)
+	}
 
-		request := []byte{
-			ProtocolVersion, 2, 0, 0, 0, 2, 0, 0, 0, 3, 'k', 'e', 'y', 0, 0, 0, 5, 'v', 'a', 'l', 'u', 'e',
-		}
-		buffer = buffer[:n]
-		if string(buffer) != string(request) {
-			t.Fatalf("Request %v is wrong!", string(buffer))
-		}
+	magic := int32(endian.Uint32(buffer[:magicSize]))
+	if magic != magicNumber {
+		t.Errorf("magic %d != magicNumber %d", magic, magicNumber)
+	}
 
-		n, err = conn.Write([]byte{
-			ProtocolVersion, SuccessReply, 0, 0, 0, 2, 'o', 'k',
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
+	version := buffer[magicSize]
+	if version != protocolVersion {
+		t.Errorf("version %d != protocolVersion %d", version, protocolVersion)
+	}
 
-		if n != 8 {
-			t.Fatalf("Written count %d is wrong!", n)
-		}
-	}()
+	packetType := buffer[magicSize+versionSize]
+	if packetType != packetTypeTest {
+		t.Errorf("packetType %d != packetTypeTest %d", packetType, packetTypeTest)
+	}
 
+	bodySize := endian.Uint32(buffer[magicSize+versionSize+typeSize : headerSize])
+	requestBody := buffer[headerSize : headerSize+bodySize]
+	if string(requestBody) != str {
+		t.Errorf("requestBody %v is wrong!", string(requestBody))
+	}
+
+	responseBody := []byte(str)
+	bodySize = uint32(len(responseBody))
+	header := make([]byte, headerSize)
+	endian.PutUint32(header[:magicSize], magicNumber)
+	header[magicSize] = protocolVersion
+	header[magicSize+versionSize] = packetTypeOK
+	endian.PutUint32(header[magicSize+versionSize+typeSize:headerSize], bodySize)
+
+	n, err = conn.Write(header)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if n != headerSize {
+		t.Errorf("n %d != headerSize %d", n, headerSize)
+	}
+
+	n, err = conn.Write(responseBody)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if n != int(bodySize) {
+		t.Errorf("n %d != bodySize %d", n, bodySize)
+	}
+}
+
+// go test -v -cover -run=^TestNewClient$
+func TestNewClient(t *testing.T) {
+	address := "127.0.0.1:5837"
+	str := "key value"
+	go runTestServer(t, address, str)
 	time.Sleep(time.Second)
 
 	client, err := NewClient("tcp", "127.0.0.1:5837")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	defer client.Close()
 
-	body, err := client.Do(2, [][]byte{
-		[]byte("key"), []byte("value"),
-	})
+	rsp, err := client.Send(packetTypeTest, []byte(str))
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
-	if string(body) != "ok" {
-		t.Fatalf("Body %s is wrong!", string(body))
+	if string(rsp) != str {
+		t.Errorf("body %s is wrong!", string(rsp))
 	}
 }

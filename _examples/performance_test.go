@@ -111,6 +111,13 @@ func TestRPSWithPool(t *testing.T) {
 	clientPool := newClientPool(16)
 	defer clientPool.Close()
 
+	//go func() {
+	//	for {
+	//		fmt.Printf("%+v\n", clientPool.State())
+	//		time.Sleep(10 * time.Millisecond)
+	//	}
+	//}()
+
 	var wg sync.WaitGroup
 	req := []byte("req")
 	beginTime := time.Now()
@@ -138,4 +145,5 @@ func TestRPSWithPool(t *testing.T) {
 
 	wg.Wait()
 	t.Logf("Taken time is %s!\n", time.Since(beginTime).String())
+	t.Logf("%+v\n", clientPool.State())
 }

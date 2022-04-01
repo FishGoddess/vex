@@ -22,11 +22,11 @@ func main() {
 	}
 	defer client.Close()
 
-	responseBody, err := client.Send(1, []byte("client test"))
+	responseBody, err := client.Send(1, []byte("client pool test"))
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println(string(responseBody))
-	fmt.Println(clientPool.State())
+	fmt.Printf("%+v\n", clientPool.State())
 }

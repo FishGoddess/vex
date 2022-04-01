@@ -84,8 +84,8 @@ func (cp *Pool) putIdle(client *poolClient) {
 	}
 }
 
-// getIdle gets a idle client from pool.
-func (cp *Pool) getIdle() (vex.Client, bool) {
+// getIdle gets an idle client from pool.
+func (cp *Pool) getIdle() (*poolClient, bool) {
 	select {
 	case client := <-cp.clients:
 		cp.state.Idle--
@@ -93,6 +93,19 @@ func (cp *Pool) getIdle() (vex.Client, bool) {
 	default:
 		return nil, false
 	}
+}
+
+// getIdleBlocking gets an idle client from pool with blocking mode.
+func (cp *Pool) getIdleBlocking() (*poolClient, bool) {
+	client := <-cp.clients
+	if client == nil {
+		return nil, false
+	}
+
+	cp.lock.Lock()
+	cp.state.Idle--
+	cp.lock.Unlock()
+	return client, true
 }
 
 // Get returns a client for use.
@@ -121,12 +134,12 @@ func (cp *Pool) Get() (vex.Client, error) {
 	if cp.config.fullStrategy.Block() {
 		cp.lock.Unlock()
 
-		client = <-cp.clients
-		if client == nil {
-			return nil, errClientClosed
+		client, ok = cp.getIdleBlocking()
+		if ok {
+			return client, nil
 		}
 
-		return client, nil
+		return nil, errClientClosed
 	}
 
 	// 2. returns an error.

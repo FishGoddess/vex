@@ -36,31 +36,6 @@ magic    version    type    body_size    {body}
 
 ### ✒ Example
 
-Server:
-
-```go
-package main
-
-import (
-	"fmt"
-
-	"github.com/FishGoddess/vex"
-)
-
-func main() {
-	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
-		fmt.Println(string(req))
-		return []byte("server test"), nil
-	})
-
-	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
-	if err != nil {
-		panic(err)
-	}
-}
-```
-
 Client:
 
 ```go
@@ -87,6 +62,37 @@ func main() {
 	fmt.Println(string(rsp))
 }
 ```
+
+Server:
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/FishGoddess/vex"
+)
+
+func main() {
+	server := vex.NewServer()
+	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
+		fmt.Println(string(req))
+		return []byte("server test"), nil
+	})
+
+	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+	if err != nil {
+		panic(err)
+	}
+}
+```
+
+* [client](./_examples/client.go)
+* [server](./_examples/server.go)
+* [pool](./_examples/pool.go)
+
+_All examples can be found in [_examples](./_examples)._
 
 ### 🛠 Benchmarks
 

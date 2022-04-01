@@ -12,9 +12,6 @@ var (
 
 	// Dial dials a net connection.
 	Dial = net.Dial
-
-	// MakeBytes makes a new byte slice.
-	MakeBytes = makeBytes
 )
 
 // makeBytes makes a new byte slice.

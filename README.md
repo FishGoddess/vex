@@ -36,31 +36,6 @@ magic    version    type    body_size    {body}
 
 ### ✒ 使用案例
 
-服务端：
-
-```go
-package main
-
-import (
-	"fmt"
-
-	"github.com/FishGoddess/vex"
-)
-
-func main() {
-	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
-		fmt.Println(string(req))
-		return []byte("server test"), nil
-	})
-
-	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
-	if err != nil {
-		panic(err)
-	}
-}
-```
-
 客户端：
 
 ```go
@@ -87,6 +62,37 @@ func main() {
 	fmt.Println(string(rsp))
 }
 ```
+
+服务端：
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/FishGoddess/vex"
+)
+
+func main() {
+	server := vex.NewServer()
+	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
+		fmt.Println(string(req))
+		return []byte("server test"), nil
+	})
+
+	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+	if err != nil {
+		panic(err)
+	}
+}
+```
+
+* [client](./_examples/client.go)
+* [server](./_examples/server.go)
+* [pool](./_examples/pool.go)
+
+_所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ### 🛠 性能测试
 

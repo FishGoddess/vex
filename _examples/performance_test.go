@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/FishGoddess/vex"
+	"github.com/FishGoddess/vex/pool"
 )
 
 const (
 	// address is the address of server.
 	address = "127.0.0.1:5837"
 
-	// benchmarkTag is the command of benchmark.
-	benchmarkTag = byte(1)
+	// benchmarkPacketType is the command of benchmark.
+	benchmarkPacketType = 1
 
 	// loop is the loop of test.
 	loop = 100000
@@ -25,7 +26,7 @@ const (
 
 func newServer() *vex.Server {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(benchmarkTag, func(req []byte) (rsp []byte, err error) {
+	server.RegisterPacketHandler(benchmarkPacketType, func(req []byte) (rsp []byte, err error) {
 		return req, nil
 	})
 
@@ -48,14 +49,10 @@ func newClient() vex.Client {
 	return client
 }
 
-func newClientPool(maxConnections int) *vex.ClientPool {
-	pool, err := vex.NewClientPool(maxConnections, func() (vex.Client, error) {
+func newClientPool(maxOpened int) *pool.Pool {
+	return pool.NewPool(func() (vex.Client, error) {
 		return vex.NewClient("tcp", address)
-	})
-	if err != nil {
-		panic(err)
-	}
-	return pool
+	}, pool.WithMaxOpened(maxOpened), pool.WithFullStrategy(pool.FullStrategyBlock))
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
@@ -71,7 +68,7 @@ func BenchmarkServer(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.Send(benchmarkTag, req)
+		_, err := client.Send(benchmarkPacketType, req)
 		if err != nil {
 			b.Error(err)
 		}
@@ -95,7 +92,7 @@ func TestRPS(t *testing.T) {
 		func() {
 			defer wg.Done()
 
-			body, err := client.Send(benchmarkTag, req)
+			body, err := client.Send(benchmarkPacketType, req)
 			if err != nil {
 				t.Error(err, body)
 			}
@@ -111,8 +108,8 @@ func TestRPSWithPool(t *testing.T) {
 	server := newServer()
 	defer server.Close()
 
-	pool := newClientPool(64)
-	defer pool.Close()
+	clientPool := newClientPool(64)
+	defer clientPool.Close()
 
 	var wg sync.WaitGroup
 	req := []byte("req")
@@ -123,10 +120,15 @@ func TestRPSWithPool(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			client := pool.Get()
+			client, err := clientPool.Get()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
 			defer client.Close()
 
-			body, err := client.Send(benchmarkTag, req)
+			body, err := client.Send(benchmarkPacketType, req)
 			if err != nil {
 				t.Error(err, body)
 				return

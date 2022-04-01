@@ -77,8 +77,8 @@ func runTestServer(t *testing.T, address string, str string) {
 	}
 }
 
-// go test -v -cover -run=^TestNewClient$
-func TestNewClient(t *testing.T) {
+// go test -v -cover -run=^TestClient$
+func TestClient(t *testing.T) {
 	address := "127.0.0.1:5837"
 	str := "key value"
 	go runTestServer(t, address, str)

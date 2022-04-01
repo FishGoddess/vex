@@ -69,7 +69,7 @@ func readPacketHeader(reader io.Reader) (packetType PacketType, bodySize int32, 
 }
 
 func readPacketBody(reader io.Reader, bodySize int32) (body []byte, err error) {
-	body = MakeBytes(bodySize) // May exceed if body size is too big.
+	body = makeBytes(bodySize) // May exceed if body size is too big.
 
 	n, err := reader.Read(body)
 	if err != nil {

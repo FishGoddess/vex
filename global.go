@@ -18,6 +18,6 @@ var (
 )
 
 // makeBytes makes a new byte slice.
-func makeBytes(initialized int32) []byte {
-	return make([]byte, initialized)
+func makeBytes(initial int32) []byte {
+	return make([]byte, initial)
 }

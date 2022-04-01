@@ -12,8 +12,8 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
-		fmt.Println(string(req))
+	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
+		fmt.Println(string(requestBody))
 		return []byte("server test"), nil
 	})
 

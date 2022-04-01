@@ -34,8 +34,11 @@ func (pc *poolClient) Close() error {
 
 // ClientPool is the pool of client.
 type ClientPool struct {
-	// maxConnections is the max count of connections.
-	maxConnections int
+	// maxOpened is the max opened count of connections.
+	maxOpened int
+
+	// maxIdle is the max idle count of connections.
+	maxIdle int
 
 	// clients stores all unused connections.
 	clients chan Client
@@ -47,9 +50,9 @@ type ClientPool struct {
 // NewClientPool returns a client pool storing some clients.
 func NewClientPool(maxConnections int, newClient func() (Client, error)) (*ClientPool, error) {
 	pool := &ClientPool{
-		maxConnections: maxConnections,
-		clients:        make(chan Client, maxConnections),
-		newClient:      newClient,
+		maxOpened: maxConnections,
+		clients:   make(chan Client, maxConnections),
+		newClient: newClient,
 	}
 
 	for i := 0; i < maxConnections; i++ {
@@ -76,7 +79,7 @@ func (cp *ClientPool) Get() Client {
 
 // Close closes pool and releases all resources.
 func (cp *ClientPool) Close() error {
-	for i := 0; i < cp.maxConnections; i++ {
+	for i := 0; i < cp.maxOpened; i++ {
 		client, ok := (<-cp.clients).(*poolClient)
 		if !ok {
 			continue

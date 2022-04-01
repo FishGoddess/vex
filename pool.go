@@ -9,14 +9,24 @@ type poolClient struct {
 	// pool is the owner of this client.
 	pool *ClientPool
 
-	// client is the wrapped target client.
+	// client is the target client to be wrapped.
 	client Client
 }
 
+// wrapClient wraps client to a pool client.
+func wrapClient(pool *ClientPool, client Client) Client {
+	return &poolClient{
+		pool:   pool,
+		client: client,
+	}
+}
+
+// Send sends a packet with requestBody to server and returns responseBody responded from server.
 func (pc *poolClient) Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error) {
 	return pc.client.Send(packetType, requestBody)
 }
 
+// Close closes current client.
 func (pc *poolClient) Close() error {
 	pc.pool.put(pc) // TODO Double Close will cause concurrent problem.
 	return nil
@@ -48,18 +58,10 @@ func NewClientPool(maxConnections int, newClient func() (Client, error)) (*Clien
 			return nil, err
 		}
 
-		pool.put(pool.wrapClient(client))
+		pool.put(wrapClient(pool, client))
 	}
 
 	return pool, nil
-}
-
-// wrapClient wraps client to a pool client.
-func (cp *ClientPool) wrapClient(client Client) Client {
-	return &poolClient{
-		pool:   cp,
-		client: client,
-	}
 }
 
 // put stores a client to pool.

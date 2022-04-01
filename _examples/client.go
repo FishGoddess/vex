@@ -17,7 +17,7 @@ func main() {
 	}
 	defer client.Close()
 
-	rsp, err := client.Do(1, []byte("client test"))
+	rsp, err := client.Send(1, []byte("client test"))
 	if err != nil {
 		panic(err)
 	}

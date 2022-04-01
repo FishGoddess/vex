@@ -15,7 +15,7 @@ const (
 	versionSize = 1                                                // 1 Byte
 	typeSize    = 1                                                // 1 Byte
 	maxBodySize = 4                                                // 4 Byte
-	headerSize  = magicSize + versionSize + typeSize + maxBodySize // 6 Byte
+	headerSize  = magicSize + versionSize + typeSize + maxBodySize // 10 Byte
 
 	magicNumber     = 0x755DD8C // Magic number is 123067788, for checking data package.
 	protocolVersion = 1         // v1
@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	endian = binary.BigEndian
+	endian = binary.BigEndian // All encodes/decodes between number and bytes use this endian.
 
 	errMagicMismatch       = errors.New("vex: magic number in protocol doesn't match")
 	errProtocolMismatch    = errors.New("vex: protocol between client and server doesn't match")
@@ -69,7 +69,7 @@ func readPacketHeader(reader io.Reader) (packetType PacketType, bodySize int32, 
 }
 
 func readPacketBody(reader io.Reader, bodySize int32) (body []byte, err error) {
-	body = makeBytes(bodySize) // May exceed if body size is too big.
+	body = MakeBytes(bodySize) // May exceed if body size is too big.
 
 	n, err := reader.Read(body)
 	if err != nil {

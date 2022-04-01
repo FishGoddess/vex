@@ -5,68 +5,83 @@
 package vex
 
 import (
-	"encoding/binary"
 	"net"
 	"testing"
 	"time"
 )
 
-// go test -v -cover -run=^TestNewClient$
-func TestNewClient(t *testing.T) {
-	address := "127.0.0.1:5837"
-	str := "key value"
-
+func runTestServer(t *testing.T, address string, str string) {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		t.Error(err)
 	}
 	defer listener.Close()
 
-	go func() {
-		conn, err := listener.Accept()
-		if err != nil {
-			t.Error(err)
-		}
-		defer conn.Close()
+	conn, err := listener.Accept()
+	if err != nil {
+		t.Error(err)
+	}
+	defer conn.Close()
 
-		buffer := make([]byte, 128)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			t.Error(err)
-		}
+	buffer := make([]byte, 64)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		t.Error(err)
+	}
 
-		bodySize := binary.BigEndian.Uint32(buffer[versionSize+typeSize : headerSize])
+	magic := int32(endian.Uint32(buffer[:magicSize]))
+	if magic != magicNumber {
+		t.Errorf("magic %d != magicNumber %d", magic, magicNumber)
+	}
 
-		buffer = buffer[headerSize : headerSize+bodySize]
-		if string(buffer) != str {
-			t.Errorf("request %v is wrong!", string(buffer))
-		}
+	version := buffer[magicSize]
+	if version != protocolVersion {
+		t.Errorf("version %d != protocolVersion %d", version, protocolVersion)
+	}
 
-		body := []byte(str)
-		bodySize = uint32(len(body))
-		header := make([]byte, headerSize)
-		header[0] = protocolVersion
-		header[1] = packetTypeTest
-		binary.BigEndian.PutUint32(header[versionSize+typeSize:headerSize], bodySize)
-		n, err = conn.Write(header)
-		if err != nil {
-			t.Error(err)
-		}
+	packetType := buffer[magicSize+versionSize]
+	if packetType != packetTypeTest {
+		t.Errorf("packetType %d != packetTypeTest %d", packetType, packetTypeTest)
+	}
 
-		if n != headerSize {
-			t.Errorf("written count %d is wrong!", n)
-		}
+	bodySize := endian.Uint32(buffer[magicSize+versionSize+typeSize : headerSize])
+	requestBody := buffer[headerSize : headerSize+bodySize]
+	if string(requestBody) != str {
+		t.Errorf("requestBody %v is wrong!", string(requestBody))
+	}
 
-		n, err = conn.Write(body)
-		if err != nil {
-			t.Error(err)
-		}
+	responseBody := []byte(str)
+	bodySize = uint32(len(responseBody))
+	header := make([]byte, headerSize)
+	endian.PutUint32(header[:magicSize], magicNumber)
+	header[magicSize] = protocolVersion
+	header[magicSize+versionSize] = packetTypeOK
+	endian.PutUint32(header[magicSize+versionSize+typeSize:headerSize], bodySize)
 
-		if n != int(bodySize) {
-			t.Errorf("written count %d is wrong!", n)
-		}
-	}()
+	n, err = conn.Write(header)
+	if err != nil {
+		t.Error(err)
+	}
 
+	if n != headerSize {
+		t.Errorf("n %d != headerSize %d", n, headerSize)
+	}
+
+	n, err = conn.Write(responseBody)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if n != int(bodySize) {
+		t.Errorf("n %d != bodySize %d", n, bodySize)
+	}
+}
+
+// go test -v -cover -run=^TestNewClient$
+func TestNewClient(t *testing.T) {
+	address := "127.0.0.1:5837"
+	str := "key value"
+	go runTestServer(t, address, str)
 	time.Sleep(time.Second)
 
 	client, err := NewClient("tcp", "127.0.0.1:5837")

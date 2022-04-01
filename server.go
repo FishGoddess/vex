@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"strings"
 	"sync"
@@ -16,12 +15,13 @@ import (
 
 var (
 	errPacketHandlerNotFound = errors.New("vex: packet handler not found")
-
-	Log = log.Printf // Logger outputs some messages.
 )
 
+// PacketHandler is a handler for handling packets.
+// You will receive a byte slice of request and should return a byte slice or error if necessary.
 type PacketHandler func(requestBody []byte) (responseBody []byte, err error)
 
+// Server is the vex server.
 type Server struct {
 	listener net.Listener
 	handlers map[PacketType]PacketHandler
@@ -29,23 +29,31 @@ type Server struct {
 	lock     sync.RWMutex
 }
 
+// NewServer returns a new vex server.
 func NewServer() *Server {
 	return &Server{
 		handlers: make(map[PacketType]PacketHandler, 16),
 	}
 }
 
+// RegisterPacketHandler registers handler of packetType.
 func (s *Server) RegisterPacketHandler(packetType PacketType, handler PacketHandler) {
 	s.lock.Lock()
 	s.handlers[packetType] = handler
 	s.lock.Unlock()
 }
 
-func (s *Server) handleConnError(writer io.Writer, err error) {
-	Log("vex: read packet failed with err %+v", err)
+func (s *Server) handleConnOK(writer io.Writer, body []byte) {
+	err := writePacket(writer, packetTypeOK, body)
+	if err != nil {
+		Log("vex: write ok packet failed with err %+v", err)
+	}
+}
+
+func (s *Server) handleConnErr(writer io.Writer, err error) {
 	err = writePacket(writer, packetTypeErr, []byte(err.Error()))
 	if err != nil {
-		Log("vex: write packet failed with err %+v", err)
+		Log("vex: write err packet failed with err %+v", err)
 	}
 }
 
@@ -58,12 +66,18 @@ func (s *Server) handleConn(conn net.Conn) {
 
 	for {
 		if writer.Buffered() > 0 {
-			writer.Flush()
+			err := writer.Flush()
+			if err != nil {
+				Log("vex: writer flushes failed with err [%+v]", err)
+			}
 		}
 
 		packetType, requestBody, err := readPacket(reader)
 		if err != nil {
-			s.handleConnError(writer, err)
+			if err != io.EOF {
+				Log("vex: read packet failed with err [%+v]", err)
+				s.handleConnErr(writer, err)
+			}
 			return
 		}
 
@@ -72,20 +86,18 @@ func (s *Server) handleConn(conn net.Conn) {
 		s.lock.RUnlock()
 
 		if !ok {
-			s.handleConnError(writer, errPacketHandlerNotFound)
+			Log("vex: handler of %+v not found", packetType)
+			s.handleConnErr(writer, errPacketHandlerNotFound)
 			continue
 		}
 
 		responseBody, err := handle(requestBody)
 		if err != nil {
-			s.handleConnError(writer, err)
+			s.handleConnErr(writer, err)
 			continue
 		}
 
-		err = writePacket(writer, packetTypeOK, responseBody)
-		if err != nil {
-			s.handleConnError(writer, err)
-		}
+		s.handleConnOK(writer, responseBody)
 	}
 }
 
@@ -112,6 +124,7 @@ func (s *Server) serve() error {
 	return nil
 }
 
+// ListenAndServe listens on address in network and begins serving.
 func (s *Server) ListenAndServe(network string, address string) (err error) {
 	s.listener, err = net.Listen(network, address)
 	if err != nil {
@@ -120,6 +133,7 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 	return s.serve()
 }
 
+// Close closes current server.
 func (s *Server) Close() error {
 	if s.listener == nil {
 		return nil

@@ -25,7 +25,7 @@ const (
 
 func newServer() *vex.Server {
 	server := vex.NewServer()
-	server.RegisterHandler(benchmarkTag, func(req []byte) (rsp []byte, err error) {
+	server.RegisterPacketHandler(benchmarkTag, func(req []byte) (rsp []byte, err error) {
 		return req, nil
 	})
 
@@ -36,6 +36,7 @@ func newServer() *vex.Server {
 		}
 	}()
 
+	time.Sleep(time.Second)
 	return server
 }
 
@@ -70,7 +71,7 @@ func BenchmarkServer(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.Do(benchmarkTag, req)
+		_, err := client.Send(benchmarkTag, req)
 		if err != nil {
 			b.Error(err)
 		}
@@ -94,7 +95,7 @@ func TestRPS(t *testing.T) {
 		func() {
 			defer wg.Done()
 
-			body, err := client.Do(benchmarkTag, req)
+			body, err := client.Send(benchmarkTag, req)
 			if err != nil {
 				t.Error(err, body)
 			}
@@ -125,7 +126,7 @@ func TestRPSWithPool(t *testing.T) {
 			client := pool.Get()
 			defer client.Close()
 
-			body, err := client.Do(benchmarkTag, req)
+			body, err := client.Send(benchmarkTag, req)
 			if err != nil {
 				t.Error(err, body)
 				return

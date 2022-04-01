@@ -18,15 +18,15 @@ const (
 // Option applies functions to config.
 type Option func(c *config)
 
-// WithMaxOpened sets maxOpened to config.
-func WithMaxOpened(maxOpened int) Option {
+// WithMaxOpened sets maxConnected to config.
+func WithMaxOpened(maxConnected uint64) Option {
 	return func(c *config) {
-		c.maxOpened = maxOpened
+		c.maxConnected = maxConnected
 	}
 }
 
 // WithMaxIdle sets maxIdle to config.
-func WithMaxIdle(maxIdle int) Option {
+func WithMaxIdle(maxIdle uint64) Option {
 	return func(c *config) {
 		c.maxIdle = maxIdle
 	}
@@ -60,11 +60,11 @@ func (fs FullStrategy) New() bool {
 
 // config stores all configuration of Pool.
 type config struct {
-	// maxOpened is the max opened count of connections.
-	maxOpened int
+	// maxConnected is the max opened count of connections.
+	maxConnected uint64
 
 	// maxIdle is the max idle count of connections.
-	maxIdle int
+	maxIdle uint64
 
 	// fullStrategy decides what pool will do when it's full.
 	fullStrategy FullStrategy
@@ -73,7 +73,7 @@ type config struct {
 // newDefaultConfig returns a default pool config.
 func newDefaultConfig() config {
 	return config{
-		maxOpened:    64,
+		maxConnected: 64,
 		maxIdle:      64,
 		fullStrategy: FullStrategyBlock,
 	}

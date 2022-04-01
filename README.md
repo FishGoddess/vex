@@ -98,11 +98,11 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        187090              6632 ns/op              32 B/op          6 allocs/op
+BenchmarkServer-16        187464              6758 ns/op              64 B/op          6 allocs/op
 ```
 
 _测试环境：R7-5800X@3.8GHZ CPU，32GB RAM。_
 
 _单连接：10w 个请求的执行耗时为 745.17ms，结果为 **134198 rps**，单命令耗时 7.45 us。_
 
-_连接池（64个连接）：10 个请求的执行耗时为 133.03ms，结果为 **751710 rps**，单命令耗时 1.33 us。_
+_连接池（16个连接）：10w 个请求的执行耗时为 277.06ms，结果为 **360933 rps**，单命令耗时 2.77 us。_

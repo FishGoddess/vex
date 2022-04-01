@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"fmt"
 	"runtime"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func TestNewPool(t *testing.T) {
 		response, err := client.Send(1, []byte("test"))
 		if err != nil {
 			client.Close()
-			t.Fatalf("do command %d failed with %+v", i, err)
+			t.Fatalf("send packet %d failed with %+v", i, err)
 		}
 
 		if string(response) != "test" {
@@ -52,4 +53,6 @@ func TestNewPool(t *testing.T) {
 
 		client.Close()
 	}
+
+	fmt.Println("get client")
 }

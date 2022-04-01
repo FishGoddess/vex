@@ -49,14 +49,14 @@ func newClient() vex.Client {
 	return client
 }
 
-func newClientPool(maxOpened int) *pool.Pool {
+func newClientPool(maxConnected uint64) *pool.Pool {
 	return pool.NewPool(func() (vex.Client, error) {
 		return vex.NewClient("tcp", address)
-	}, pool.WithMaxOpened(maxOpened), pool.WithFullStrategy(pool.FullStrategyBlock))
+	}, pool.WithMaxOpened(maxConnected), pool.WithFullStrategy(pool.FullStrategyBlock))
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
-// BenchmarkServer-16        187090              6632 ns/op              32 B/op          6 allocs/op
+// BenchmarkServer-16        187464              6758 ns/op              64 B/op          6 allocs/op
 func BenchmarkServer(b *testing.B) {
 	server := newServer()
 	defer server.Close()
@@ -108,7 +108,7 @@ func TestRPSWithPool(t *testing.T) {
 	server := newServer()
 	defer server.Close()
 
-	clientPool := newClientPool(64)
+	clientPool := newClientPool(16)
 	defer clientPool.Close()
 
 	var wg sync.WaitGroup

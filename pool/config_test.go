@@ -9,8 +9,8 @@ import "testing"
 // go test -v -cover -run=^TestNewDefaultPoolConfig$
 func TestNewDefaultPoolConfig(t *testing.T) {
 	config := newDefaultConfig()
-	if config.maxOpened != 64 {
-		t.Errorf("config.maxOpened %d != 64", config.maxOpened)
+	if config.maxConnected != 64 {
+		t.Errorf("config.maxConnected %d != 64", config.maxConnected)
 	}
 
 	if config.maxIdle != 64 {
@@ -31,8 +31,8 @@ func TestConfigApplyOptions(t *testing.T) {
 		WithFullStrategy(FullStrategyNew),
 	})
 
-	if config.maxOpened != 128 {
-		t.Errorf("config.maxOpened %d != 64", config.maxOpened)
+	if config.maxConnected != 128 {
+		t.Errorf("config.maxConnected %d != 64", config.maxConnected)
 	}
 
 	if config.maxIdle != 32 {

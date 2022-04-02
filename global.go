@@ -13,6 +13,20 @@ const (
 )
 
 var (
+	// ReadBufferSize is the buffer size using in reading.
+	// This value can be smaller if your reading data are often smaller.
+	// This value can be bigger if your reading data are often bigger.
+	// Notice: it applies to client and server.
+	ReadBufferSize = 4096
+
+	// WriteBufferSize is the buffer size using in writing.
+	// This value can be smaller if your writing data are often smaller.
+	// This value can be bigger if your writing data are often bigger.
+	// Notice: it applies to client and server.
+	WriteBufferSize = 4096
+)
+
+var (
 	// Log logs some messages.
 	Log = stdlog.Printf
 

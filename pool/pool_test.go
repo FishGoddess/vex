@@ -5,7 +5,6 @@
 package pool
 
 import (
-	"fmt"
 	"runtime"
 	"testing"
 	"time"
@@ -53,6 +52,4 @@ func TestNewPool(t *testing.T) {
 
 		client.Close()
 	}
-
-	fmt.Println("get client")
 }

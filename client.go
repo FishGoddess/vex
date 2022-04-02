@@ -35,8 +35,8 @@ func NewClient(network string, address string) (Client, error) {
 
 	return &defaultClient{
 		conn:   conn,
-		reader: bufio.NewReader(conn),
-		writer: bufio.NewWriter(conn),
+		reader: bufio.NewReaderSize(conn, ReadBufferSize),
+		writer: bufio.NewWriterSize(conn, WriteBufferSize),
 	}, nil
 }
 

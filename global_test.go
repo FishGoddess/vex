@@ -11,6 +11,15 @@ func TestLog(t *testing.T) {
 	if Log == nil {
 		t.Error("Log == nil")
 	}
+
+	defer func() {
+		r := recover()
+		if r != nil {
+			t.Error(t)
+		}
+	}()
+
+	log("...")
 }
 
 // go test -v -cover -run=^TestDial$
@@ -18,6 +27,30 @@ func TestDial(t *testing.T) {
 	if Dial == nil {
 		t.Error("Dial == nil")
 	}
+
+	defer func() {
+		r := recover()
+		if r != nil {
+			t.Error(t)
+		}
+	}()
+
+	_, err := dial("tcp", "...")
+	if err == nil {
+		t.Error("err == nil")
+	}
+}
+
+// go test -v -cover -run=^TestNotify$
+func TestNotify(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r != nil && Notify != nil {
+			t.Error(t)
+		}
+	}()
+
+	notify(eventConnected)
 }
 
 // go test -v -cover -run=^TestMakeBytes$

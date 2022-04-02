@@ -52,7 +52,7 @@ func checkTestBytes(t *testing.T, buffer []byte, failedTest bool, expected strin
 }
 
 func runTestClient(t *testing.T, address string) {
-	conn, err := Dial("tcp", address)
+	conn, err := dial("tcp", address)
 	if err != nil {
 		t.Error(err)
 	}

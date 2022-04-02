@@ -10,6 +10,14 @@
 
 > 并发请求响应的支持需要比较复杂的协议设计，这个框架并不支持。
 
+### 🍃 功能特性
+
+* 基于 tcp 自定义通信协议，直接使用或二次开发都很简单
+* 极简设计的 API，内置连接池，可以对性能进行调优
+* 支持服务器事件回调机制，方便接入监控和告警
+
+_历史版本的特性请查看 [HISTORY.md](./HISTORY.md)。未来版本的新特性和计划请查看 [FUTURE.md](./FUTURE.md)。_
+
 ### 📃 协议描述
 
 > 协议抽象出数据包的概念，不管是请求还是响应都视为一种数据包。
@@ -36,29 +44,8 @@ magic    version    type    body_size    {body}
 
 ### ✒ 使用案例
 
-服务端：
-
-```go
-package main
-
-import (
-	"fmt"
-
-	"github.com/FishGoddess/vex"
-)
-
-func main() {
-	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
-		fmt.Println(string(req))
-		return []byte("server test"), nil
-	})
-
-	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
-	if err != nil {
-		panic(err)
-	}
-}
+```bash
+$ go get -u github.com/FishGoddess/vex
 ```
 
 客户端：
@@ -88,15 +75,46 @@ func main() {
 }
 ```
 
+服务端：
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/FishGoddess/vex"
+)
+
+func main() {
+	server := vex.NewServer()
+	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
+		fmt.Println(string(req))
+		return []byte("server test"), nil
+	})
+
+	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+	if err != nil {
+		panic(err)
+	}
+}
+```
+
+* [client](./_examples/client.go)
+* [server](./_examples/server.go)
+* [pool](./_examples/pool.go)
+
+_所有的使用案例都在 [_examples](./_examples) 目录。_
+
 ### 🛠 性能测试
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        187090              6632 ns/op              32 B/op          6 allocs/op
+BenchmarkServer-16        187464              6758 ns/op              64 B/op          6 allocs/op
 ```
 
 _测试环境：R7-5800X@3.8GHZ CPU，32GB RAM。_
 
 _单连接：10w 个请求的执行耗时为 745.17ms，结果为 **134198 rps**，单命令耗时 7.45 us。_
 
-_连接池（64个连接）：10 个请求的执行耗时为 133.03ms，结果为 **751710 rps**，单命令耗时 1.33 us。_
+_连接池（16个连接）：10w 个请求的执行耗时为 277.06ms，结果为 **360933 rps**，单命令耗时 2.77 us。_

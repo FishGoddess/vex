@@ -19,6 +19,7 @@ func TestLog(t *testing.T) {
 		}
 	}()
 
+	Log = func(format string, v ...interface{}) {}
 	log("...")
 }
 

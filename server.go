@@ -26,6 +26,7 @@ type PacketHandler func(requestBody []byte) (responseBody []byte, err error)
 
 // Server is the vex server.
 type Server struct {
+	config   Config
 	listener net.Listener
 	handlers map[PacketType]PacketHandler
 	wg       sync.WaitGroup
@@ -33,8 +34,10 @@ type Server struct {
 }
 
 // NewServer returns a new vex server.
-func NewServer() *Server {
+func NewServer(opts ...Option) *Server {
+	config := NewDefaultConfig().ApplyOptions(opts)
 	return &Server{
+		config:   *config,
 		handlers: make(map[PacketType]PacketHandler, 16),
 	}
 }
@@ -147,12 +150,12 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 		return err
 	}
 
-	go s.listenOnSignals()
+	go s.listenToSignals()
 	return s.serve()
 }
 
-// listenOnSignals listens on signal so server can respond to some signals.
-func (s *Server) listenOnSignals() {
+// listenToSignals listens to signals so server can respond to these signals.
+func (s *Server) listenToSignals() {
 	signalCh := make(chan os.Signal)
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 

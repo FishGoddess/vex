@@ -16,6 +16,7 @@
 * 极简设计的 API，内置连接池，可以对性能进行调优
 * 支持服务器事件回调机制，方便接入监控和告警
 * 支持信号量监控机制，并支持平滑下线
+* 支持服务器令牌桶连接数限制，并支持多种限制策略
 
 _历史版本的特性请查看 [HISTORY.md](./HISTORY.md)。未来版本的新特性和计划请查看 [FUTURE.md](./FUTURE.md)。_
 
@@ -89,8 +90,8 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
-		fmt.Println(string(req))
+	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
+		fmt.Println(string(requestBody))
 		return []byte("server test"), nil
 	})
 

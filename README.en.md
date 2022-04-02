@@ -16,6 +16,7 @@
 * Simple API design, client pool supports
 * Server event callback supports, easy to monitor and notify
 * Signal supports, shutdown server gracefully
+* Server connection token supports, and three strategies limit supports.
 
 _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
 
@@ -89,8 +90,8 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
-		fmt.Println(string(req))
+	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
+		fmt.Println(string(requestBody))
 		return []byte("server test"), nil
 	})
 

@@ -10,6 +10,8 @@
 * [x] 考虑将 Client 做成接口
 * [x] 加入 Server 的事件回调机制
 * [x] 加入 signal 信号监听，引入平滑下线机制
+* [ ] 给 Server 加入令牌桶模式的连接数控制
+* [x] 给 Client 和 Server 加入 option 机制
 
 ### v0.2.0-alpha
 

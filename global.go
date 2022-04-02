@@ -13,20 +13,6 @@ const (
 )
 
 var (
-	// ReadBufferSize is the buffer size using in reading.
-	// This value can be smaller if your reading data are often smaller.
-	// This value can be bigger if your reading data are often bigger.
-	// Notice: it applies to client and server.
-	ReadBufferSize = 4096
-
-	// WriteBufferSize is the buffer size using in writing.
-	// This value can be smaller if your writing data are often smaller.
-	// This value can be bigger if your writing data are often bigger.
-	// Notice: it applies to client and server.
-	WriteBufferSize = 4096
-)
-
-var (
 	// Log logs some messages.
 	Log = stdlog.Printf
 
@@ -36,6 +22,29 @@ var (
 	// Notify notifies an event.
 	Notify = defaultNotify
 )
+
+// Event is the type of server actions.
+type Event int8
+
+// Serving returns if event is server serving.
+func (e Event) Serving() bool {
+	return e == eventServing
+}
+
+// Shutdown returns if event is server shutdown.
+func (e Event) Shutdown() bool {
+	return e == eventShutdown
+}
+
+// Connected returns if event is client connected.
+func (e Event) Connected() bool {
+	return e == eventConnected
+}
+
+// Disconnected returns if event is client disconnected.
+func (e Event) Disconnected() bool {
+	return e == eventDisconnected
+}
 
 // makeBytes makes a new byte slice.
 func makeBytes(initial int32) []byte {
@@ -65,6 +74,7 @@ func notify(e Event) {
 	}
 }
 
+// defaultNotify is the default notify function.
 func defaultNotify(e Event) {
 	if e.Serving() {
 		log("vex: server is serving...")
@@ -73,27 +83,4 @@ func defaultNotify(e Event) {
 	if e.Shutdown() {
 		log("vex: server is shutdown...")
 	}
-}
-
-// Event is the type of server actions.
-type Event int8
-
-// Serving returns if event is server serving.
-func (e Event) Serving() bool {
-	return e == eventServing
-}
-
-// Shutdown returns if event is server shutdown.
-func (e Event) Shutdown() bool {
-	return e == eventShutdown
-}
-
-// Connected returns if event is client connected.
-func (e Event) Connected() bool {
-	return e == eventConnected
-}
-
-// Disconnected returns if event is client disconnected.
-func (e Event) Disconnected() bool {
-	return e == eventDisconnected
 }

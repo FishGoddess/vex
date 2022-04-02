@@ -27,16 +27,17 @@ type defaultClient struct {
 }
 
 // NewClient creates a new client to address with given network.
-func NewClient(network string, address string) (Client, error) {
+func NewClient(network string, address string, opts ...Option) (Client, error) {
 	conn, err := dial(network, address)
 	if err != nil {
 		return nil, err
 	}
 
+	config := NewDefaultConfig().ApplyOptions(opts)
 	return &defaultClient{
 		conn:   conn,
-		reader: bufio.NewReaderSize(conn, ReadBufferSize),
-		writer: bufio.NewWriterSize(conn, WriteBufferSize),
+		reader: bufio.NewReaderSize(conn, int(config.ReadBufferSize)),
+		writer: bufio.NewWriterSize(conn, int(config.WriteBufferSize)),
 	}, nil
 }
 

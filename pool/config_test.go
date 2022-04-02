@@ -18,7 +18,7 @@ func TestNewDefaultPoolConfig(t *testing.T) {
 	}
 
 	if config.fullStrategy != FullStrategyBlock {
-		t.Errorf("config.fullStrategy %+v != 0", config.fullStrategy)
+		t.Errorf("config.fullStrategy %+v != %d", config.fullStrategy, FullStrategyBlock)
 	}
 }
 
@@ -40,6 +40,6 @@ func TestConfigApplyOptions(t *testing.T) {
 	}
 
 	if config.fullStrategy != FullStrategyNew {
-		t.Errorf("config.fullStrategy %+v != 2", config.fullStrategy)
+		t.Errorf("config.fullStrategy %+v != %d", config.fullStrategy, FullStrategyNew)
 	}
 }

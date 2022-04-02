@@ -46,19 +46,22 @@ func (s *Server) RegisterPacketHandler(packetType PacketType, handler PacketHand
 func (s *Server) handleConnOK(writer io.Writer, body []byte) {
 	err := writePacket(writer, packetTypeOK, body)
 	if err != nil {
-		Log("vex: write ok packet failed with err %+v", err)
+		log("vex: write ok packet failed with err %+v", err)
 	}
 }
 
 func (s *Server) handleConnErr(writer io.Writer, err error) {
 	err = writePacket(writer, packetTypeErr, []byte(err.Error()))
 	if err != nil {
-		Log("vex: write err packet failed with err %+v", err)
+		log("vex: write err packet failed with err %+v", err)
 	}
 }
 
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
+
+	notify(eventConnected)
+	defer notify(eventDisconnected)
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
@@ -68,14 +71,14 @@ func (s *Server) handleConn(conn net.Conn) {
 		if writer.Buffered() > 0 {
 			err := writer.Flush()
 			if err != nil {
-				Log("vex: writer flushes failed with err [%+v]", err)
+				log("vex: writer flushes failed with err [%+v]", err)
 			}
 		}
 
 		packetType, requestBody, err := readPacket(reader)
 		if err != nil {
 			if err != io.EOF {
-				Log("vex: read packet failed with err [%+v]", err)
+				log("vex: read packet failed with err [%+v]", err)
 				s.handleConnErr(writer, err)
 			}
 			return
@@ -86,7 +89,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		s.lock.RUnlock()
 
 		if !ok {
-			Log("vex: handler of %+v not found", packetType)
+			log("vex: handler of %+v not found", packetType)
 			s.handleConnErr(writer, errPacketHandlerNotFound)
 			continue
 		}
@@ -102,6 +105,9 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 func (s *Server) serve() error {
+	notify(eventServing)
+	defer notify(eventShutdown)
+
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {

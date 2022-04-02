@@ -28,7 +28,7 @@ type defaultClient struct {
 
 // NewClient creates a new client to address with given network.
 func NewClient(network string, address string) (Client, error) {
-	conn, err := Dial(network, address)
+	conn, err := dial(network, address)
 	if err != nil {
 		return nil, err
 	}

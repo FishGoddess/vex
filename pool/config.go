@@ -6,13 +6,13 @@ package pool
 
 const (
 	// FullStrategyBlock means pool.Get will block util pool has an idle client.
-	FullStrategyBlock = 0
+	FullStrategyBlock = 1
 
 	// FullStrategyFailed means pool.Get will return an error if pool doesn't have an idle client.
-	FullStrategyFailed = 1
+	FullStrategyFailed = 2
 
 	// FullStrategyNew means pool.Get will return a new client if pool doesn't have an idle client.
-	FullStrategyNew = 2
+	FullStrategyNew = 3
 )
 
 // Option applies functions to config.

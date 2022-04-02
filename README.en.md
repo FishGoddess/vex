@@ -10,6 +10,14 @@
 
 > Concurrent protocol is too complex and vex doesn't support.
 
+### 🥇 Features
+
+* Based on a customized tcp protocol, easy to use and develop
+* Simple API design, client pool supports
+* Server event callback supports, easy to monitor and notify.
+
+_Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
+
 ### 📃 Protocol
 
 > All is packet including request and response.
@@ -35,6 +43,10 @@ magic    version    type    body_size    {body}
 ```
 
 ### ✒ Example
+
+```bash
+$ go get -u github.com/FishGoddess/vex
+```
 
 Client:
 

@@ -9,8 +9,11 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
+	"os/signal"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 var (
@@ -43,6 +46,7 @@ func (s *Server) RegisterPacketHandler(packetType PacketType, handler PacketHand
 	s.lock.Unlock()
 }
 
+// handleConnOK handles ok happening on conn.
 func (s *Server) handleConnOK(writer io.Writer, body []byte) {
 	err := writePacket(writer, packetTypeOK, body)
 	if err != nil {
@@ -50,6 +54,7 @@ func (s *Server) handleConnOK(writer io.Writer, body []byte) {
 	}
 }
 
+// handleConnErr handles errors happening on conn.
 func (s *Server) handleConnErr(writer io.Writer, err error) {
 	err = writePacket(writer, packetTypeErr, []byte(err.Error()))
 	if err != nil {
@@ -57,6 +62,7 @@ func (s *Server) handleConnErr(writer io.Writer, err error) {
 	}
 }
 
+// handleConn handles one conn.
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
@@ -104,6 +110,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 }
 
+// serve runs the accepting task.
 func (s *Server) serve() error {
 	notify(eventServing)
 	defer notify(eventShutdown)
@@ -113,9 +120,12 @@ func (s *Server) serve() error {
 		if err != nil {
 			// This error means listener has been closed
 			// See src/internal/poll/fd.go@ErrNetClosing
+			// TODO So ugly...
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				break
 			}
+
+			log("vex: listener accepts failed with err %+v", err)
 			continue
 		}
 
@@ -136,7 +146,21 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 	if err != nil {
 		return err
 	}
+
+	go s.listenOnSignals()
 	return s.serve()
+}
+
+// listenOnSignals listens on signal so server can respond to some signals.
+func (s *Server) listenOnSignals() {
+	signalCh := make(chan os.Signal)
+	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+
+	sig := <-signalCh
+	log("vex: received signal %+v...", sig)
+	if err := s.Close(); err != nil {
+		log("vex: server closes failed with err %+v", err)
+	}
 }
 
 // Close closes current server.

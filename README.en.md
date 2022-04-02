@@ -14,7 +14,8 @@
 
 * Based on a customized tcp protocol, easy to use and develop
 * Simple API design, client pool supports
-* Server event callback supports, easy to monitor and notify.
+* Server event callback supports, easy to monitor and notify
+* Signal supports, shutdown server gracefully
 
 _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
 

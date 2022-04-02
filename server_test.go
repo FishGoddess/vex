@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-const (
-	packetTypeTest PacketType = 1
-)
-
 var (
 	errTestRequestFailed = errors.New("vex: test request failed")
 )

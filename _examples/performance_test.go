@@ -59,7 +59,7 @@ func newServer() *vex.Server {
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
-// BenchmarkServer-16        187464              6758 ns/op              64 B/op          6 allocs/op
+// BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
 func BenchmarkServer(b *testing.B) {
 	server := newServer()
 	defer server.Close()
@@ -111,7 +111,7 @@ func TestRPSWithPool(t *testing.T) {
 	server := newServer()
 	defer server.Close()
 
-	clientPool := newClientPool(64)
+	clientPool := newClientPool(16)
 	defer clientPool.Close()
 
 	//go func() {

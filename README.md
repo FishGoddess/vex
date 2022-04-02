@@ -16,7 +16,7 @@
 * 极简设计的 API，内置连接池，可以对性能进行调优
 * 支持服务器事件回调机制，方便接入监控和告警
 * 支持信号量监控机制，并支持平滑下线
-* 支持服务器令牌桶连接数限制，并支持多种限制策略
+* 支持服务器令牌桶连接数限制，并支持多种连接限制策略
 
 _历史版本的特性请查看 [HISTORY.md](./HISTORY.md)。未来版本的新特性和计划请查看 [FUTURE.md](./FUTURE.md)。_
 
@@ -112,11 +112,11 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        187464              6758 ns/op              64 B/op          6 allocs/op
+BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
 ```
 
 _测试环境：R7-5800X@3.8GHZ CPU，32GB RAM。_
 
-_单连接：10w 个请求的执行耗时为 745.17ms，结果为 **134198 rps**，单命令耗时 7.45 us。_
+_单连接：10w 个请求的执行耗时为 745.17ms，结果为 **134198 rps**，单命令耗时 7.45us。_
 
-_连接池（16个连接）：10w 个请求的执行耗时为 277.06ms，结果为 **360933 rps**，单命令耗时 2.77 us。_
+_连接池（16个连接）：10w 个请求的执行耗时为 207.11ms，结果为 **482835 rps**，单命令耗时 2.07us。_

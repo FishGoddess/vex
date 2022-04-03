@@ -23,29 +23,6 @@ var (
 	Notify = defaultNotify
 )
 
-// Event is the type of server actions.
-type Event int8
-
-// Serving returns if event is server serving.
-func (e Event) Serving() bool {
-	return e == eventServing
-}
-
-// Shutdown returns if event is server shutdown.
-func (e Event) Shutdown() bool {
-	return e == eventShutdown
-}
-
-// Connected returns if event is client connected.
-func (e Event) Connected() bool {
-	return e == eventConnected
-}
-
-// Disconnected returns if event is client disconnected.
-func (e Event) Disconnected() bool {
-	return e == eventDisconnected
-}
-
 // makeBytes makes a new byte slice.
 func makeBytes(initial int32) []byte {
 	return make([]byte, initial)

@@ -42,18 +42,6 @@ func TestDial(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestNotify$
-func TestNotify(t *testing.T) {
-	defer func() {
-		r := recover()
-		if r != nil && Notify != nil {
-			t.Error(t)
-		}
-	}()
-
-	notify(eventConnected)
-}
-
 // go test -v -cover -run=^TestMakeBytes$
 func TestMakeBytes(t *testing.T) {
 	initialized := 64

@@ -105,6 +105,7 @@ func main() {
 * [client](./_examples/client.go)
 * [server](./_examples/server.go)
 * [pool](./_examples/pool.go)
+* [event](./_examples/event.go)
 
 _所有的使用案例都在 [_examples](./_examples) 目录。_
 

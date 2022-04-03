@@ -55,3 +55,10 @@ func WithWriteBufferSize(bufferSize uint32) Option {
 		c.WriteBufferSize = bufferSize
 	}
 }
+
+// WithEventHandler sets handler to config.
+func WithEventHandler(handler EventHandler) Option {
+	return func(c *Config) {
+		c.EventHandler = handler
+	}
+}

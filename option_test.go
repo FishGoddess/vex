@@ -57,3 +57,13 @@ func TestWithBufferSize(t *testing.T) {
 		t.Errorf("c.WriteBufferSize %d != 512", c.WriteBufferSize)
 	}
 }
+
+// go test -v -cover -run=^TestWithEventHandler$
+func TestWithEventHandler(t *testing.T) {
+	c := &Config{EventHandler: nil}
+	handler := NewDefaultEventHandler("")
+	WithEventHandler(handler)(c)
+	if c.EventHandler != handler {
+		t.Errorf("c.EventHandler %p != %p", c.EventHandler, handler)
+	}
+}

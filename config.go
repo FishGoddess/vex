@@ -40,6 +40,9 @@ type Config struct {
 	// This value can be bigger if your writing data are often bigger.
 	// Notice: it applies to client and server.
 	WriteBufferSize uint32
+
+	// EventHandler is a handler for handling events.
+	EventHandler EventHandler
 }
 
 // NewDefaultConfig returns a default config.
@@ -50,6 +53,7 @@ func NewDefaultConfig() *Config {
 		LimitStrategy:   limitStrategyBlock,
 		ReadBufferSize:  4096,
 		WriteBufferSize: 4096,
+		EventHandler:    NewDefaultEventHandler(""),
 	}
 }
 

@@ -4,6 +4,13 @@
 
 package vex
 
+const (
+	eventServing      Event = 1
+	eventShutdown     Event = 2
+	eventConnected    Event = 3
+	eventDisconnected Event = 4
+)
+
 // Event is the type of server actions.
 type Event int8
 
@@ -31,4 +38,35 @@ func (e Event) Disconnected() bool {
 type EventHandler interface {
 	// HandleEvent handles events.
 	HandleEvent(e Event)
+}
+
+// DefaultEventHandler is the default event handler.
+type DefaultEventHandler struct {
+	name string
+}
+
+// NewDefaultEventHandler returns a new default event handler with given name.
+func NewDefaultEventHandler(name string) *DefaultEventHandler {
+	return &DefaultEventHandler{
+		name: name,
+	}
+}
+
+// HandleEvent handles events.
+func (deh *DefaultEventHandler) HandleEvent(e Event) {
+	if e.Serving() {
+		if deh.name == "" {
+			log("vex: server is serving...")
+		} else {
+			log("vex: server %s is serving...", deh.name)
+		}
+	}
+
+	if e.Shutdown() {
+		if deh.name == "" {
+			log("vex: server is shutdown...")
+		} else {
+			log("vex: server %s is shutdown...", deh.name)
+		}
+	}
 }

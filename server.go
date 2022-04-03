@@ -26,16 +26,21 @@ type PacketHandler func(requestBody []byte) (responseBody []byte, err error)
 
 // Server is the vex server.
 type Server struct {
-	listener net.Listener
-	handlers map[PacketType]PacketHandler
-	wg       sync.WaitGroup
-	lock     sync.RWMutex
+	config       Config
+	listener     net.Listener
+	handlers     map[PacketType]PacketHandler
+	eventHandler EventHandler
+	wg           sync.WaitGroup
+	lock         sync.RWMutex
 }
 
 // NewServer returns a new vex server.
-func NewServer() *Server {
+func NewServer(opts ...Option) *Server {
+	config := NewDefaultConfig().ApplyOptions(opts)
 	return &Server{
-		handlers: make(map[PacketType]PacketHandler, 16),
+		config:       *config,
+		handlers:     make(map[PacketType]PacketHandler, 16),
+		eventHandler: config.EventHandler,
 	}
 }
 
@@ -62,16 +67,28 @@ func (s *Server) handleConnErr(writer io.Writer, err error) {
 	}
 }
 
+// publishEvent publishes an event and gives it to event handler.
+func (s *Server) publishEvent(e Event) {
+	if s.eventHandler != nil {
+		s.eventHandler.HandleEvent(e)
+	}
+}
+
 // handleConn handles one conn.
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	notify(eventConnected)
-	defer notify(eventDisconnected)
+	s.publishEvent(eventConnected)
+	defer s.publishEvent(eventDisconnected)
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
-	defer writer.Flush()
+	defer func() {
+		err := writer.Flush()
+		if err != nil {
+			log("vex: writer flushes failed with err [%+v]", err)
+		}
+	}()
 
 	for {
 		if writer.Buffered() > 0 {
@@ -112,8 +129,8 @@ func (s *Server) handleConn(conn net.Conn) {
 
 // serve runs the accepting task.
 func (s *Server) serve() error {
-	notify(eventServing)
-	defer notify(eventShutdown)
+	s.publishEvent(eventServing)
+	defer s.publishEvent(eventShutdown)
 
 	for {
 		conn, err := s.listener.Accept()
@@ -147,12 +164,12 @@ func (s *Server) ListenAndServe(network string, address string) (err error) {
 		return err
 	}
 
-	go s.listenOnSignals()
+	go s.listenToSignals()
 	return s.serve()
 }
 
-// listenOnSignals listens on signal so server can respond to some signals.
-func (s *Server) listenOnSignals() {
+// listenToSignals listens to signals so server can respond to these signals.
+func (s *Server) listenToSignals() {
 	signalCh := make(chan os.Signal)
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 

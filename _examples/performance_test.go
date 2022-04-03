@@ -17,17 +17,34 @@ const (
 	// address is the address of server.
 	address = "127.0.0.1:5837"
 
-	// benchmarkPacketType is the command of benchmark.
+	// benchmarkPacketType is the packet type of benchmark.
 	benchmarkPacketType = 1
+
+	// benchmarkRequestBody is the request body of benchmark.
+	benchmarkRequestBody = "我是水不要鱼，希望大家可以支持开源，支持国产，不管目前有啥问题，都可以用一种理性的长远目光看待~"
 
 	// loop is the loop of test.
 	loop = 100000
 )
 
+func newClient() vex.Client {
+	client, err := vex.NewClient("tcp", address)
+	if err != nil {
+		panic(err)
+	}
+	return client
+}
+
+func newClientPool(maxConnected uint64) *pool.Pool {
+	return pool.NewPool(func() (vex.Client, error) {
+		return vex.NewClient("tcp", address)
+	}, vex.WithMaxConnected(maxConnected), vex.WithBlockOnLimit())
+}
+
 func newServer() *vex.Server {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(benchmarkPacketType, func(req []byte) (rsp []byte, err error) {
-		return req, nil
+	server.RegisterPacketHandler(benchmarkPacketType, func(requestBody []byte) (responseBody []byte, err error) {
+		return requestBody, nil
 	})
 
 	go func() {
@@ -41,22 +58,8 @@ func newServer() *vex.Server {
 	return server
 }
 
-func newClient() vex.Client {
-	client, err := vex.NewClient("tcp", address)
-	if err != nil {
-		panic(err)
-	}
-	return client
-}
-
-func newClientPool(maxConnected uint64) *pool.Pool {
-	return pool.NewPool(func() (vex.Client, error) {
-		return vex.NewClient("tcp", address)
-	}, pool.WithMaxOpened(maxConnected), pool.WithFullStrategy(pool.FullStrategyBlock))
-}
-
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
-// BenchmarkServer-16        187464              6758 ns/op              64 B/op          6 allocs/op
+// BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
 func BenchmarkServer(b *testing.B) {
 	server := newServer()
 	defer server.Close()
@@ -64,11 +67,11 @@ func BenchmarkServer(b *testing.B) {
 	client := newClient()
 	defer client.Close()
 
-	req := []byte("req")
+	body := []byte(benchmarkRequestBody)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.Send(benchmarkPacketType, req)
+		_, err := client.Send(benchmarkPacketType, body)
 		if err != nil {
 			b.Error(err)
 		}
@@ -84,7 +87,7 @@ func TestRPS(t *testing.T) {
 	defer client.Close()
 
 	var wg sync.WaitGroup
-	req := []byte("req")
+	body := []byte(benchmarkRequestBody)
 	beginTime := time.Now()
 	for i := 0; i < loop; i++ {
 		wg.Add(1)
@@ -92,7 +95,7 @@ func TestRPS(t *testing.T) {
 		func() {
 			defer wg.Done()
 
-			body, err := client.Send(benchmarkPacketType, req)
+			body, err := client.Send(benchmarkPacketType, body)
 			if err != nil {
 				t.Error(err, body)
 			}
@@ -119,7 +122,7 @@ func TestRPSWithPool(t *testing.T) {
 	//}()
 
 	var wg sync.WaitGroup
-	req := []byte("req")
+	body := []byte(benchmarkRequestBody)
 	beginTime := time.Now()
 	for i := 0; i < loop; i++ {
 		wg.Add(1)
@@ -132,10 +135,9 @@ func TestRPSWithPool(t *testing.T) {
 				t.Error(err)
 				return
 			}
-
 			defer client.Close()
 
-			body, err := client.Send(benchmarkPacketType, req)
+			body, err := client.Send(benchmarkPacketType, body)
 			if err != nil {
 				t.Error(err, body)
 				return

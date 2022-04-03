@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	errClientPoolClosed    = errors.New("vex: client pool is closed")
-	errClientPoolFull      = errors.New("vex: client pool is full")
-	errFullStrategyUnknown = errors.New("vex: full strategy is unknown")
+	errClientPoolClosed     = errors.New("vex: client pool is closed")
+	errClientPoolFull       = errors.New("vex: client pool is full")
+	errLimitStrategyUnknown = errors.New("vex: limit strategy is unknown")
 )
 
 // State stores all states of Pool.
@@ -29,7 +29,7 @@ type State struct {
 // Pool is the pool of client.
 type Pool struct {
 	// config stores all configuration of Pool.
-	config config
+	config vex.Config
 
 	// state stores all states of Pool.
 	state State
@@ -45,12 +45,11 @@ type Pool struct {
 }
 
 // NewPool returns a client pool storing some clients.
-func NewPool(factory func() (vex.Client, error), opts ...Option) *Pool {
-	config := newDefaultConfig()
-	config.applyOptions(opts)
+func NewPool(factory func() (vex.Client, error), opts ...vex.Option) *Pool {
+	config := vex.NewDefaultConfig().ApplyOptions(opts)
 	return &Pool{
-		config:  config,
-		clients: make(chan *poolClient, config.maxConnected),
+		config:  *config,
+		clients: make(chan *poolClient, config.MaxConnected),
 		factory: factory,
 	}
 }
@@ -124,14 +123,14 @@ func (cp *Pool) Get() (vex.Client, error) {
 	}
 
 	// Pool isn't full, returns a new client.
-	if cp.state.Connected < cp.config.maxConnected {
+	if cp.state.Connected < cp.config.MaxConnected {
 		defer cp.lock.Unlock()
 		return cp.newClient()
 	}
 
 	// Pool is full:
 	// 1. blocks util pool has an idle client.
-	if cp.config.fullStrategy.Block() {
+	if cp.config.BlockOnLimit() {
 		cp.lock.Unlock()
 
 		client, ok = cp.getIdleBlocking()
@@ -143,19 +142,19 @@ func (cp *Pool) Get() (vex.Client, error) {
 	}
 
 	// 2. returns an error.
-	if cp.config.fullStrategy.Failed() {
+	if cp.config.FailedOnLimit() {
 		cp.lock.Unlock()
 		return nil, errClientPoolFull
 	}
 
 	// 3. returns a new client.
-	if cp.config.fullStrategy.New() {
+	if cp.config.NewOnLimit() {
 		defer cp.lock.Unlock()
 		return cp.newClient()
 	}
 
 	cp.lock.Unlock()
-	return nil, errFullStrategyUnknown
+	return nil, errLimitStrategyUnknown
 }
 
 // State returns all states of client pool.

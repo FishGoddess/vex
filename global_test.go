@@ -19,6 +19,7 @@ func TestLog(t *testing.T) {
 		}
 	}()
 
+	Log = func(format string, v ...interface{}) {}
 	log("...")
 }
 
@@ -39,18 +40,6 @@ func TestDial(t *testing.T) {
 	if err == nil {
 		t.Error("err == nil")
 	}
-}
-
-// go test -v -cover -run=^TestNotify$
-func TestNotify(t *testing.T) {
-	defer func() {
-		r := recover()
-		if r != nil && Notify != nil {
-			t.Error(t)
-		}
-	}()
-
-	notify(eventConnected)
 }
 
 // go test -v -cover -run=^TestMakeBytes$

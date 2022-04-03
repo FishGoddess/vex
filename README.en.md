@@ -16,6 +16,7 @@
 * Simple API design, client pool supports
 * Server event callback supports, easy to monitor and notify
 * Signal supports, shutdown server gracefully
+* Server connection token supports, and three limit strategies supports.
 
 _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
 
@@ -89,8 +90,8 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
-		fmt.Println(string(req))
+	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
+		fmt.Println(string(requestBody))
 		return []byte("server test"), nil
 	})
 
@@ -104,6 +105,7 @@ func main() {
 * [client](./_examples/client.go)
 * [server](./_examples/server.go)
 * [pool](./_examples/pool.go)
+* [event](./_examples/event.go)
 
 _All examples can be found in [_examples](./_examples)._
 
@@ -111,11 +113,11 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        187464              6758 ns/op              64 B/op          6 allocs/op
+BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
 ```
 
 _Environment: R7-5800X@3.8GHZ CPU, 32GB RAM._
 
 _Single connection: 10w requests spent 745.17ms, result is **134198 rps**, single spent 7.45us._
 
-_Pool (16connections): 10w requests spent 277.06ms, result is **360933 rps**, single spent 2.77us._
+_Pool (16connections): 10w requests spent 207.11ms, result is **482835 rps**, single spent 2.07us._

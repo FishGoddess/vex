@@ -5,6 +5,7 @@
 package main
 
 import (
+	"math"
 	"sync"
 	"testing"
 	"time"
@@ -78,6 +79,10 @@ func BenchmarkServer(b *testing.B) {
 	}
 }
 
+func calculateRPS(loop int, taken time.Duration) float64 {
+	return math.Round(float64(loop) * float64(time.Second) / float64(taken))
+}
+
 // go test ./_examples/performance_test.go -v -run=^TestRPS$
 func TestRPS(t *testing.T) {
 	server := newServer()
@@ -103,7 +108,8 @@ func TestRPS(t *testing.T) {
 	}
 
 	wg.Wait()
-	t.Logf("Taken time is %s!\n", time.Since(beginTime).String())
+	taken := time.Since(beginTime)
+	t.Logf("Taken time is %s, rps is %.0f!\n", taken.String(), calculateRPS(loop, taken))
 }
 
 // go test ./_examples/performance_test.go -v -run=^TestRPSWithPool$
@@ -146,6 +152,7 @@ func TestRPSWithPool(t *testing.T) {
 	}
 
 	wg.Wait()
-	t.Logf("Taken time is %s!\n", time.Since(beginTime).String())
+	taken := time.Since(beginTime)
+	t.Logf("Taken time is %s, rps is %.0f!\n", taken.String(), calculateRPS(loop, taken))
 	t.Logf("%+v\n", clientPool.State())
 }

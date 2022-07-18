@@ -113,11 +113,11 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
+BenchmarkServer-16        128894              8729 ns/op             352 B/op          6 allocs/op
 ```
 
-_Environment: R7-5800X@3.8GHZ CPU, 32GB RAM._
+_Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, manjaro linux._
 
-_Single connection: 10w requests spent 745.17ms, result is **134198 rps**, single spent 7.45us._
+_Single connection: 10w requests spent 866.62ms, result is **115391 rps**._
 
-_Pool (16connections): 10w requests spent 207.11ms, result is **482835 rps**, single spent 2.07us._
+_Pool (16connections): 10w requests spent 384.19ms, result is **260288 rps**._

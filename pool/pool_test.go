@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"context"
 	"runtime"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ import (
 // go test -v -cover -run=^TestNewPool$
 func TestNewPool(t *testing.T) {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
+	server.RegisterPacketHandler(1, func(ctx context.Context, req []byte) (rsp []byte, err error) {
 		return []byte("test"), nil
 	})
 	defer server.Close()

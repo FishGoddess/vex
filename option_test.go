@@ -4,7 +4,10 @@
 
 package vex
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // go test -v -cover -run=^TestWithMaxConnected$
 func TestWithMaxConnected(t *testing.T) {
@@ -65,5 +68,14 @@ func TestWithEventHandler(t *testing.T) {
 	WithEventHandler(handler)(c)
 	if c.EventHandler != handler {
 		t.Errorf("c.EventHandler %p != %p", c.EventHandler, handler)
+	}
+}
+
+// go test -v -cover -run=^TestWithConnTimeout$
+func TestWithConnTimeout(t *testing.T) {
+	c := &Config{ConnTimeout: 0}
+	WithConnTimeout(time.Hour)(c)
+	if c.ConnTimeout != time.Hour {
+		t.Errorf("c.ConnTimeout %d != time.Hour", c.ConnTimeout)
 	}
 }

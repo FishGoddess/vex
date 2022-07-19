@@ -5,6 +5,7 @@
 package vex
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -83,7 +84,7 @@ func TestNewServer(t *testing.T) {
 	address := "127.0.0.1:5837"
 
 	server := NewServer()
-	server.RegisterPacketHandler(packetTypeTest, func(requestBody []byte) (responseBody []byte, err error) {
+	server.RegisterPacketHandler(packetTypeTest, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		if len(requestBody) <= 0 {
 			return nil, errTestRequestFailed
 		}

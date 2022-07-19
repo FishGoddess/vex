@@ -83,6 +83,7 @@ func main() {
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FishGoddess/vex"
@@ -90,8 +91,13 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
-		fmt.Println(string(requestBody))
+	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
+		addr, ok := vex.RemoteAddr(ctx)
+		if !ok {
+			fmt.Println(string(requestBody))
+		} else {
+			fmt.Println(string(requestBody), "from", addr)
+		}
 		return []byte("server test"), nil
 	})
 
@@ -113,11 +119,11 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        143560              8388 ns/op             320 B/op          6 allocs/op
+BenchmarkServer-16        161155              8226 ns/op             320 B/op          6 allocs/op
 ```
 
 _测试环境：R7-5800X@3.8GHZ CPU，32GB RAM，manjaro linux。_
 
-_单连接：10w 个请求的执行耗时为 866.62ms，结果为 **115391 rps**。_
+_单连接：10w 个请求的执行耗时为 736.9ms，结果为 **135690 rps**。_
 
-_连接池（16个连接）：10w 个请求的执行耗时为 384.19ms，结果为 **260288 rps**。_
+_连接池（16个连接）：10w 个请求的执行耗时为 265.1ms，结果为 **377165 rps**。_

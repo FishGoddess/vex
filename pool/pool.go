@@ -20,10 +20,10 @@ var (
 // State stores all states of Pool.
 type State struct {
 	// Connected is the opened count of connections.
-	Connected uint64
+	Connected uint
 
 	// Idle is the idle count of connections.
-	Idle uint64
+	Idle uint
 }
 
 // Pool is the pool of client.
@@ -173,7 +173,7 @@ func (cp *Pool) Close() error {
 		return nil
 	}
 
-	for i := uint64(0); i < cp.state.Connected; i++ {
+	for i := uint(0); i < cp.state.Connected; i++ {
 		client, ok := <-cp.clients
 		if !ok {
 			continue

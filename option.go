@@ -4,18 +4,20 @@
 
 package vex
 
+import "time"
+
 // Option applies functions to config.
 type Option func(c *Config)
 
 // WithMaxConnected sets maxConnected to config.
-func WithMaxConnected(maxConnected uint64) Option {
+func WithMaxConnected(maxConnected uint) Option {
 	return func(c *Config) {
 		c.MaxConnected = maxConnected
 	}
 }
 
 // WithMaxIdle sets maxIdle to config.
-func WithMaxIdle(maxIdle uint64) Option {
+func WithMaxIdle(maxIdle uint) Option {
 	return func(c *Config) {
 		c.MaxIdle = maxIdle
 	}
@@ -60,5 +62,12 @@ func WithWriteBufferSize(bufferSize uint32) Option {
 func WithEventHandler(handler EventHandler) Option {
 	return func(c *Config) {
 		c.EventHandler = handler
+	}
+}
+
+// WithConnTimeout sets timeout to config.
+func WithConnTimeout(timeout time.Duration) Option {
+	return func(c *Config) {
+		c.ConnTimeout = timeout
 	}
 }

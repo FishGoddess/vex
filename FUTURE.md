@@ -3,11 +3,12 @@
 ### v0.3.x
 
 * [x] 修改协议，去除 version，将 magic/type/body_size 混到一个 int64 中，使用位操作处理数值
-* [ ] PacketHandler 加入 context 并默认传递一些数据，比如客户端的地址
-* [ ] 提供一个 context 工具包，获取常用数据
-* [ ] 给 EventHandler 加入 context 参数，使用 context 传递数据而不是用 source 机制
+* [x] PacketHandler 加入 context 并默认传递一些数据，比如客户端的地址
+* [x] 提供一个 context 工具包，获取常用数据
+* [x] 给 EventHandler 加入 context 参数，使用 context 传递数据而不是用 source 机制
+* [ ] 独立 pool 包的 config 结构
 * [ ] 完善连接池的实现，支持高级数量控制，比如超时
-* [ ] 给 Server 加入令牌桶模式的连接数控制
+* [ ] 给 Server 加入令牌桶模式的连接数控制，完善拒绝策略
 
 ### v0.2.x
 

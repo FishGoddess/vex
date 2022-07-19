@@ -4,6 +4,8 @@
 
 package vex
 
+import "time"
+
 const (
 	// limitStrategyBlock decides to block util connected less than max connected.
 	limitStrategyBlock = 1
@@ -20,11 +22,11 @@ type LimitStrategy int8
 
 // Config stores all configuration of Pool.
 type Config struct {
-	// MaxConnected is the max opened count of connections.
-	MaxConnected uint64
+	// MaxConnected is the max-opened count of connections.
+	MaxConnected uint
 
-	// MaxIdle is the max idle count of connections.
-	MaxIdle uint64
+	// MaxIdle is the max-idle count of connections.
+	MaxIdle uint
 
 	// LimitStrategy decides what it will do when connected is greater than max connected.
 	LimitStrategy LimitStrategy
@@ -43,17 +45,22 @@ type Config struct {
 
 	// EventHandler is a handler for handling events.
 	EventHandler EventHandler
+
+	// ConnTimeout is the timeout of a connection and any call will return an error if one connection has timeout.
+	// See net.Conn's SetDeadline.
+	ConnTimeout time.Duration
 }
 
 // NewDefaultConfig returns a default config.
 func NewDefaultConfig() *Config {
 	return &Config{
-		MaxConnected:    64,
-		MaxIdle:         64,
+		MaxConnected:    4096,
+		MaxIdle:         4096,
 		LimitStrategy:   limitStrategyBlock,
-		ReadBufferSize:  4096,
-		WriteBufferSize: 4096,
+		ReadBufferSize:  4 * 1024 * 1024, // 4 MB
+		WriteBufferSize: 4 * 1024 * 1024, // 4 MB
 		EventHandler:    NewDefaultEventHandler(""),
+		ConnTimeout:     8 * time.Hour,
 	}
 }
 

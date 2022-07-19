@@ -83,6 +83,7 @@ Server:
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FishGoddess/vex"
@@ -90,8 +91,13 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
-		fmt.Println(string(requestBody))
+	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
+		addr, ok := vex.RemoteAddr(ctx)
+		if !ok {
+			fmt.Println(string(requestBody))
+		} else {
+			fmt.Println(string(requestBody), "from", addr)
+		}
 		return []byte("server test"), nil
 	})
 
@@ -113,11 +119,11 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        143560              8388 ns/op             320 B/op          6 allocs/op
+BenchmarkServer-16        161155              8226 ns/op             320 B/op          6 allocs/op
 ```
 
 _Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, manjaro linux._
 
-_Single connection: 10w requests spent 866.62ms, result is **115391 rps**._
+_Single connection: 10w requests spent 736.9ms, result is **135690 rps**._
 
-_Pool (16connections): 10w requests spent 384.19ms, result is **260288 rps**._
+_Pool (16connections): 10w requests spent 265.1ms, result is **377165 rps**._

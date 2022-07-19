@@ -4,6 +4,8 @@
 
 package vex
 
+import "context"
+
 const (
 	eventServing      Event = 1
 	eventShutdown     Event = 2
@@ -37,7 +39,7 @@ func (e Event) Disconnected() bool {
 // EventHandler is the handler of event.
 type EventHandler interface {
 	// HandleEvent handles events.
-	HandleEvent(e Event)
+	HandleEvent(ctx context.Context, e Event)
 }
 
 // DefaultEventHandler is the default event handler.
@@ -53,7 +55,7 @@ func NewDefaultEventHandler(name string) *DefaultEventHandler {
 }
 
 // HandleEvent handles events.
-func (deh *DefaultEventHandler) HandleEvent(e Event) {
+func (deh *DefaultEventHandler) HandleEvent(ctx context.Context, e Event) {
 	if e.Serving() {
 		if deh.name == "" {
 			log("vex: server is serving...")
@@ -67,6 +69,32 @@ func (deh *DefaultEventHandler) HandleEvent(e Event) {
 			log("vex: server is shutdown...")
 		} else {
 			log("vex: server %s is shutdown...", deh.name)
+		}
+	}
+
+	if e.Connected() {
+		addr, ok := RemoteAddr(ctx)
+		if !ok {
+			return
+		}
+
+		if deh.name == "" {
+			log("vex: %s connected to server...", addr.String())
+		} else {
+			log("vex: %s connected to server %s...", addr.String(), deh.name)
+		}
+	}
+
+	if e.Disconnected() {
+		addr, ok := RemoteAddr(ctx)
+		if !ok {
+			return
+		}
+
+		if deh.name == "" {
+			log("vex: %s disconnected from server...", addr.String())
+		} else {
+			log("vex: %s disconnected from server %s...", addr.String(), deh.name)
 		}
 	}
 }

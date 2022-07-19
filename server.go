@@ -6,6 +6,7 @@ package vex
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 var (
@@ -22,7 +24,7 @@ var (
 
 // PacketHandler is a handler for handling packets.
 // You will receive a byte slice of request and should return a byte slice or error if necessary.
-type PacketHandler func(requestBody []byte) (responseBody []byte, err error)
+type PacketHandler func(ctx context.Context, requestBody []byte) (responseBody []byte, err error)
 
 // Server is the vex server.
 type Server struct {
@@ -55,7 +57,7 @@ func (s *Server) RegisterPacketHandler(packetType PacketType, handler PacketHand
 func (s *Server) handleConnOK(writer io.Writer, body []byte) {
 	err := writePacket(writer, packetTypeOK, body)
 	if err != nil {
-		log("vex: write ok packet failed with err %+v", err)
+		log("vex: write ok packet failed %+v", err)
 	}
 }
 
@@ -63,45 +65,62 @@ func (s *Server) handleConnOK(writer io.Writer, body []byte) {
 func (s *Server) handleConnErr(writer io.Writer, err error) {
 	err = writePacket(writer, packetTypeErr, []byte(err.Error()))
 	if err != nil {
-		log("vex: write err packet failed with err %+v", err)
+		log("vex: write err packet failed %+v", err)
 	}
 }
 
 // publishEvent publishes an event and gives it to event handler.
-func (s *Server) publishEvent(e Event) {
+func (s *Server) publishEvent(ctx context.Context, e Event) {
 	if s.eventHandler != nil {
-		s.eventHandler.HandleEvent(e)
+		s.eventHandler.HandleEvent(ctx, e)
 	}
+}
+
+// setupConn setups conn and returns an error if failed.
+func (s *Server) setupConn(conn net.Conn) error {
+	return conn.SetDeadline(time.Now().Add(s.config.ConnTimeout))
+}
+
+// newContext returns a context with conn.
+func (s *Server) newContext(conn net.Conn) context.Context {
+	return wrapContext(context.Background(), conn)
 }
 
 // handleConn handles one conn.
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	s.publishEvent(eventConnected)
-	defer s.publishEvent(eventDisconnected)
+	err := s.setupConn(conn)
+	if err != nil {
+		log("vex: set up connection failed [%+v]", err)
+		return
+	}
+
+	ctx := s.newContext(conn)
+	s.publishEvent(ctx, eventConnected)
+	defer s.publishEvent(ctx, eventDisconnected)
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	defer func() {
-		err := writer.Flush()
+		err = writer.Flush()
 		if err != nil {
-			log("vex: writer flushes failed with err [%+v]", err)
+			log("vex: writer flushes failed [%+v]", err)
 		}
 	}()
 
 	for {
 		if writer.Buffered() > 0 {
-			err := writer.Flush()
+			err = writer.Flush()
 			if err != nil {
-				log("vex: writer flushes failed with err [%+v]", err)
+				log("vex: writer flushes failed [%+v]", err)
 			}
 		}
 
 		packetType, requestBody, err := readPacket(reader)
 		if err != nil {
 			if err != io.EOF {
-				log("vex: read packet failed with err [%+v]", err)
+				log("vex: read packet failed [%+v]", err)
 				s.handleConnErr(writer, err)
 			}
 			return
@@ -117,7 +136,7 @@ func (s *Server) handleConn(conn net.Conn) {
 			continue
 		}
 
-		responseBody, err := handle(requestBody)
+		responseBody, err := handle(ctx, requestBody)
 		if err != nil {
 			s.handleConnErr(writer, err)
 			continue
@@ -129,20 +148,21 @@ func (s *Server) handleConn(conn net.Conn) {
 
 // serve runs the accepting task.
 func (s *Server) serve() error {
-	s.publishEvent(eventServing)
-	defer s.publishEvent(eventShutdown)
+	ctx := context.Background()
+	s.publishEvent(ctx, eventServing)
+	defer s.publishEvent(ctx, eventShutdown)
 
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
-			// This error means listener has been closed
-			// See src/internal/poll/fd.go@ErrNetClosing
-			// TODO So ugly...
+			// This error means listener has been closed.
+			// See src/internal/poll/fd.go@ErrNetClosing.
+			// So ugly...
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				break
 			}
 
-			log("vex: listener accepts failed with err %+v", err)
+			log("vex: listener accepts failed %+v", err)
 			continue
 		}
 
@@ -176,7 +196,7 @@ func (s *Server) listenToSignals() {
 	sig := <-signalCh
 	log("vex: received signal %+v...", sig)
 	if err := s.Close(); err != nil {
-		log("vex: server closes failed with err %+v", err)
+		log("vex: server closes failed %+v", err)
 	}
 }
 

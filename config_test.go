@@ -9,24 +9,24 @@ import "testing"
 // go test -v -cover -run=^TestNewDefaultPoolConfig$
 func TestNewDefaultPoolConfig(t *testing.T) {
 	config := NewDefaultConfig()
-	if config.MaxConnected != 64 {
-		t.Errorf("config.MaxConnected %d != 64", config.MaxConnected)
+	if config.MaxConnected != 4096 {
+		t.Errorf("config.MaxConnected %d != 4096", config.MaxConnected)
 	}
 
-	if config.MaxIdle != 64 {
-		t.Errorf("config.MaxIdle %d != 64", config.MaxIdle)
+	if config.MaxIdle != 4096 {
+		t.Errorf("config.MaxIdle %d != 4096", config.MaxIdle)
 	}
 
 	if config.LimitStrategy != limitStrategyBlock {
 		t.Errorf("config.LimitStrategy %+v != %d", config.LimitStrategy, limitStrategyBlock)
 	}
 
-	if config.ReadBufferSize != 4096 {
-		t.Errorf("config.ReadBufferSize %d != 4096", config.ReadBufferSize)
+	if config.ReadBufferSize != 4*1024*1024 {
+		t.Errorf("config.ReadBufferSize %d != 4*1024*1024", config.ReadBufferSize)
 	}
 
-	if config.WriteBufferSize != 4096 {
-		t.Errorf("config.WriteBufferSize %d != 4096", config.WriteBufferSize)
+	if config.WriteBufferSize != 4*1024*1024 {
+		t.Errorf("config.WriteBufferSize %d != 4*1024*1024", config.WriteBufferSize)
 	}
 }
 

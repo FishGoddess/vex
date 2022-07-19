@@ -2,7 +2,7 @@
 
 ### v0.3.x
 
-* [ ] 修改协议，去除 version，将 magic/type/body_size 混到一个 int64 中，使用位操作处理数值
+* [x] 修改协议，去除 version，将 magic/type/body_size 混到一个 int64 中，使用位操作处理数值
 * [ ] PacketHandler 加入 context 并默认传递一些数据，比如客户端的地址
 * [ ] 提供一个 context 工具包，获取常用数据
 * [ ] 给 EventHandler 加入 context 参数，使用 context 传递数据而不是用 source 机制

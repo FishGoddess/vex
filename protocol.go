@@ -15,9 +15,9 @@ const (
 	typeBits     = 8  // 8 Bits
 	bodySizeBits = 32 // 32 Bits
 	headerSize   = 8  // 8 Bytes
-	maxMagic     = 1 << magicBits
-	maxType      = 1 << typeBits
-	maxBodySize  = 1 << bodySizeBits
+	maxMagic     = 1<<magicBits - 1
+	maxType      = 1<<typeBits - 1
+	maxBodySize  = 1<<bodySizeBits - 1
 
 	magicNumber = 0xC638B // Ha! Guess what this number means?
 )
@@ -38,7 +38,7 @@ var (
 // PacketType is the type of packet.
 type PacketType = byte
 
-func readPacketHeader(reader io.Reader) (packetType PacketType, bodySize int32, err error) {
+func readPacketHeader(reader io.Reader) (PacketType, int32, error) {
 	var headerBytes [headerSize]byte
 
 	n, err := reader.Read(headerBytes[:])
@@ -52,17 +52,18 @@ func readPacketHeader(reader io.Reader) (packetType PacketType, bodySize int32, 
 
 	header := endian.Uint64(headerBytes[:])
 	magic := (header >> (typeBits + bodySizeBits)) & maxMagic
+
 	if magic != magicNumber {
 		return 0, 0, errMagicMismatch
 	}
 
-	packetType = PacketType((header >> bodySizeBits) & maxType)
-	bodySize = int32(header & maxBodySize)
+	packetType := PacketType((header >> bodySizeBits) & maxType)
+	bodySize := int32(header & maxBodySize)
 	return packetType, bodySize, nil
 }
 
-func readPacketBody(reader io.Reader, bodySize int32) (body []byte, err error) {
-	body = makeBytes(bodySize) // May exceed if body size is too big.
+func readPacketBody(reader io.Reader, bodySize int32) ([]byte, error) {
+	body := makeBytes(bodySize) // May exceed if body size is too big.
 
 	n, err := reader.Read(body)
 	if err != nil {
@@ -76,12 +77,13 @@ func readPacketBody(reader io.Reader, bodySize int32) (body []byte, err error) {
 	return body, nil
 }
 
-func readPacket(reader io.Reader) (packetType PacketType, body []byte, err error) {
+func readPacket(reader io.Reader) (PacketType, []byte, error) {
 	packetType, bodySize, err := readPacketHeader(reader)
 	if err != nil {
 		return 0, nil, err
 	}
 
+	var body []byte
 	if bodySize > 0 {
 		body, err = readPacketBody(reader, bodySize)
 	}
@@ -89,7 +91,7 @@ func readPacket(reader io.Reader) (packetType PacketType, body []byte, err error
 	return packetType, body, err
 }
 
-func writePacketHeader(writer io.Writer, packetType PacketType, bodySize int32) (err error) {
+func writePacketHeader(writer io.Writer, packetType PacketType, bodySize int32) error {
 	var headerBytes [headerSize]byte
 	var header = magicNumber<<(typeBits+bodySizeBits) | uint64(packetType)<<bodySizeBits | uint64(bodySize)
 	endian.PutUint64(headerBytes[:], header)
@@ -106,7 +108,7 @@ func writePacketHeader(writer io.Writer, packetType PacketType, bodySize int32) 
 	return nil
 }
 
-func writePacketBody(writer io.Writer, body []byte) (err error) {
+func writePacketBody(writer io.Writer, body []byte) error {
 	n, err := writer.Write(body)
 	if err != nil {
 		return err
@@ -119,10 +121,10 @@ func writePacketBody(writer io.Writer, body []byte) (err error) {
 	return nil
 }
 
-func writePacket(writer io.Writer, packetType PacketType, body []byte) (err error) {
+func writePacket(writer io.Writer, packetType PacketType, body []byte) error {
 	bodySize := int32(len(body))
 
-	err = writePacketHeader(writer, packetType, bodySize)
+	err := writePacketHeader(writer, packetType, bodySize)
 	if err != nil {
 		return err
 	}

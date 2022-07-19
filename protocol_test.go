@@ -26,7 +26,7 @@ func TestReadPacket(t *testing.T) {
 		expect expect
 	}{
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
 			expect: expect{
 				packetType: packetTypeTest,
 				body:       []byte{'o', 'k'},
@@ -34,7 +34,7 @@ func TestReadPacket(t *testing.T) {
 			},
 		},
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C + 1, protocolVersion, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B + 1, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
 			expect: expect{
 				packetType: 0,
 				body:       nil,
@@ -42,15 +42,15 @@ func TestReadPacket(t *testing.T) {
 			},
 		},
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion + 1, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 0},
 			expect: expect{
 				packetType: 0,
 				body:       nil,
-				err:        errProtocolMismatch,
+				err:        nil,
 			},
 		},
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 3, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 3, 'o', 'k'},
 			expect: expect{
 				packetType: packetTypeTest,
 				body:       nil,
@@ -98,7 +98,17 @@ func TestWritePacket(t *testing.T) {
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeOK, 0, 0, 0, 2, 'o', 'k'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeOK, 0, 0, 0, 2, 'o', 'k'},
+			},
+		},
+		{
+			input: input{
+				packetType: packetTypeErr,
+				body:       []byte{'e', 'r', 'r'},
+			},
+			expect: expect{
+				err:    nil,
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeErr, 0, 0, 0, 3, 'e', 'r', 'r'},
 			},
 		},
 	}

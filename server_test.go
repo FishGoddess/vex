@@ -14,36 +14,31 @@ var (
 	errTestRequestFailed = errors.New("vex: test request failed")
 )
 
-func checkTestBytes(t *testing.T, buffer []byte, failedTest bool, expected string) {
+func checkTestBytes(t *testing.T, buffer []byte, expectedPacketType PacketType, expectedBody string) {
 	//t.Log(buffer)
-	magic := int32(endian.Uint32(buffer[:magicSize]))
+	if len(buffer) < headerSize {
+		t.Errorf("len(buffer) %d < headerSize %d", len(buffer), headerSize)
+	}
+
+	header := endian.Uint64(buffer[:headerSize])
+	magic := (header >> (typeBits + bodySizeBits)) & maxMagic
 	if magic != magicNumber {
 		t.Errorf("magic %d != magicNumber %d", magic, magicNumber)
 	}
 
-	version := buffer[magicSize]
-	if version != protocolVersion {
-		t.Errorf("version %d != protocolVersion %d", version, protocolVersion)
-	}
-
-	expectedPacketType := packetTypeOK
-	if failedTest {
-		expectedPacketType = packetTypeErr
-	}
-
-	packetType := buffer[magicSize+versionSize]
+	packetType := PacketType((header >> bodySizeBits) & maxType)
 	if packetType != expectedPacketType {
 		t.Errorf("packetType %d != expectedPacketType %d", packetType, expectedPacketType)
 	}
 
-	bodySize := endian.Uint32(buffer[magicSize+versionSize+typeSize : headerSize])
-	if bodySize != uint32(len([]byte(expected))) {
-		t.Errorf("bodySize %d != len([]byte(expected)) %d ", bodySize, len([]byte(expected)))
+	bodySize := int(header & maxBodySize)
+	if bodySize != len([]byte(expectedBody)) {
+		t.Errorf("bodySize %d != len([]byte(expectedBody)) %d ", bodySize, len([]byte(expectedBody)))
 	}
 
 	requestBody := buffer[headerSize : headerSize+bodySize]
-	if string(requestBody) != expected {
-		t.Errorf("requestBody %s != expected %s", string(requestBody), expected)
+	if string(requestBody) != expectedBody {
+		t.Errorf("requestBody %s != expectedBody %s", string(requestBody), expectedBody)
 	}
 }
 
@@ -55,9 +50,7 @@ func runTestClient(t *testing.T, address string) {
 	defer conn.Close()
 
 	// Err test
-	_, err = conn.Write([]byte{
-		0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 0,
-	})
+	_, err = conn.Write([]byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 0})
 	if err != nil {
 		t.Error(err)
 	}
@@ -68,12 +61,10 @@ func runTestClient(t *testing.T, address string) {
 		t.Error(err)
 	}
 
-	checkTestBytes(t, buffer, true, errTestRequestFailed.Error())
+	checkTestBytes(t, buffer, packetTypeErr, errTestRequestFailed.Error())
 
 	// OK test
-	_, err = conn.Write([]byte{
-		0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e',
-	})
+	_, err = conn.Write([]byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e'})
 	if err != nil {
 		t.Error(err)
 	}
@@ -84,7 +75,7 @@ func runTestClient(t *testing.T, address string) {
 		t.Error(err)
 	}
 
-	checkTestBytes(t, buffer, false, "key value")
+	checkTestBytes(t, buffer, packetTypeOK, "key value")
 }
 
 // go test -v -cover -run=^TestNewServer$

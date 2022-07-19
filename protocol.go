@@ -11,14 +11,15 @@ import (
 )
 
 const (
-	magicSize   = 4                                                // 4 Byte
-	versionSize = 1                                                // 1 Byte
-	typeSize    = 1                                                // 1 Byte
-	maxBodySize = 4                                                // 4 Byte
-	headerSize  = magicSize + versionSize + typeSize + maxBodySize // 10 Byte
+	magicBits    = 24 // 24 Bits
+	typeBits     = 8  // 8 Bits
+	bodySizeBits = 32 // 32 Bits
+	headerSize   = 8  // 8 Bytes
+	maxMagic     = 1 << magicBits
+	maxType      = 1 << typeBits
+	maxBodySize  = 1 << bodySizeBits
 
-	magicNumber     = 0x755DD8C // Magic number is 123067788, for checking data package.
-	protocolVersion = 1         // v1
+	magicNumber = 0xC638B // Ha! Guess what this number means?
 )
 
 const (
@@ -30,7 +31,6 @@ var (
 	endian = binary.BigEndian // All encodes/decodes between number and bytes use this endian.
 
 	errMagicMismatch       = errors.New("vex: magic number in protocol doesn't match")
-	errProtocolMismatch    = errors.New("vex: protocol between client and server doesn't match")
 	errReadSizeMismatch    = errors.New("vex: read size less than expected size")
 	errWrittenSizeMismatch = errors.New("vex: written size less than expected size")
 )
@@ -39,9 +39,9 @@ var (
 type PacketType = byte
 
 func readPacketHeader(reader io.Reader) (packetType PacketType, bodySize int32, err error) {
-	var header [headerSize]byte
+	var headerBytes [headerSize]byte
 
-	n, err := reader.Read(header[:])
+	n, err := reader.Read(headerBytes[:])
 	if err != nil {
 		return 0, 0, err
 	}
@@ -50,21 +50,14 @@ func readPacketHeader(reader io.Reader) (packetType PacketType, bodySize int32, 
 		return 0, 0, errReadSizeMismatch
 	}
 
-	magic := int32(endian.Uint32(header[:magicSize]))
+	header := endian.Uint64(headerBytes[:])
+	magic := (header >> (typeBits + bodySizeBits)) & maxMagic
 	if magic != magicNumber {
 		return 0, 0, errMagicMismatch
 	}
 
-	index := magicSize
-	if header[index] != protocolVersion {
-		return 0, 0, errProtocolMismatch
-	}
-
-	index += versionSize
-	packetType = header[index]
-
-	index += typeSize
-	bodySize = int32(endian.Uint32(header[index:headerSize]))
+	packetType = PacketType((header >> bodySizeBits) & maxType)
+	bodySize = int32(header & maxBodySize)
 	return packetType, bodySize, nil
 }
 
@@ -97,19 +90,11 @@ func readPacket(reader io.Reader) (packetType PacketType, body []byte, err error
 }
 
 func writePacketHeader(writer io.Writer, packetType PacketType, bodySize int32) (err error) {
-	var header [headerSize]byte
-	endian.PutUint32(header[:magicSize], magicNumber)
+	var headerBytes [headerSize]byte
+	var header = magicNumber<<(typeBits+bodySizeBits) | uint64(packetType)<<bodySizeBits | uint64(bodySize)
+	endian.PutUint64(headerBytes[:], header)
 
-	index := magicSize
-	header[index] = protocolVersion
-
-	index += versionSize
-	header[index] = packetType
-
-	index += typeSize
-	binary.BigEndian.PutUint32(header[index:headerSize], uint32(bodySize))
-
-	n, err := writer.Write(header[:])
+	n, err := writer.Write(headerBytes[:])
 	if err != nil {
 		return err
 	}

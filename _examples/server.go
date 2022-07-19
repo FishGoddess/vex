@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FishGoddess/vex"
@@ -12,8 +13,13 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
-		fmt.Println(string(requestBody))
+	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
+		addr, ok := vex.RemoteAddr(ctx)
+		if !ok {
+			fmt.Println(string(requestBody))
+		} else {
+			fmt.Println(string(requestBody), "from", addr)
+		}
 		return []byte("server test"), nil
 	})
 

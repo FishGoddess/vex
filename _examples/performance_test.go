@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"math"
 	"sync"
 	"testing"
@@ -36,7 +37,7 @@ func newClient() vex.Client {
 	return client
 }
 
-func newClientPool(maxConnected uint64) *pool.Pool {
+func newClientPool(maxConnected uint) *pool.Pool {
 	return pool.NewPool(func() (vex.Client, error) {
 		return vex.NewClient("tcp", address)
 	}, vex.WithMaxConnected(maxConnected), vex.WithBlockOnLimit())
@@ -44,7 +45,7 @@ func newClientPool(maxConnected uint64) *pool.Pool {
 
 func newServer() *vex.Server {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(benchmarkPacketType, func(requestBody []byte) (responseBody []byte, err error) {
+	server.RegisterPacketHandler(benchmarkPacketType, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		return requestBody, nil
 	})
 
@@ -60,7 +61,6 @@ func newServer() *vex.Server {
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
-// BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
 func BenchmarkServer(b *testing.B) {
 	server := newServer()
 	defer server.Close()

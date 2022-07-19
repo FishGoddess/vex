@@ -113,7 +113,7 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        128894              8729 ns/op             352 B/op          6 allocs/op
+BenchmarkServer-16        143560              8388 ns/op             320 B/op          6 allocs/op
 ```
 
 _Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, manjaro linux._

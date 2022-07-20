@@ -37,26 +37,26 @@ type Pool struct {
 	// clients stores all unused connections.
 	clients chan *poolClient
 
-	// factory is a factory function for creating a new Client.
-	factory func() (vex.Client, error)
+	// dial is for creating a new Client.
+	dial func() (vex.Client, error)
 
 	closed bool
 	lock   sync.Mutex
 }
 
 // NewPool returns a client pool storing some clients.
-func NewPool(factory func() (vex.Client, error), opts ...vex.Option) *Pool {
+func NewPool(dial func() (vex.Client, error), opts ...vex.Option) *Pool {
 	config := vex.NewDefaultConfig().ApplyOptions(opts)
 	return &Pool{
 		config:  *config,
 		clients: make(chan *poolClient, config.MaxConnected),
-		factory: factory,
+		dial:    dial,
 	}
 }
 
 // newClient returns a new Client.
 func (cp *Pool) newClient() (vex.Client, error) {
-	client, err := cp.factory()
+	client, err := cp.dial()
 	if err != nil {
 		return nil, err
 	}

@@ -71,11 +71,10 @@ func BenchmarkServer(b *testing.B) {
 	client := newClient()
 	defer client.Close()
 
-	body := []byte(benchmarkRequestBody)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.Send(benchmarkPacketType, body)
+		_, err := client.Send(benchmarkPacketType, benchmarkRequestBody)
 		if err != nil {
 			b.Error(err)
 		}
@@ -95,7 +94,6 @@ func TestRPS(t *testing.T) {
 	defer client.Close()
 
 	var wg sync.WaitGroup
-	body := []byte(benchmarkRequestBody)
 	beginTime := time.Now()
 	for i := 0; i < loop; i++ {
 		wg.Add(1)
@@ -103,7 +101,7 @@ func TestRPS(t *testing.T) {
 		func() {
 			defer wg.Done()
 
-			body, err := client.Send(benchmarkPacketType, body)
+			body, err := client.Send(benchmarkPacketType, benchmarkRequestBody)
 			if err != nil {
 				t.Error(err, body)
 			}
@@ -131,7 +129,6 @@ func TestRPSWithPool(t *testing.T) {
 	//}()
 
 	var wg sync.WaitGroup
-	body := []byte(benchmarkRequestBody)
 	beginTime := time.Now()
 	for i := 0; i < loop; i++ {
 		wg.Add(1)
@@ -146,7 +143,7 @@ func TestRPSWithPool(t *testing.T) {
 			}
 			defer client.Close()
 
-			body, err := client.Send(benchmarkPacketType, body)
+			body, err := client.Send(benchmarkPacketType, benchmarkRequestBody)
 			if err != nil {
 				t.Error(err, body)
 				return

@@ -19,10 +19,13 @@ var (
 // State stores all states of Pool.
 type State struct {
 	// Connected is the opened count of connections.
-	Connected uint64
+	Connected uint64 `json:"connected"`
 
 	// Idle is the idle count of connections.
-	Idle uint64
+	Idle uint64 `json:"idle"`
+
+	// Waiting is the waiting count of getting requests.
+	Waiting uint64 `json:"waiting"`
 }
 
 // Pool is the pool of client.
@@ -50,6 +53,7 @@ func NewPool(dial func() (vex.Client, error), opts ...Option) *Pool {
 		config:  *config,
 		clients: make(chan *poolClient, config.MaxConnected),
 		dial:    dial,
+		closed:  false,
 	}
 }
 
@@ -137,14 +141,18 @@ func (cp *Pool) Get() (vex.Client, error) {
 	}
 
 	if cp.config.BlockOnFull {
+		cp.state.Waiting++
 		cp.lock.Unlock()
+
 		client, ok := cp.waitToGet()
 		if ok {
 			cp.lock.Lock()
 			cp.state.Idle--
+			cp.state.Waiting--
 			cp.lock.Unlock()
 			return client, nil
 		}
+
 		return nil, errClientPoolClosed
 	}
 

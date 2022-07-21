@@ -100,8 +100,8 @@ func (s *Server) handleConn(conn net.Conn) {
 	s.publishEvent(ctx, eventConnected)
 	defer s.publishEvent(ctx, eventDisconnected)
 
-	reader := bufio.NewReader(conn)
-	writer := bufio.NewWriter(conn)
+	reader := bufio.NewReaderSize(conn, int(s.config.ReadBufferSize))
+	writer := bufio.NewWriterSize(conn, int(s.config.WriteBufferSize))
 	defer func() {
 		err = writer.Flush()
 		if err != nil {

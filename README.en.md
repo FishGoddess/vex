@@ -28,10 +28,9 @@ ABNF：
 
 ```abnf
 PACKET = HEADER BODY
-HEADER = MAGIC VERSION TYPE BODYSIZE
+HEADER = MAGIC TYPE BODYSIZE
 BODY = *OCTET ; Size unknown, see BODYSIZE
-MAGIC = 4OCTET ; 4Bytes, current is 0x755DD8C or 123067788
-VERSION = OCTET ; 0x00-0xFF, begin from one, 255 at most
+MAGIC = 3OCTET ; 3Bytes, current is 0xC638B
 TYPE = OCTET ; 0x00-0xFF, begin from one, 255 at most
 BODYSIZE = 4OCTET ; 4bytes, 4GB at most
 ```
@@ -40,8 +39,8 @@ In human:
 
 ```
 Packet:
-magic    version    type    body_size    {body}
-4byte     1byte     1byte     4byte      unknown
+magic    version    body_size    {body}
+3byte     1byte       4byte      unknown
 ```
 
 ### ✒ Example
@@ -119,11 +118,13 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        161155              8226 ns/op             320 B/op          6 allocs/op
+BenchmarkServer-16        122085             10396 ns/op            2080 B/op          6 allocs/op
 ```
+
+> Packet size is 1KB.
 
 _Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, manjaro linux._
 
-_Single connection: 10w requests spent 736.9ms, result is **135690 rps**._
+_Single connection: 10w requests spent 913.46ms, result is **109474 rps**._
 
-_Pool (16connections): 10w requests spent 265.1ms, result is **377165 rps**._
+_Pool (16connections): 10w requests spent 148.97ms, result is **671250 rps**._

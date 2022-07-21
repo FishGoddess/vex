@@ -33,7 +33,7 @@ func NewClient(network string, address string, opts ...Option) (Client, error) {
 		return nil, err
 	}
 
-	config := NewDefaultConfig().ApplyOptions(opts)
+	config := newDefaultConfig().ApplyOptions(opts)
 	return &defaultClient{
 		conn:   conn,
 		reader: bufio.NewReaderSize(conn, int(config.ReadBufferSize)),
@@ -67,10 +67,8 @@ func (c *defaultClient) Send(packetType PacketType, requestBody []byte) (respons
 
 // Close closes current client.
 func (c *defaultClient) Close() error {
-	err := c.writer.Flush()
-	if err != nil {
+	if err := c.writer.Flush(); err != nil {
 		return err
 	}
-
 	return c.conn.Close()
 }

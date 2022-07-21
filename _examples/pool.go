@@ -15,7 +15,7 @@ import (
 func main() {
 	clientPool := pool.NewPool(func() (vex.Client, error) {
 		return vex.NewClient("tcp", "127.0.0.1:5837")
-	})
+	}, pool.WithMaxConnected(64), pool.WithMaxIdle(64))
 
 	for i := 0; i < 10; i++ {
 		client, err := clientPool.Get()

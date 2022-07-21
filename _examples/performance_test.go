@@ -19,14 +19,17 @@ const (
 	// address is the address of server.
 	address = "127.0.0.1:5837"
 
-	// benchmarkPacketType is the packet type of benchmark.
-	benchmarkPacketType = 1
-
-	// benchmarkRequestBody is the request body of benchmark.
-	benchmarkRequestBody = "我是水不要鱼，希望大家可以支持开源，支持国产，不管目前有啥问题，都可以用一种理性的长远目光看待~"
-
 	// loop is the loop of test.
 	loop = 100000
+
+	// benchmarkPacketType is the packet type of benchmark.
+	benchmarkPacketType = 1
+)
+
+var (
+	// benchmarkRequestBody is the request body of benchmark.
+	// benchmarkRequestBody = "我是水不要鱼，希望大家可以支持开源，支持国产，不管目前有啥问题，都可以用一种理性的长远目光看待~"
+	benchmarkRequestBody = make([]byte, 1024)
 )
 
 func newClient() vex.Client {
@@ -37,10 +40,10 @@ func newClient() vex.Client {
 	return client
 }
 
-func newClientPool(maxConnected uint) *pool.Pool {
+func newClientPool(maxConnected uint64) *pool.Pool {
 	return pool.NewPool(func() (vex.Client, error) {
 		return vex.NewClient("tcp", address)
-	}, vex.WithMaxConnected(maxConnected), vex.WithBlockOnLimit())
+	}, pool.WithMaxConnected(maxConnected), pool.WithMaxIdle(maxConnected))
 }
 
 func newServer() *vex.Server {

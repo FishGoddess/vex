@@ -7,67 +7,39 @@ package vex
 import "time"
 
 // Option applies functions to config.
-type Option func(c *Config)
+type Option func(c *config)
 
-// WithMaxConnected sets maxConnected to config.
-func WithMaxConnected(maxConnected uint) Option {
-	return func(c *Config) {
-		c.MaxConnected = maxConnected
-	}
-}
-
-// WithMaxIdle sets maxIdle to config.
-func WithMaxIdle(maxIdle uint) Option {
-	return func(c *Config) {
-		c.MaxIdle = maxIdle
-	}
-}
-
-// WithBlockOnLimit sets block limit strategy to config.
-func WithBlockOnLimit() Option {
-	return func(c *Config) {
-		c.LimitStrategy = limitStrategyBlock
-	}
-}
-
-// WithFailedOnLimit sets failed limit strategy to config.
-func WithFailedOnLimit() Option {
-	return func(c *Config) {
-		c.LimitStrategy = limitStrategyFailed
-	}
-}
-
-// WithNewOnLimit sets new limit strategy to config.
-func WithNewOnLimit() Option {
-	return func(c *Config) {
-		c.LimitStrategy = limitStrategyNew
+// WithConnTimeout sets timeout to config.
+func WithConnTimeout(timeout time.Duration) Option {
+	return func(c *config) {
+		c.ConnTimeout = timeout
 	}
 }
 
 // WithReadBufferSize sets bufferSize to config.
 func WithReadBufferSize(bufferSize uint32) Option {
-	return func(c *Config) {
+	return func(c *config) {
 		c.ReadBufferSize = bufferSize
 	}
 }
 
 // WithWriteBufferSize sets bufferSize to config.
 func WithWriteBufferSize(bufferSize uint32) Option {
-	return func(c *Config) {
+	return func(c *config) {
 		c.WriteBufferSize = bufferSize
+	}
+}
+
+// WithMaxConnected sets maxConnected to config.
+func WithMaxConnected(maxConnected uint64) Option {
+	return func(c *config) {
+		c.MaxConnected = maxConnected
 	}
 }
 
 // WithEventHandler sets handler to config.
 func WithEventHandler(handler EventHandler) Option {
-	return func(c *Config) {
+	return func(c *config) {
 		c.EventHandler = handler
-	}
-}
-
-// WithConnTimeout sets timeout to config.
-func WithConnTimeout(timeout time.Duration) Option {
-	return func(c *Config) {
-		c.ConnTimeout = timeout
 	}
 }

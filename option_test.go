@@ -9,46 +9,18 @@ import (
 	"time"
 )
 
-// go test -v -cover -run=^TestWithMaxConnected$
-func TestWithMaxConnected(t *testing.T) {
-	c := &Config{MaxConnected: 0}
-	WithMaxConnected(64)(c)
-	if c.MaxConnected != 64 {
-		t.Errorf("c.MaxConnected %d != 64", c.MaxConnected)
-	}
-}
-
-// go test -v -cover -run=^TestWithMaxIdle$
-func TestWithMaxIdle(t *testing.T) {
-	c := &Config{MaxIdle: 0}
-	WithMaxIdle(64)(c)
-	if c.MaxIdle != 64 {
-		t.Errorf("c.MaxIdle %d != 64", c.MaxIdle)
-	}
-}
-
-// go test -v -cover -run=^TestWithLimitStrategy$
-func TestWithLimitStrategy(t *testing.T) {
-	c := &Config{LimitStrategy: 0}
-	WithBlockOnLimit()(c)
-	if c.LimitStrategy != limitStrategyBlock {
-		t.Errorf("c.LimitStrategy %d != %d", c.LimitStrategy, limitStrategyBlock)
-	}
-
-	WithFailedOnLimit()(c)
-	if c.LimitStrategy != limitStrategyFailed {
-		t.Errorf("c.LimitStrategy %d != %d", c.LimitStrategy, limitStrategyFailed)
-	}
-
-	WithNewOnLimit()(c)
-	if c.LimitStrategy != limitStrategyNew {
-		t.Errorf("c.LimitStrategy %d != %d", c.LimitStrategy, limitStrategyNew)
+// go test -v -cover -run=^TestWithConnTimeout$
+func TestWithConnTimeout(t *testing.T) {
+	c := &config{ConnTimeout: 0}
+	WithConnTimeout(time.Hour)(c)
+	if c.ConnTimeout != time.Hour {
+		t.Errorf("c.ConnTimeout %d != time.Hour", c.ConnTimeout)
 	}
 }
 
 // go test -v -cover -run=^TestWithBufferSize$
 func TestWithBufferSize(t *testing.T) {
-	c := &Config{ReadBufferSize: 0, WriteBufferSize: 0}
+	c := &config{ReadBufferSize: 0, WriteBufferSize: 0}
 	WithReadBufferSize(64)(c)
 	WithWriteBufferSize(512)(c)
 
@@ -61,21 +33,21 @@ func TestWithBufferSize(t *testing.T) {
 	}
 }
 
+// go test -v -cover -run=^TestWithMaxConnected$
+func TestWithMaxConnected(t *testing.T) {
+	c := &config{MaxConnected: 0}
+	WithMaxConnected(64)(c)
+	if c.MaxConnected != 64 {
+		t.Errorf("c.MaxConnected %d != 64", c.MaxConnected)
+	}
+}
+
 // go test -v -cover -run=^TestWithEventHandler$
 func TestWithEventHandler(t *testing.T) {
-	c := &Config{EventHandler: nil}
+	c := &config{EventHandler: nil}
 	handler := NewDefaultEventHandler("")
 	WithEventHandler(handler)(c)
 	if c.EventHandler != handler {
 		t.Errorf("c.EventHandler %p != %p", c.EventHandler, handler)
-	}
-}
-
-// go test -v -cover -run=^TestWithConnTimeout$
-func TestWithConnTimeout(t *testing.T) {
-	c := &Config{ConnTimeout: 0}
-	WithConnTimeout(time.Hour)(c)
-	if c.ConnTimeout != time.Hour {
-		t.Errorf("c.ConnTimeout %d != time.Hour", c.ConnTimeout)
 	}
 }

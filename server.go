@@ -28,7 +28,7 @@ type PacketHandler func(ctx context.Context, requestBody []byte) (responseBody [
 
 // Server is the vex server.
 type Server struct {
-	config       Config
+	config       config
 	listener     net.Listener
 	handlers     map[PacketType]PacketHandler
 	eventHandler EventHandler
@@ -38,7 +38,7 @@ type Server struct {
 
 // NewServer returns a new vex server.
 func NewServer(opts ...Option) *Server {
-	config := NewDefaultConfig().ApplyOptions(opts)
+	config := newDefaultConfig().ApplyOptions(opts)
 	return &Server{
 		config:       *config,
 		handlers:     make(map[PacketType]PacketHandler, 16),

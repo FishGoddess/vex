@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FishGoddess/vex"
@@ -13,7 +14,7 @@ import (
 type demoEventHandler struct {
 }
 
-func (deh *demoEventHandler) HandleEvent(e vex.Event) {
+func (deh *demoEventHandler) HandleEvent(ctx context.Context, e vex.Event) {
 	fmt.Println("I received an event!", e)
 }
 
@@ -32,7 +33,7 @@ func main() {
 
 	// Listen and serve!
 	// Try to connect this server and switch the event handler to see what happens.
-	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
+	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		return requestBody, nil
 	})
 

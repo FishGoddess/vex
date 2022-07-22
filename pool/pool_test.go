@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"context"
 	"runtime"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ import (
 // go test -v -cover -run=^TestNewPool$
 func TestNewPool(t *testing.T) {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(req []byte) (rsp []byte, err error) {
+	server.RegisterPacketHandler(1, func(ctx context.Context, req []byte) (rsp []byte, err error) {
 		return []byte("test"), nil
 	})
 	defer server.Close()
@@ -30,11 +31,11 @@ func TestNewPool(t *testing.T) {
 	runtime.Gosched()
 	time.Sleep(10 * time.Millisecond)
 
-	pool := NewPool(func() (vex.Client, error) { return vex.NewClient("tcp", "127.0.0.1:5837") }, vex.WithMaxConnected(64))
+	pool := NewPool(func() (vex.Client, error) { return vex.NewClient("tcp", "127.0.0.1:5837") }, WithMaxConnected(64))
 	defer pool.Close()
 
 	for i := 0; i < 512; i++ {
-		client, err := pool.Get()
+		client, err := pool.Get(context.Background())
 		if err != nil {
 			t.Fatalf("get client failed with %+v", err)
 		}

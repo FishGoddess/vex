@@ -28,10 +28,9 @@ ABNF：
 
 ```abnf
 PACKET = HEADER BODY
-HEADER = MAGIC VERSION TYPE BODYSIZE
+HEADER = MAGIC TYPE BODYSIZE
 BODY = *OCTET ; Size unknown, see BODYSIZE
-MAGIC = 4OCTET ; 4Bytes, current is 0x755DD8C or 123067788
-VERSION = OCTET ; 0x00-0xFF, begin from one, 255 at most
+MAGIC = 3OCTET ; 3Bytes, current is 0xC638B
 TYPE = OCTET ; 0x00-0xFF, begin from one, 255 at most
 BODYSIZE = 4OCTET ; 4bytes, 4GB at most
 ```
@@ -40,8 +39,8 @@ In human:
 
 ```
 Packet:
-magic    version    type    body_size    {body}
-4byte     1byte     1byte     4byte      unknown
+magic    version    body_size    {body}
+3byte     1byte       4byte      unknown
 ```
 
 ### ✒ Example
@@ -83,6 +82,7 @@ Server:
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FishGoddess/vex"
@@ -90,8 +90,13 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
-		fmt.Println(string(requestBody))
+	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
+		addr, ok := vex.RemoteAddr(ctx)
+		if !ok {
+			fmt.Println(string(requestBody))
+		} else {
+			fmt.Println(string(requestBody), "from", addr)
+		}
 		return []byte("server test"), nil
 	})
 
@@ -113,11 +118,13 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
+BenchmarkServer-16        122085             10396 ns/op            2080 B/op          6 allocs/op
 ```
 
-_Environment: R7-5800X@3.8GHZ CPU, 32GB RAM._
+> Packet size is 1KB.
 
-_Single connection: 10w requests spent 745.17ms, result is **134198 rps**, single spent 7.45us._
+_Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, manjaro linux._
 
-_Pool (16connections): 10w requests spent 207.11ms, result is **482835 rps**, single spent 2.07us._
+_Single connection: 10w requests spent 913.46ms, result is **109474 rps**._
+
+_Pool (16connections): 10w requests spent 148.97ms, result is **671250 rps**._

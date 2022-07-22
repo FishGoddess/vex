@@ -26,7 +26,7 @@ func TestReadPacket(t *testing.T) {
 		expect expect
 	}{
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
 			expect: expect{
 				packetType: packetTypeTest,
 				body:       []byte{'o', 'k'},
@@ -34,7 +34,7 @@ func TestReadPacket(t *testing.T) {
 			},
 		},
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C + 1, protocolVersion, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B + 1, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
 			expect: expect{
 				packetType: 0,
 				body:       nil,
@@ -42,15 +42,15 @@ func TestReadPacket(t *testing.T) {
 			},
 		},
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion + 1, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 0},
 			expect: expect{
-				packetType: 0,
+				packetType: packetTypeTest,
 				body:       nil,
-				err:        errProtocolMismatch,
+				err:        nil,
 			},
 		},
 		{
-			input: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeTest, 0, 0, 0, 3, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 3, 'o', 'k'},
 			expect: expect{
 				packetType: packetTypeTest,
 				body:       nil,
@@ -59,18 +59,21 @@ func TestReadPacket(t *testing.T) {
 		},
 	}
 
-	for _, oneCase := range cases {
+	for i, oneCase := range cases {
 		packetType, body, err := readPacket(bytes.NewReader(oneCase.input))
+		if err != oneCase.expect.err {
+			t.Errorf("i %d, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
+			break
+		}
+
 		if packetType != oneCase.expect.packetType {
-			t.Errorf("packetType %+v != oneCase.expect.packetType %+v", packetType, oneCase.expect.packetType)
+			t.Errorf("i %d, packetType %+v != oneCase.expect.packetType %+v", i, packetType, oneCase.expect.packetType)
+			break
 		}
 
 		if bytes.Compare(body, oneCase.expect.body) != 0 {
-			t.Errorf("body %+v != oneCase.expect.body %+v", body, oneCase.expect.body)
-		}
-
-		if err != oneCase.expect.err {
-			t.Errorf("err %+v != oneCase.expect.err %+v", err, oneCase.expect.err)
+			t.Errorf("i %d, body %+v != oneCase.expect.body %+v", i, body, oneCase.expect.body)
+			break
 		}
 	}
 }
@@ -98,22 +101,34 @@ func TestWritePacket(t *testing.T) {
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0x7, 0x55, 0xDD, 0x8C, protocolVersion, packetTypeOK, 0, 0, 0, 2, 'o', 'k'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeOK, 0, 0, 0, 2, 'o', 'k'},
+			},
+		},
+		{
+			input: input{
+				packetType: packetTypeErr,
+				body:       []byte{'e', 'r', 'r'},
+			},
+			expect: expect{
+				err:    nil,
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeErr, 0, 0, 0, 3, 'e', 'r', 'r'},
 			},
 		},
 	}
 
 	buffer := bytes.NewBuffer(make([]byte, 0, 64))
-	for _, oneCase := range cases {
+	for i, oneCase := range cases {
 		buffer.Reset()
 
 		err := writePacket(buffer, oneCase.input.packetType, oneCase.input.body)
 		if err != oneCase.expect.err {
-			t.Errorf("err == nil, err %+v != oneCase.expect.err %+v", err, oneCase.expect.err)
+			t.Errorf("i %d, err == nil, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
+			break
 		}
 
 		if bytes.Compare(buffer.Bytes(), oneCase.expect.packet) != 0 {
-			t.Errorf("buffer %+v != oneCase.expect.packet %+v", buffer.Bytes(), oneCase.expect.packet)
+			t.Errorf("i %d, buffer %+v != oneCase.expect.packet %+v", i, buffer.Bytes(), oneCase.expect.packet)
+			break
 		}
 	}
 }

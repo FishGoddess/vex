@@ -28,20 +28,19 @@ ABNF：
 
 ```abnf
 PACKET = HEADER BODY ; 数据包
-HEADER = MAGIC VERSION TYPE BODYSIZE ; 数据包头，主要是魔数，版本号，类型以及包体大小
-BODY = *OCTET ; 数据包体，大小未知，需要靠 BODYSIZE 明确
-MAGIC = 4OCTET ; 魔数，4 个字节表示，目前是 0x755DD8C，也就是 123067788
-VERSION = OCTET ; 协议版本号，0x00-0xFF，从 1 开始，最多 255 个版本号
-TYPE = OCTET ; 命令，0x00-0xFF，从 0 开始，最多 255 种数据包类型
+HEADER = MAGIC TYPE BODYSIZE ; 数据包头，主要是魔数，包类型以及包体大小
+BODY = *OCTET ; 数据包体，大小未知，需要靠 BODYSIZE 来确认
+MAGIC = 3OCTET ; 魔数，3 个字节表示，目前是 0xC638B，也就是 811915
+TYPE = OCTET ; 数据包类型，0x00-0xFF，从 0 开始，最多 255 种数据包类型
 BODYSIZE = 4OCTET ; 数据包体大小，4 个字节表示，最大是 4GB
 ```
 
 人类语言描述：
 
 ```
-Packet:
-magic    version    type    body_size    {body}
-4byte     1byte     1byte     4byte      unknown
+数据包：
+magic    version    body_size    {body}
+3byte     1byte       4byte      unknown
 ```
 
 ### ✒ 使用案例
@@ -83,6 +82,7 @@ func main() {
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FishGoddess/vex"
@@ -90,8 +90,13 @@ import (
 
 func main() {
 	server := vex.NewServer()
-	server.RegisterPacketHandler(1, func(requestBody []byte) (responseBody []byte, err error) {
-		fmt.Println(string(requestBody))
+	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
+		addr, ok := vex.RemoteAddr(ctx)
+		if !ok {
+			fmt.Println(string(requestBody))
+		} else {
+			fmt.Println(string(requestBody), "from", addr)
+		}
 		return []byte("server test"), nil
 	})
 
@@ -113,11 +118,13 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        156993              7517 ns/op             352 B/op          6 allocs/op
+BenchmarkServer-16        122085             10396 ns/op            2080 B/op          6 allocs/op
 ```
 
-_测试环境：R7-5800X@3.8GHZ CPU，32GB RAM。_
+> 数据包大小为 1KB。
 
-_单连接：10w 个请求的执行耗时为 745.17ms，结果为 **134198 rps**，单命令耗时 7.45us。_
+_测试环境：R7-5800X@3.8GHZ CPU，32GB RAM，manjaro linux。_
 
-_连接池（16个连接）：10w 个请求的执行耗时为 207.11ms，结果为 **482835 rps**，单命令耗时 2.07us。_
+_单连接：10w 个请求的执行耗时为 913.46ms，结果为 **109474 rps**。_
+
+_连接池（16个连接）：10w 个请求的执行耗时为 148.97ms，结果为 **671250 rps**。_

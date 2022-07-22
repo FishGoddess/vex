@@ -4,53 +4,52 @@
 
 package vex
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
-// go test -v -cover -run=^TestNewDefaultPoolConfig$
-func TestNewDefaultPoolConfig(t *testing.T) {
-	config := NewDefaultConfig()
-	if config.MaxConnected != 64 {
-		t.Errorf("config.MaxConnected %d != 64", config.MaxConnected)
+// go test -v -cover -run=^TestNewDefaultConfig$
+func TestNewDefaultConfig(t *testing.T) {
+	config := newDefaultConfig()
+	if config.ConnTimeout != 8*time.Hour {
+		t.Errorf("config.ConnTimeout %d != 8*time.Hour", config.ConnTimeout)
 	}
 
-	if config.MaxIdle != 64 {
-		t.Errorf("config.MaxIdle %d != 64", config.MaxIdle)
+	if config.CloseTimeout != time.Minute {
+		t.Errorf("config.CloseTimeout %d != time.Minute", config.CloseTimeout)
 	}
 
-	if config.LimitStrategy != limitStrategyBlock {
-		t.Errorf("config.LimitStrategy %+v != %d", config.LimitStrategy, limitStrategyBlock)
+	if config.ReadBufferSize != 4*1024*1024 {
+		t.Errorf("config.ReadBufferSize %d != 4*1024*1024", config.ReadBufferSize)
 	}
 
-	if config.ReadBufferSize != 4096 {
-		t.Errorf("config.ReadBufferSize %d != 4096", config.ReadBufferSize)
+	if config.WriteBufferSize != 4*1024*1024 {
+		t.Errorf("config.WriteBufferSize %d != 4*1024*1024", config.WriteBufferSize)
 	}
 
-	if config.WriteBufferSize != 4096 {
-		t.Errorf("config.WriteBufferSize %d != 4096", config.WriteBufferSize)
+	if config.MaxConnected != 4096 {
+		t.Errorf("config.MaxConnected %d != 4096", config.MaxConnected)
 	}
 }
 
 // go test -v -cover -run=^TestConfigApplyOptions$
 func TestConfigApplyOptions(t *testing.T) {
-	config := NewDefaultConfig()
+	config := newDefaultConfig()
 	config.ApplyOptions([]Option{
-		WithMaxConnected(128),
-		WithMaxIdle(32),
-		WithNewOnLimit(),
+		WithConnTimeout(time.Hour),
+		WithCloseTimeout(time.Second),
 		WithReadBufferSize(64),
 		WithWriteBufferSize(512),
+		WithMaxConnected(128),
 	})
 
-	if config.MaxConnected != 128 {
-		t.Errorf("config.MaxConnected %d != 128", config.MaxConnected)
+	if config.ConnTimeout != time.Hour {
+		t.Errorf("config.ConnTimeout %d != time.Hour", config.ConnTimeout)
 	}
 
-	if config.MaxIdle != 32 {
-		t.Errorf("config.MaxIdle %d != 32", config.MaxIdle)
-	}
-
-	if config.LimitStrategy != limitStrategyNew {
-		t.Errorf("config.LimitStrategy %+v != %d", config.LimitStrategy, limitStrategyNew)
+	if config.CloseTimeout != time.Second {
+		t.Errorf("config.CloseTimeout %d != time.Second", config.CloseTimeout)
 	}
 
 	if config.ReadBufferSize != 64 {
@@ -59,5 +58,9 @@ func TestConfigApplyOptions(t *testing.T) {
 
 	if config.WriteBufferSize != 512 {
 		t.Errorf("config.WriteBufferSize %d != 512", config.WriteBufferSize)
+	}
+
+	if config.MaxConnected != 128 {
+		t.Errorf("config.MaxConnected %d != 128", config.MaxConnected)
 	}
 }

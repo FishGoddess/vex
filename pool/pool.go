@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -12,24 +13,26 @@ import (
 )
 
 var (
-	errClientPoolClosed     = errors.New("vex: client pool is closed")
-	errClientPoolFull       = errors.New("vex: client pool is full")
-	errLimitStrategyUnknown = errors.New("vex: limit strategy is unknown")
+	errClientPoolFull   = errors.New("vex: client pool is full")
+	errClientPoolClosed = errors.New("vex: client pool is closed")
 )
 
 // State stores all states of Pool.
 type State struct {
 	// Connected is the opened count of connections.
-	Connected uint64
+	Connected uint64 `json:"connected"`
 
 	// Idle is the idle count of connections.
-	Idle uint64
+	Idle uint64 `json:"idle"`
+
+	// Waiting is the waiting count of getting requests.
+	Waiting uint64 `json:"waiting"`
 }
 
 // Pool is the pool of client.
 type Pool struct {
 	// config stores all configuration of Pool.
-	config vex.Config
+	config config
 
 	// state stores all states of Pool.
 	state State
@@ -37,124 +40,136 @@ type Pool struct {
 	// clients stores all unused connections.
 	clients chan *poolClient
 
-	// factory is a factory function for creating a new Client.
-	factory func() (vex.Client, error)
+	// dial is for creating a new Client.
+	dial func() (vex.Client, error)
 
 	closed bool
 	lock   sync.Mutex
 }
 
 // NewPool returns a client pool storing some clients.
-func NewPool(factory func() (vex.Client, error), opts ...vex.Option) *Pool {
-	config := vex.NewDefaultConfig().ApplyOptions(opts)
+func NewPool(dial func() (vex.Client, error), opts ...Option) *Pool {
+	config := newDefaultConfig().ApplyOptions(opts)
 	return &Pool{
 		config:  *config,
 		clients: make(chan *poolClient, config.MaxConnected),
-		factory: factory,
+		dial:    dial,
+		closed:  false,
 	}
 }
 
 // newClient returns a new Client.
 func (cp *Pool) newClient() (vex.Client, error) {
-	client, err := cp.factory()
+	client, err := cp.dial()
 	if err != nil {
 		return nil, err
 	}
-
-	cp.state.Connected++
 	return wrapClient(cp, client), nil
 }
 
-// putIdle stores a idle client to pool.
-func (cp *Pool) putIdle(client *poolClient) {
+// put adds an idle client to pool.
+func (cp *Pool) put(client *poolClient) error {
 	cp.lock.Lock()
-	defer cp.lock.Unlock()
-
 	if cp.closed {
-		client.client.Close()
-		return
+		cp.lock.Unlock()
+		return client.client.Close()
 	}
 
+	// Only waiting count < idle count will close idle client immediately.
+	if cp.state.Waiting < cp.state.Idle && cp.state.Idle >= cp.config.MaxIdle {
+		cp.state.Connected--
+		cp.lock.Unlock()
+		return client.client.Close()
+	}
+
+	defer cp.lock.Unlock()
 	select {
 	case cp.clients <- client:
 		cp.state.Idle++
+		return nil
 	default:
-		client.client.Close()
+		return client.client.Close()
 	}
 }
 
-// getIdle gets an idle client from pool.
-func (cp *Pool) getIdle() (*poolClient, bool) {
+// tryToGet tries to get an idle client from pool and return false if failed.
+func (cp *Pool) tryToGet() (*poolClient, bool) {
 	select {
 	case client := <-cp.clients:
-		cp.state.Idle--
 		return client, true
 	default:
 		return nil, false
 	}
 }
 
-// getIdleBlocking gets an idle client from pool with blocking mode.
-func (cp *Pool) getIdleBlocking() (*poolClient, bool) {
-	client := <-cp.clients
-	if client == nil {
-		return nil, false
+// waitToGet waits to get an idle client from pool.
+// TODO Add ctx.Done() to select will cause a performance problem...
+func (cp *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
+	select {
+	case client := <-cp.clients:
+		if client == nil {
+			return nil, errClientPoolClosed
+		}
+		return client, nil
 	}
-
-	cp.lock.Lock()
-	cp.state.Idle--
-	cp.lock.Unlock()
-	return client, true
 }
 
 // Get returns a client for use.
-func (cp *Pool) Get() (vex.Client, error) {
+func (cp *Pool) Get(ctx context.Context) (vex.Client, error) {
 	cp.lock.Lock()
 	if cp.closed {
 		cp.lock.Unlock()
 		return nil, errClientPoolClosed
 	}
 
-	// Try to get an idle client.
-	client, ok := cp.getIdle()
+	client, ok := cp.tryToGet()
 	if ok {
+		cp.state.Idle--
+		cp.lock.Unlock()
+		if client == nil {
+			return nil, errClientPoolClosed
+		}
+		return client, nil
+	}
+
+	if cp.state.Connected < cp.config.MaxConnected {
+		cp.state.Connected++
+		cp.lock.Unlock()
+
+		// Increase the connected and unlock before new client may cause the pool becomes full in advance.
+		// So we should decrease the connected if new client failed.
+		client, err := cp.newClient()
+		if err != nil {
+			cp.lock.Lock()
+			cp.state.Connected--
+			cp.lock.Unlock()
+			return nil, err
+		}
+
+		return client, nil
+	}
+
+	if cp.config.BlockOnFull {
+		cp.state.Waiting++
+		cp.lock.Unlock()
+
+		client, err := cp.waitToGet(ctx)
+		if err != nil {
+			cp.lock.Lock()
+			cp.state.Waiting--
+			cp.lock.Unlock()
+			return nil, err
+		}
+
+		cp.lock.Lock()
+		cp.state.Idle--
+		cp.state.Waiting--
 		cp.lock.Unlock()
 		return client, nil
 	}
 
-	// Pool isn't full, returns a new client.
-	if cp.state.Connected < cp.config.MaxConnected {
-		defer cp.lock.Unlock()
-		return cp.newClient()
-	}
-
-	// Pool is full:
-	// 1. blocks util pool has an idle client.
-	if cp.config.BlockOnLimit() {
-		cp.lock.Unlock()
-
-		client, ok = cp.getIdleBlocking()
-		if ok {
-			return client, nil
-		}
-
-		return nil, errClientClosed
-	}
-
-	// 2. returns an error.
-	if cp.config.FailedOnLimit() {
-		cp.lock.Unlock()
-		return nil, errClientPoolFull
-	}
-
-	// 3. returns a new client.
-	if cp.config.NewOnLimit() {
-		defer cp.lock.Unlock()
-		return cp.newClient()
-	}
-
 	cp.lock.Unlock()
-	return nil, errLimitStrategyUnknown
+	return nil, errClientPoolFull
 }
 
 // State returns all states of client pool.
@@ -174,8 +189,8 @@ func (cp *Pool) Close() error {
 	}
 
 	for i := uint64(0); i < cp.state.Connected; i++ {
-		client, ok := <-cp.clients
-		if !ok {
+		client := <-cp.clients
+		if client == nil {
 			continue
 		}
 
@@ -184,7 +199,7 @@ func (cp *Pool) Close() error {
 		}
 	}
 
-	cp.closed = true
 	close(cp.clients)
+	cp.closed = true
 	return nil
 }

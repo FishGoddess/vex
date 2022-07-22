@@ -29,36 +29,33 @@ func runTestServer(t *testing.T, address string, str string) {
 		t.Error(err)
 	}
 
-	magic := int32(endian.Uint32(buffer[:magicSize]))
+	if n < headerSize {
+		t.Errorf("n %d < headerSize %d", n, headerSize)
+	}
+
+	header := endian.Uint64(buffer[:headerSize])
+	magic := (header >> (typeBits + bodySizeBits)) & maxMagic
 	if magic != magicNumber {
 		t.Errorf("magic %d != magicNumber %d", magic, magicNumber)
 	}
 
-	version := buffer[magicSize]
-	if version != protocolVersion {
-		t.Errorf("version %d != protocolVersion %d", version, protocolVersion)
-	}
-
-	packetType := buffer[magicSize+versionSize]
+	packetType := byte((header >> bodySizeBits) & maxType)
+	bodySize := int32(header & maxBodySize)
 	if packetType != packetTypeTest {
 		t.Errorf("packetType %d != packetTypeTest %d", packetType, packetTypeTest)
 	}
 
-	bodySize := endian.Uint32(buffer[magicSize+versionSize+typeSize : headerSize])
 	requestBody := buffer[headerSize : headerSize+bodySize]
 	if string(requestBody) != str {
 		t.Errorf("requestBody %v is wrong!", string(requestBody))
 	}
 
 	responseBody := []byte(str)
-	bodySize = uint32(len(responseBody))
-	header := make([]byte, headerSize)
-	endian.PutUint32(header[:magicSize], magicNumber)
-	header[magicSize] = protocolVersion
-	header[magicSize+versionSize] = packetTypeOK
-	endian.PutUint32(header[magicSize+versionSize+typeSize:headerSize], bodySize)
+	var headerBytes [headerSize]byte
+	header = magicNumber<<(typeBits+bodySizeBits) | uint64(packetTypeOK)<<bodySizeBits | uint64(len(responseBody))
+	endian.PutUint64(headerBytes[:], header)
 
-	n, err = conn.Write(header)
+	n, err = conn.Write(headerBytes[:])
 	if err != nil {
 		t.Error(err)
 	}

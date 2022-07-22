@@ -9,10 +9,17 @@ import "time"
 // Option applies functions to config.
 type Option func(c *config)
 
-// WithConnTimeout sets timeout to config.
+// WithConnTimeout sets connection timeout to config.
 func WithConnTimeout(timeout time.Duration) Option {
 	return func(c *config) {
 		c.ConnTimeout = timeout
+	}
+}
+
+// WithCloseTimeout sets close timeout to config.
+func WithCloseTimeout(timeout time.Duration) Option {
+	return func(c *config) {
+		c.CloseTimeout = timeout
 	}
 }
 

@@ -5,6 +5,7 @@
 package pool
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -74,7 +75,9 @@ func (cp *Pool) put(client *poolClient) error {
 		return client.client.Close()
 	}
 
-	if cp.state.Idle >= cp.config.MaxIdle {
+	// Only waiting count < idle count will close idle client immediately.
+	if cp.state.Waiting < cp.state.Idle && cp.state.Idle >= cp.config.MaxIdle {
+		cp.state.Connected--
 		cp.lock.Unlock()
 		return client.client.Close()
 	}
@@ -100,16 +103,19 @@ func (cp *Pool) tryToGet() (*poolClient, bool) {
 }
 
 // waitToGet waits to get an idle client from pool.
-func (cp *Pool) waitToGet() (*poolClient, bool) {
-	client := <-cp.clients
-	if client == nil {
-		return nil, false
+// TODO Add ctx.Done() to select will cause a performance problem...
+func (cp *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
+	select {
+	case client := <-cp.clients:
+		if client == nil {
+			return nil, errClientPoolClosed
+		}
+		return client, nil
 	}
-	return client, true
 }
 
 // Get returns a client for use.
-func (cp *Pool) Get() (vex.Client, error) {
+func (cp *Pool) Get(ctx context.Context) (vex.Client, error) {
 	cp.lock.Lock()
 	if cp.closed {
 		cp.lock.Unlock()
@@ -120,6 +126,9 @@ func (cp *Pool) Get() (vex.Client, error) {
 	if ok {
 		cp.state.Idle--
 		cp.lock.Unlock()
+		if client == nil {
+			return nil, errClientPoolClosed
+		}
 		return client, nil
 	}
 
@@ -144,16 +153,19 @@ func (cp *Pool) Get() (vex.Client, error) {
 		cp.state.Waiting++
 		cp.lock.Unlock()
 
-		client, ok := cp.waitToGet()
-		if ok {
+		client, err := cp.waitToGet(ctx)
+		if err != nil {
 			cp.lock.Lock()
-			cp.state.Idle--
 			cp.state.Waiting--
 			cp.lock.Unlock()
-			return client, nil
+			return nil, err
 		}
 
-		return nil, errClientPoolClosed
+		cp.lock.Lock()
+		cp.state.Idle--
+		cp.state.Waiting--
+		cp.lock.Unlock()
+		return client, nil
 	}
 
 	cp.lock.Unlock()

@@ -65,7 +65,11 @@ func readPacketHeader(reader io.Reader) (PacketType, int32, error) {
 func readPacketBody(reader io.Reader, bodySize int32) ([]byte, error) {
 	body := makeBytes(bodySize) // May exceed if body size is too big.
 
-	n, err := reader.Read(body)
+	n, err := io.ReadFull(reader, body)
+	if err == io.ErrUnexpectedEOF {
+		return nil, errReadSizeMismatch
+	}
+
 	if err != nil {
 		return nil, err
 	}

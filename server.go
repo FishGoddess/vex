@@ -20,6 +20,7 @@ import (
 
 var (
 	errPacketHandlerNotFound = errors.New("vex: packet handler not found")
+	errCloseTimeout          = errors.New("vex: close server timeout")
 )
 
 // PacketHandler is a handler for handling packets.
@@ -32,7 +33,6 @@ type Server struct {
 	listener     net.Listener
 	handlers     map[PacketType]PacketHandler
 	eventHandler EventHandler
-	wg           sync.WaitGroup
 	lock         sync.RWMutex
 }
 
@@ -152,6 +152,7 @@ func (s *Server) serve() error {
 	s.publishEvent(ctx, eventServing)
 	defer s.publishEvent(ctx, eventShutdown)
 
+	var wg sync.WaitGroup
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
@@ -166,15 +167,29 @@ func (s *Server) serve() error {
 			continue
 		}
 
-		s.wg.Add(1)
+		wg.Add(1)
 		go func() {
-			defer s.wg.Done()
+			defer wg.Done()
 			s.handleConn(conn)
 		}()
 	}
 
-	s.wg.Wait()
-	return nil
+	// Set a timer, so we won't wait too long.
+	waitCh := make(chan struct{})
+	go func() {
+		wg.Wait()
+		waitCh <- struct{}{}
+	}()
+
+	timer := time.NewTimer(s.config.CloseTimeout)
+	defer timer.Stop()
+
+	select {
+	case <-waitCh:
+		return nil
+	case <-timer.C:
+		return errCloseTimeout
+	}
 }
 
 // ListenAndServe listens on address in network and begins serving.

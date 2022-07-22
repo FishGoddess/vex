@@ -12,6 +12,10 @@ type config struct {
 	// See net.Conn's SetDeadline.
 	ConnTimeout time.Duration
 
+	// CloseTimeout is the timeout of a closing operation.
+	// Close may take a long time to wait all connections to be closed, so a timeout is necessary.
+	CloseTimeout time.Duration
+
 	// ReadBufferSize is the buffer size using in reading.
 	// This value can be smaller if your reading data are often smaller.
 	// This value can be bigger if your reading data are often bigger.
@@ -35,8 +39,9 @@ type config struct {
 func newDefaultConfig() *config {
 	return &config{
 		ConnTimeout:     8 * time.Hour,
-		ReadBufferSize:  4 * 1024 * 1024, // 4 MB
-		WriteBufferSize: 4 * 1024 * 1024, // 4 MB
+		CloseTimeout:    time.Minute,
+		ReadBufferSize:  4 * 1024 * 1024, // 4 MB.
+		WriteBufferSize: 4 * 1024 * 1024, // 4 MB.
 		MaxConnected:    4096,
 		EventHandler:    NewDefaultEventHandler(""),
 	}

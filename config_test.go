@@ -16,6 +16,10 @@ func TestNewDefaultConfig(t *testing.T) {
 		t.Errorf("config.ConnTimeout %d != 8*time.Hour", config.ConnTimeout)
 	}
 
+	if config.CloseTimeout != time.Minute {
+		t.Errorf("config.CloseTimeout %d != time.Minute", config.CloseTimeout)
+	}
+
 	if config.ReadBufferSize != 4*1024*1024 {
 		t.Errorf("config.ReadBufferSize %d != 4*1024*1024", config.ReadBufferSize)
 	}
@@ -34,6 +38,7 @@ func TestConfigApplyOptions(t *testing.T) {
 	config := newDefaultConfig()
 	config.ApplyOptions([]Option{
 		WithConnTimeout(time.Hour),
+		WithCloseTimeout(time.Second),
 		WithReadBufferSize(64),
 		WithWriteBufferSize(512),
 		WithMaxConnected(128),
@@ -41,6 +46,10 @@ func TestConfigApplyOptions(t *testing.T) {
 
 	if config.ConnTimeout != time.Hour {
 		t.Errorf("config.ConnTimeout %d != time.Hour", config.ConnTimeout)
+	}
+
+	if config.CloseTimeout != time.Second {
+		t.Errorf("config.CloseTimeout %d != time.Second", config.CloseTimeout)
 	}
 
 	if config.ReadBufferSize != 64 {

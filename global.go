@@ -30,6 +30,6 @@ func dial(network string, address string) (net.Conn, error) {
 }
 
 // makeBytes makes a new byte slice.
-func makeBytes(initial int32) []byte {
-	return make([]byte, initial)
+func makeBytes(length int32) []byte {
+	return make([]byte, length, length)
 }

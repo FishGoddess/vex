@@ -18,6 +18,15 @@ func TestWithConnTimeout(t *testing.T) {
 	}
 }
 
+// go test -v -cover -run=^TestWithCloseTimeout$
+func TestWithCloseTimeout(t *testing.T) {
+	c := &config{ConnTimeout: 0}
+	WithCloseTimeout(time.Hour)(c)
+	if c.CloseTimeout != time.Hour {
+		t.Errorf("c.CloseTimeout %d != time.Hour", c.CloseTimeout)
+	}
+}
+
 // go test -v -cover -run=^TestWithBufferSize$
 func TestWithBufferSize(t *testing.T) {
 	c := &config{ReadBufferSize: 0, WriteBufferSize: 0}

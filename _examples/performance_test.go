@@ -47,7 +47,7 @@ func newClientPool(maxConnected uint64) *pool.Pool {
 }
 
 func newServer() *vex.Server {
-	server := vex.NewServer()
+	server := vex.NewServer(vex.WithCloseTimeout(3 * time.Second))
 	server.RegisterPacketHandler(benchmarkPacketType, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		return requestBody, nil
 	})
@@ -136,7 +136,7 @@ func TestRPSWithPool(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			client, err := clientPool.Get()
+			client, err := clientPool.Get(context.Background())
 			if err != nil {
 				t.Error(err)
 				return

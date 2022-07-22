@@ -35,7 +35,7 @@ func TestNewPool(t *testing.T) {
 	defer pool.Close()
 
 	for i := 0; i < 512; i++ {
-		client, err := pool.Get()
+		client, err := pool.Get(context.Background())
 		if err != nil {
 			t.Fatalf("get client failed with %+v", err)
 		}

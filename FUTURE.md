@@ -11,7 +11,7 @@
 * [x] 增加连接池 wait get 的请求数量
 * [x] 修复性能压测超过 32KB 就出问题的 bug（io.Reader 的 Read 方法不保证读取满 slice 长度，要使用 io.ReadFull 才行）
 * [x] 增加关闭服务器超时机制，防止连接过多导致关闭阻塞卡死
-* [ ] 完善连接池的实现，加入 context 超时（发现在 select 中增加一个 case 会导致性能急剧下降。。。原因不明）
+* [ ] 完善连接池的实现，加入 context 超时（发现在 select 中增加一个 case 会导致性能急剧下降。。。原因是 runtime.selectgo 方法）
 * [ ] 给 Server 加入令牌桶模式的连接数控制，完善拒绝策略
 
 ### v0.2.x

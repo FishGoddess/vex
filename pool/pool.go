@@ -115,8 +115,8 @@ func (p *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
 			return nil, errClientPoolClosed
 		}
 		return client, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
+		//case <-ctx.Done():
+		//	return nil, ctx.Err()
 	}
 }
 

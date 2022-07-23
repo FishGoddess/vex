@@ -39,8 +39,8 @@ In human:
 
 ```
 Packet:
-magic    version    body_size    {body}
-3byte     1byte       4byte      unknown
+magic     type    body_size    {body}
+3byte     1byte     4byte      unknown
 ```
 
 ### ✒ Example

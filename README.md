@@ -39,8 +39,8 @@ BODYSIZE = 4OCTET ; 数据包体大小，4 个字节表示，最大是 4GB
 
 ```
 数据包：
-magic    version    body_size    {body}
-3byte     1byte       4byte      unknown
+magic     type    body_size    {body}
+3byte     1byte     4byte      unknown
 ```
 
 ### ✒ 使用案例

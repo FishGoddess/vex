@@ -89,7 +89,7 @@ import (
 )
 
 func main() {
-	server := vex.NewServer()
+	server := vex.NewServer("tcp", "127.0.0.1:5837")
 	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		addr, ok := vex.RemoteAddr(ctx)
 		if !ok {
@@ -100,7 +100,7 @@ func main() {
 		return []byte("server test"), nil
 	})
 
-	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
@@ -118,13 +118,13 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        122085             10396 ns/op            2080 B/op          6 allocs/op
+BenchmarkServer-16        136586              9063 ns/op            2080 B/op          6 allocs/op
 ```
 
 > 数据包大小为 1KB。
 
 _测试环境：R7-5800X@3.8GHZ CPU，32GB RAM，manjaro linux。_
 
-_单连接：10w 个请求的执行耗时为 913.46ms，结果为 **109474 rps**。_
+_单连接：10w 个请求的执行耗时为 1.5s，结果为 **66876 rps**。_
 
-_连接池（16个连接）：10w 个请求的执行耗时为 148.97ms，结果为 **671250 rps**。_
+_16个连接：10w 个请求的执行耗时为 359.9ms，结果为 **277859 rps**。_

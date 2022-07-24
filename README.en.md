@@ -89,7 +89,7 @@ import (
 )
 
 func main() {
-	server := vex.NewServer()
+	server := vex.NewServer("tcp", "127.0.0.1:5837")
 	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		addr, ok := vex.RemoteAddr(ctx)
 		if !ok {
@@ -100,7 +100,7 @@ func main() {
 		return []byte("server test"), nil
 	})
 
-	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
@@ -118,13 +118,13 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        122085             10396 ns/op            2080 B/op          6 allocs/op
+BenchmarkServer-16        136586              9063 ns/op            2080 B/op          6 allocs/op
 ```
 
 > Packet size is 1KB.
 
 _Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, manjaro linux._
 
-_Single connection: 10w requests spent 913.46ms, result is **109474 rps**._
+_Single connection: 10w requests spent 1.5s, result is **66876 rps**._
 
-_Pool (16connections): 10w requests spent 148.97ms, result is **671250 rps**._
+_Pool (16connections): 10w requests spent 359.9ms, result is **277859 rps**._

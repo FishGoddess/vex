@@ -1,5 +1,11 @@
 ## ✒ 历史版本的特性介绍 (Features in old versions)
 
+### v0.3.1-alpha
+
+> 此版本发布于 2022-07-24
+
+* 完善连接池的实现，加入 context 超时（发现在 select 中增加一个 case 会导致性能急剧下降。。。原因是 runtime.selectgo 方法）
+
 ### v0.3.0-alpha
 
 > 此版本发布于 2022-07-23

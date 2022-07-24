@@ -36,13 +36,13 @@ func newTestClient(address string) vex.Client {
 }
 
 func newTestServer(address string) *vex.Server {
-	server := vex.NewServer(vex.WithCloseTimeout(3 * time.Second))
+	server := vex.NewServer("tcp", address, vex.WithCloseTimeout(3*time.Second), vex.WithEventHandler(nil))
 	server.RegisterPacketHandler(benchmarkPacketType, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		return requestBody, nil
 	})
 
 	go func() {
-		err := server.ListenAndServe("tcp", address)
+		err := server.ListenAndServe()
 		if err != nil {
 			panic(err)
 		}
@@ -76,8 +76,8 @@ func calculateRPS(loop int, taken time.Duration) float64 {
 	return math.Round(float64(loop) * float64(time.Second) / float64(taken))
 }
 
-// go test ./_examples/performance_test.go -v -run=^TestRPS$
-func TestRPS(t *testing.T) {
+// go test ./_examples/performance_test.go -v -run=^TestServerRPS$
+func TestServerRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:5837", "127.0.0.1:6837", "127.0.0.1:7837", "127.0.0.1:8837"}
 	addresses := []string{"127.0.0.1:5837"}
 
@@ -96,11 +96,11 @@ func TestRPS(t *testing.T) {
 	newClient := func() (vex.Client, error) {
 		i := atomic.LoadUint64(&index)
 		atomic.AddUint64(&index, 1)
-		return vex.NewClient("tcp", addresses[int(i)%len(servers)])
+		return vex.NewClient("tcp", addresses[int(i)%len(addresses)])
 	}
 
-	maxConnected := uint64(16)
-	clientPool := pool.NewPool(newClient, pool.WithMaxConnected(maxConnected), pool.WithMaxIdle(maxConnected))
+	poolSize := uint64(16)
+	clientPool := pool.NewPool(newClient, pool.WithMaxConnected(poolSize), pool.WithMaxIdle(poolSize))
 	defer clientPool.Close()
 
 	//go func() {
@@ -136,6 +136,6 @@ func TestRPS(t *testing.T) {
 
 	wg.Wait()
 	taken := time.Since(beginTime)
-	t.Logf("Taken time is %s, rps is %.0f!\n", taken.String(), calculateRPS(loop, taken))
+	t.Logf("PoolSize is %d, took %s, rps is %.0f!\n", poolSize, taken.String(), calculateRPS(loop, taken))
 	t.Logf("%+v\n", clientPool.State())
 }

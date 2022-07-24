@@ -29,7 +29,7 @@ func main() {
 	//server = vex.NewServer(vex.WithEventHandler(vex.NewDefaultEventHandler("mine")))
 
 	// Also, you can customize your own event handler by implementing interface EventHandler.
-	server = vex.NewServer(vex.WithEventHandler(&demoEventHandler{}))
+	server = vex.NewServer("tcp", "127.0.0.1:5837", vex.WithEventHandler(&demoEventHandler{}))
 
 	// Listen and serve!
 	// Try to connect this server and switch the event handler to see what happens.
@@ -37,7 +37,7 @@ func main() {
 		return requestBody, nil
 	})
 
-	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}

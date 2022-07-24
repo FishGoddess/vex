@@ -15,14 +15,14 @@ import (
 
 // go test -v -cover -run=^TestNewPool$
 func TestNewPool(t *testing.T) {
-	server := vex.NewServer()
+	server := vex.NewServer("tcp", "127.0.0.1:5837")
 	server.RegisterPacketHandler(1, func(ctx context.Context, req []byte) (rsp []byte, err error) {
 		return []byte("test"), nil
 	})
 	defer server.Close()
 
 	go func() {
-		err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+		err := server.ListenAndServe()
 		if err != nil {
 			panic(err)
 		}

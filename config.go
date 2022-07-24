@@ -8,6 +8,9 @@ import "time"
 
 // config stores all configuration of client and server.
 type config struct {
+	network string
+	address string
+
 	// ConnTimeout is the timeout of a connection and any call will return an error if one connection has timeout.
 	// See net.Conn's SetDeadline.
 	ConnTimeout time.Duration
@@ -36,8 +39,10 @@ type config struct {
 }
 
 // newDefaultConfig returns a default config.
-func newDefaultConfig() *config {
+func newDefaultConfig(network string, address string) *config {
 	return &config{
+		network:         network,
+		address:         address,
 		ConnTimeout:     8 * time.Hour,
 		CloseTimeout:    time.Minute,
 		ReadBufferSize:  4 * 1024 * 1024, // 4 MB.

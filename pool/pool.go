@@ -103,11 +103,13 @@ func (p *Pool) tryToGet() (*poolClient, bool) {
 }
 
 // waitToGet waits to get an idle client from pool.
-// TODO Add ctx.Done() to select will cause a performance problem...
-// The select won't call runtime.selectgo if only one case in it, and runtime.selectgo has 2 methods which will cause a performance problem:
+// Record: Add ctx.Done() to select will cause a performance problem...
+// The select will call runtime.selectgo if there are more than one case in it, and runtime.selectgo has two steps which is slow:
+//
 //     sellock(scases, lockorder)
 //     sg := acquireSudog()
-// So we don't know what to do yet, but we think timeout mechanism won't be supported util we solved it.
+//
+// We don't know what to do yet, but we think timeout mechanism should be supported even we haven't solved it.
 func (p *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
 	select {
 	case client := <-p.clients:
@@ -115,8 +117,8 @@ func (p *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
 			return nil, errClientPoolClosed
 		}
 		return client, nil
-		//case <-ctx.Done():
-		//	return nil, ctx.Err()
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 

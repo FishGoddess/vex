@@ -13,10 +13,14 @@ import (
 	"github.com/FishGoddess/vex/pool"
 )
 
+func newClient() (vex.Client, error) {
+	// In production, we often start several servers to keep high availability, and these servers may have different ips and ports.
+	// You can choose one from all servers to return with your balancing strategy.
+	return vex.NewClient("tcp", "127.0.0.1:5837")
+}
+
 func main() {
-	clientPool := pool.NewPool(func() (vex.Client, error) {
-		return vex.NewClient("tcp", "127.0.0.1:5837")
-	}, pool.WithMaxConnected(64), pool.WithMaxIdle(16))
+	clientPool := pool.NewPool(newClient, pool.WithMaxConnected(64), pool.WithMaxIdle(16))
 
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {

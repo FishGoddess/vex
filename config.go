@@ -11,6 +11,9 @@ type config struct {
 	network string
 	address string
 
+	// Name is a flag of client or server.
+	Name string
+
 	// ConnTimeout is the timeout of a connection and any call will return an error if one connection has timeout.
 	// See net.Conn's SetDeadline.
 	ConnTimeout time.Duration
@@ -34,8 +37,8 @@ type config struct {
 	// MaxConnected is the max-opened count of connections.
 	MaxConnected uint64
 
-	// EventHandler is a handler for handling events.
-	EventHandler EventHandler
+	// EventListener is the listener of events from client or server.
+	EventListener EventListener
 }
 
 // newDefaultConfig returns a default config.
@@ -43,12 +46,13 @@ func newDefaultConfig(network string, address string) *config {
 	return &config{
 		network:         network,
 		address:         address,
+		Name:            network + "/" + address,
 		ConnTimeout:     8 * time.Hour,
 		CloseTimeout:    time.Minute,
 		ReadBufferSize:  4 * 1024 * 1024, // 4 MB.
 		WriteBufferSize: 4 * 1024 * 1024, // 4 MB.
 		MaxConnected:    4096,
-		EventHandler:    NewDefaultEventHandler(""),
+		EventListener:   NewLogEventListener(),
 	}
 }
 

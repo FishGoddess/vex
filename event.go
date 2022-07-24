@@ -4,97 +4,103 @@
 
 package vex
 
-import "context"
-
-const (
-	eventServing      Event = 1
-	eventShutdown     Event = 2
-	eventConnected    Event = 3
-	eventDisconnected Event = 4
+import (
+	"net"
 )
 
-// Event is the type of server actions.
-type Event int8
-
-// Serving returns if event is server serving.
-func (e Event) Serving() bool {
-	return e == eventServing
+// ServerStartEvent is event representing start of a server.
+type ServerStartEvent struct {
+	// Server is the server starting.
+	Server *Server
 }
 
-// Shutdown returns if event is server shutdown.
-func (e Event) Shutdown() bool {
-	return e == eventShutdown
+// ServerShutdownEvent is event representing shutdown of a server.
+type ServerShutdownEvent struct {
+	// Server is the server shutting down.
+	Server *Server
 }
 
-// Connected returns if event is client connected.
-func (e Event) Connected() bool {
-	return e == eventConnected
+// ServerGotConnectedEvent is event representing a new connection to a server.
+type ServerGotConnectedEvent struct {
+	// Server is the server got connected.
+	Server *Server
+
+	// LocalAddr is the local address of the new connection.
+	LocalAddr net.Addr
+
+	// RemoteAddr is the remote address of the new connection.
+	RemoteAddr net.Addr
 }
 
-// Disconnected returns if event is client disconnected.
-func (e Event) Disconnected() bool {
-	return e == eventDisconnected
+// ServerGotDisconnectedEvent is event representing a connection disconnected from a server.
+type ServerGotDisconnectedEvent struct {
+	// Server is the server got disconnected.
+	Server *Server
+
+	// LocalAddr is the local address of the disconnected connection.
+	LocalAddr net.Addr
+
+	// RemoteAddr is the remote address of the disconnected connection.
+	RemoteAddr net.Addr
 }
 
-// EventHandler is the handler of event.
-type EventHandler interface {
-	// HandleEvent handles events.
-	HandleEvent(ctx context.Context, e Event)
+// EventListener is the listener for events.
+type EventListener struct {
+	// OnServerStart will be called when receives ServerStartEvents.
+	OnServerStart func(event ServerStartEvent)
+
+	// OnServerShutdown will be called when receives ServerShutdownEvents.
+	OnServerShutdown func(event ServerShutdownEvent)
+
+	// OnServerGotConnected will be called when receives ServerGotConnectedEvents.
+	OnServerGotConnected func(event ServerGotConnectedEvent)
+
+	// OnServerGotDisconnected will be called when receives ServerGotDisconnectedEvents.
+	OnServerGotDisconnected func(event ServerGotDisconnectedEvent)
 }
 
-// DefaultEventHandler is the default event handler.
-type DefaultEventHandler struct {
-	name string
-}
-
-// NewDefaultEventHandler returns a new default event handler with given name.
-func NewDefaultEventHandler(name string) *DefaultEventHandler {
-	return &DefaultEventHandler{
-		name: name,
+// NewLogEventListener returns an event listener which will log all events received.
+func NewLogEventListener() EventListener {
+	return EventListener{
+		OnServerStart: func(event ServerStartEvent) {
+			log("vex: server %s is starting...", event.Server.Name())
+		},
+		OnServerShutdown: func(event ServerShutdownEvent) {
+			log("vex: server %s is shutdown...", event.Server.Name())
+		},
+		OnServerGotConnected: func(event ServerGotConnectedEvent) {
+			log("vex: %s connected to server %s...", event.RemoteAddr.String(), event.Server.Name())
+		},
+		OnServerGotDisconnected: func(event ServerGotDisconnectedEvent) {
+			log("vex: %s disconnected from server %s...", event.RemoteAddr.String(), event.Server.Name())
+		},
 	}
 }
 
-// HandleEvent handles events.
-func (deh *DefaultEventHandler) HandleEvent(ctx context.Context, e Event) {
-	if e.Serving() {
-		if deh.name == "" {
-			log("vex: server is serving...")
-		} else {
-			log("vex: server %s is serving...", deh.name)
-		}
+// CallOnServerStart calls OnServerStart safely.
+func (el *EventListener) CallOnServerStart(event ServerStartEvent) {
+	if el.OnServerStart != nil {
+		el.OnServerStart(event)
 	}
+}
 
-	if e.Shutdown() {
-		if deh.name == "" {
-			log("vex: server is shutdown...")
-		} else {
-			log("vex: server %s is shutdown...", deh.name)
-		}
+// CallOnServerShutdown calls OnServerShutdown safely.
+func (el *EventListener) CallOnServerShutdown(event ServerShutdownEvent) {
+	if el.OnServerShutdown != nil {
+		el.OnServerShutdown(event)
 	}
+}
 
-	if e.Connected() {
-		addr, ok := RemoteAddr(ctx)
-		if !ok {
-			return
-		}
-
-		if deh.name == "" {
-			log("vex: %s connected to server...", addr.String())
-		} else {
-			log("vex: %s connected to server %s...", addr.String(), deh.name)
-		}
+// CallOnServerGotConnected calls OnServerGotConnected safely.
+func (el *EventListener) CallOnServerGotConnected(event ServerGotConnectedEvent) {
+	if el.OnServerGotConnected != nil {
+		el.OnServerGotConnected(event)
 	}
+}
 
-	if e.Disconnected() {
-		addr, ok := RemoteAddr(ctx)
-		if !ok {
-			return
-		}
-
-		if deh.name == "" {
-			log("vex: %s disconnected from server...", addr.String())
-		} else {
-			log("vex: %s disconnected from server %s...", addr.String(), deh.name)
-		}
+// CallOnServerGotDisconnected calls OnServerGotDisconnected safely.
+func (el *EventListener) CallOnServerGotDisconnected(event ServerGotDisconnectedEvent) {
+	if el.OnServerGotDisconnected != nil {
+		el.OnServerGotDisconnected(event)
 	}
 }

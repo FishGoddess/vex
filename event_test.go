@@ -6,30 +6,31 @@ package vex
 
 import "testing"
 
-// go test -v -cover -run=^TestEvent$
-func TestEvent(t *testing.T) {
-	if !eventServing.Serving() {
-		t.Error("eventServing.Serving() returns false")
+// go test -v -cover -run=^TestNewLogEventListener$
+func TestNewLogEventListener(t *testing.T) {
+	listener := NewLogEventListener()
+	if listener.OnServerStart == nil {
+		t.Error("listener.OnServerStart == nil")
 	}
 
-	if !eventShutdown.Shutdown() {
-		t.Error("eventShutdown.Shutdown() returns false")
+	if listener.OnServerShutdown == nil {
+		t.Error("listener.OnServerShutdown == nil")
 	}
 
-	if !eventConnected.Connected() {
-		t.Error("eventConnected.Connected() returns false")
+	if listener.OnServerGotConnected == nil {
+		t.Error("listener.OnServerGotConnected == nil")
 	}
 
-	if !eventDisconnected.Disconnected() {
-		t.Error("eventDisconnected.Disconnected() returns false")
+	if listener.OnServerGotDisconnected == nil {
+		t.Error("listener.OnServerGotDisconnected == nil")
 	}
 }
 
-// go test -v -cover -run=^TestNewDefaultEventHandler$
-func TestNewDefaultEventHandler(t *testing.T) {
-	name := "xxx"
-	handler := NewDefaultEventHandler(name)
-	if handler.name != name {
-		t.Errorf("handler.name %s != name %s", handler.name, name)
-	}
+// go test -v -cover -run=^TestLogEventListener$
+func TestLogEventListener(t *testing.T) {
+	listener := EventListener{}
+	listener.CallOnServerStart(ServerStartEvent{})
+	listener.CallOnServerShutdown(ServerShutdownEvent{})
+	listener.CallOnServerGotConnected(ServerGotConnectedEvent{})
+	listener.CallOnServerGotDisconnected(ServerGotDisconnectedEvent{})
 }

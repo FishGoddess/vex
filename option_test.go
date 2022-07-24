@@ -9,6 +9,17 @@ import (
 	"time"
 )
 
+// go test -v -cover -run=^TestWithName$
+func TestWithName(t *testing.T) {
+	name := "test-name"
+
+	c := &config{ConnTimeout: 0}
+	WithName(name)(c)
+	if c.Name != name {
+		t.Errorf("c.Name %s != name %s", c.Name, name)
+	}
+}
+
 // go test -v -cover -run=^TestWithConnTimeout$
 func TestWithConnTimeout(t *testing.T) {
 	c := &config{ConnTimeout: 0}
@@ -53,10 +64,22 @@ func TestWithMaxConnected(t *testing.T) {
 
 // go test -v -cover -run=^TestWithEventHandler$
 func TestWithEventHandler(t *testing.T) {
-	c := &config{EventHandler: nil}
-	handler := NewDefaultEventHandler("")
-	WithEventHandler(handler)(c)
-	if c.EventHandler != handler {
-		t.Errorf("c.EventHandler %p != %p", c.EventHandler, handler)
+	c := &config{EventListener: EventListener{}}
+	handler := NewLogEventListener()
+	WithEventListener(handler)(c)
+	if c.EventListener.OnServerStart == nil {
+		t.Error("c.EventListener.OnServerStart == nil")
+	}
+
+	if c.EventListener.OnServerShutdown == nil {
+		t.Error("c.EventListener.OnServerShutdown == nil")
+	}
+
+	if c.EventListener.OnServerGotConnected == nil {
+		t.Error("c.EventListener.OnServerGotConnected == nil")
+	}
+
+	if c.EventListener.OnServerGotDisconnected == nil {
+		t.Error("c.EventListener.OnServerGotDisconnected == nil")
 	}
 }

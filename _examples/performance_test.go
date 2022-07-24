@@ -36,7 +36,7 @@ func newTestClient(address string) vex.Client {
 }
 
 func newTestServer(address string) *vex.Server {
-	server := vex.NewServer("tcp", address, vex.WithCloseTimeout(3*time.Second), vex.WithEventHandler(nil))
+	server := vex.NewServer("tcp", address, vex.WithCloseTimeout(3*time.Second), vex.WithEventListener(vex.EventListener{}))
 	server.RegisterPacketHandler(benchmarkPacketType, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		return requestBody, nil
 	})

@@ -16,6 +16,10 @@ func TestNewDefaultConfig(t *testing.T) {
 		t.Errorf("config.network %s != 'tcp' || config.address %s != '127.0.0.1:5837'", config.network, config.address)
 	}
 
+	if config.Name != config.network+"/"+config.address {
+		t.Errorf("config.Name %s != config.network %s + '/' + config.address %s", config.Name, config.network, config.address)
+	}
+
 	if config.ConnTimeout != 8*time.Hour {
 		t.Errorf("config.ConnTimeout %d != 8*time.Hour", config.ConnTimeout)
 	}
@@ -41,12 +45,17 @@ func TestNewDefaultConfig(t *testing.T) {
 func TestConfigApplyOptions(t *testing.T) {
 	config := newDefaultConfig("tcp", "127.0.0.1:5837")
 	config.ApplyOptions([]Option{
+		WithName("test-name"),
 		WithConnTimeout(time.Hour),
 		WithCloseTimeout(time.Second),
 		WithReadBufferSize(64),
 		WithWriteBufferSize(512),
 		WithMaxConnected(128),
 	})
+
+	if config.Name != "test-name" {
+		t.Errorf("config.Name %s != 'test-name'", config.Name)
+	}
 
 	if config.network != "tcp" || config.address != "127.0.0.1:5837" {
 		t.Errorf("config.network %s != 'tcp' || config.address %s != '127.0.0.1:5837'", config.network, config.address)

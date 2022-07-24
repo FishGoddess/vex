@@ -83,7 +83,7 @@ func runTestClient(t *testing.T, address string) {
 func TestNewServer(t *testing.T) {
 	address := "127.0.0.1:5837"
 
-	server := NewServer()
+	server := NewServer("tcp", address)
 	server.RegisterPacketHandler(packetTypeTest, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		if len(requestBody) <= 0 {
 			return nil, errTestRequestFailed
@@ -95,7 +95,7 @@ func TestNewServer(t *testing.T) {
 	defer server.Close()
 
 	go func() {
-		err := server.ListenAndServe("tcp", address)
+		err := server.ListenAndServe()
 		if err != nil {
 			t.Error(err)
 		}

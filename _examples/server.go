@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	server := vex.NewServer()
+	server := vex.NewServer("tcp", "127.0.0.1:5837")
 	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		addr, ok := vex.RemoteAddr(ctx)
 		if !ok {
@@ -23,7 +23,7 @@ func main() {
 		return []byte("server test"), nil
 	})
 
-	err := server.ListenAndServe("tcp", "127.0.0.1:5837")
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}

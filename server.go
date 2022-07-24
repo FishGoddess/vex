@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -37,8 +36,8 @@ type Server struct {
 }
 
 // NewServer returns a new vex server.
-func NewServer(opts ...Option) *Server {
-	config := newDefaultConfig().ApplyOptions(opts)
+func NewServer(network string, address string, opts ...Option) *Server {
+	config := newDefaultConfig(network, address).ApplyOptions(opts)
 	return &Server{
 		config:       *config,
 		handlers:     make(map[PacketType]PacketHandler, 16),
@@ -149,6 +148,7 @@ func (s *Server) handleConn(conn net.Conn) {
 // serve runs the accepting task.
 func (s *Server) serve() error {
 	ctx := context.Background()
+
 	s.publishEvent(ctx, eventServing)
 	defer s.publishEvent(ctx, eventShutdown)
 
@@ -157,9 +157,7 @@ func (s *Server) serve() error {
 		conn, err := s.listener.Accept()
 		if err != nil {
 			// This error means listener has been closed.
-			// See src/internal/poll/fd.go@ErrNetClosing.
-			// So ugly...
-			if strings.Contains(err.Error(), "use of closed network connection") {
+			if errors.Is(err, net.ErrClosed) {
 				break
 			}
 
@@ -193,8 +191,8 @@ func (s *Server) serve() error {
 }
 
 // ListenAndServe listens on address in network and begins serving.
-func (s *Server) ListenAndServe(network string, address string) (err error) {
-	s.listener, err = net.Listen(network, address)
+func (s *Server) ListenAndServe() (err error) {
+	s.listener, err = net.Listen(s.config.network, s.config.address)
 	if err != nil {
 		return err
 	}

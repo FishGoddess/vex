@@ -33,7 +33,7 @@ func NewClient(network string, address string, opts ...Option) (Client, error) {
 		return nil, err
 	}
 
-	config := newDefaultConfig().ApplyOptions(opts)
+	config := newDefaultConfig(network, address).ApplyOptions(opts)
 	return &defaultClient{
 		conn:   conn,
 		reader: bufio.NewReaderSize(conn, int(config.ReadBufferSize)),

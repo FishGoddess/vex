@@ -8,6 +8,7 @@ import (
 	"context"
 	"math"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,12 +17,6 @@ import (
 )
 
 const (
-	// address is the address of server.
-	address = "127.0.0.1:5837"
-
-	// loop is the loop of test.
-	loop = 100000
-
 	// benchmarkPacketType is the packet type of benchmark.
 	benchmarkPacketType = 1
 )
@@ -32,7 +27,7 @@ var (
 	benchmarkRequestBody = make([]byte, 1024)
 )
 
-func newClient() vex.Client {
+func newTestClient(address string) vex.Client {
 	client, err := vex.NewClient("tcp", address)
 	if err != nil {
 		panic(err)
@@ -40,20 +35,14 @@ func newClient() vex.Client {
 	return client
 }
 
-func newClientPool(maxConnected uint64) *pool.Pool {
-	return pool.NewPool(func() (vex.Client, error) {
-		return vex.NewClient("tcp", address)
-	}, pool.WithMaxConnected(maxConnected), pool.WithMaxIdle(maxConnected))
-}
-
-func newServer() *vex.Server {
-	server := vex.NewServer(vex.WithCloseTimeout(3 * time.Second))
+func newTestServer(address string) *vex.Server {
+	server := vex.NewServer("tcp", address, vex.WithCloseTimeout(3*time.Second), vex.WithEventHandler(nil))
 	server.RegisterPacketHandler(benchmarkPacketType, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		return requestBody, nil
 	})
 
 	go func() {
-		err := server.ListenAndServe("tcp", address)
+		err := server.ListenAndServe()
 		if err != nil {
 			panic(err)
 		}
@@ -65,10 +54,12 @@ func newServer() *vex.Server {
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkServer$ -benchtime=1s
 func BenchmarkServer(b *testing.B) {
-	server := newServer()
+	address := "127.0.0.1:5837"
+
+	server := newTestServer(address)
 	defer server.Close()
 
-	client := newClient()
+	client := newTestClient(address)
 	defer client.Close()
 
 	b.ReportAllocs()
@@ -85,40 +76,31 @@ func calculateRPS(loop int, taken time.Duration) float64 {
 	return math.Round(float64(loop) * float64(time.Second) / float64(taken))
 }
 
-// go test ./_examples/performance_test.go -v -run=^TestRPS$
-func TestRPS(t *testing.T) {
-	server := newServer()
-	defer server.Close()
+// go test ./_examples/performance_test.go -v -run=^TestServerRPS$
+func TestServerRPS(t *testing.T) {
+	//addresses := []string{"127.0.0.1:5837", "127.0.0.1:6837", "127.0.0.1:7837", "127.0.0.1:8837"}
+	addresses := []string{"127.0.0.1:5837"}
 
-	client := newClient()
-	defer client.Close()
-
-	var wg sync.WaitGroup
-	beginTime := time.Now()
-	for i := 0; i < loop; i++ {
-		wg.Add(1)
-
-		func() {
-			defer wg.Done()
-
-			body, err := client.Send(benchmarkPacketType, benchmarkRequestBody)
-			if err != nil {
-				t.Error(err, body)
-			}
-		}()
+	servers := make([]*vex.Server, 0, len(addresses))
+	for _, address := range addresses {
+		servers = append(servers, newTestServer(address))
 	}
 
-	wg.Wait()
-	taken := time.Since(beginTime)
-	t.Logf("Taken time is %s, rps is %.0f!\n", taken.String(), calculateRPS(loop, taken))
-}
+	defer func() {
+		for _, server := range servers {
+			server.Close()
+		}
+	}()
 
-// go test ./_examples/performance_test.go -v -run=^TestRPSWithPool$
-func TestRPSWithPool(t *testing.T) {
-	server := newServer()
-	defer server.Close()
+	index := uint64(0)
+	newClient := func() (vex.Client, error) {
+		i := atomic.LoadUint64(&index)
+		atomic.AddUint64(&index, 1)
+		return vex.NewClient("tcp", addresses[int(i)%len(addresses)])
+	}
 
-	clientPool := newClientPool(16)
+	poolSize := uint64(16)
+	clientPool := pool.NewPool(newClient, pool.WithMaxConnected(poolSize), pool.WithMaxIdle(poolSize))
 	defer clientPool.Close()
 
 	//go func() {
@@ -129,6 +111,7 @@ func TestRPSWithPool(t *testing.T) {
 	//}()
 
 	var wg sync.WaitGroup
+	loop := 100000
 	beginTime := time.Now()
 	for i := 0; i < loop; i++ {
 		wg.Add(1)
@@ -153,6 +136,6 @@ func TestRPSWithPool(t *testing.T) {
 
 	wg.Wait()
 	taken := time.Since(beginTime)
-	t.Logf("Taken time is %s, rps is %.0f!\n", taken.String(), calculateRPS(loop, taken))
+	t.Logf("PoolSize is %d, took %s, rps is %.0f!\n", poolSize, taken.String(), calculateRPS(loop, taken))
 	t.Logf("%+v\n", clientPool.State())
 }

@@ -59,33 +59,33 @@ func NewPool(dial func() (vex.Client, error), opts ...Option) *Pool {
 }
 
 // newClient returns a new Client.
-func (cp *Pool) newClient() (vex.Client, error) {
-	client, err := cp.dial()
+func (p *Pool) newClient() (vex.Client, error) {
+	client, err := p.dial()
 	if err != nil {
 		return nil, err
 	}
-	return wrapClient(cp, client), nil
+	return wrapClient(p, client), nil
 }
 
 // put adds an idle client to pool.
-func (cp *Pool) put(client *poolClient) error {
-	cp.lock.Lock()
-	if cp.closed {
-		cp.lock.Unlock()
+func (p *Pool) put(client *poolClient) error {
+	p.lock.Lock()
+	if p.closed {
+		p.lock.Unlock()
 		return client.client.Close()
 	}
 
 	// Only waiting count < idle count will close idle client immediately.
-	if cp.state.Waiting < cp.state.Idle && cp.state.Idle >= cp.config.MaxIdle {
-		cp.state.Connected--
-		cp.lock.Unlock()
+	if p.state.Waiting < p.state.Idle && p.state.Idle >= p.config.MaxIdle {
+		p.state.Connected--
+		p.lock.Unlock()
 		return client.client.Close()
 	}
 
-	defer cp.lock.Unlock()
+	defer p.lock.Unlock()
 	select {
-	case cp.clients <- client:
-		cp.state.Idle++
+	case p.clients <- client:
+		p.state.Idle++
 		return nil
 	default:
 		return client.client.Close()
@@ -93,9 +93,9 @@ func (cp *Pool) put(client *poolClient) error {
 }
 
 // tryToGet tries to get an idle client from pool and return false if failed.
-func (cp *Pool) tryToGet() (*poolClient, bool) {
+func (p *Pool) tryToGet() (*poolClient, bool) {
 	select {
-	case client := <-cp.clients:
+	case client := <-p.clients:
 		return client, true
 	default:
 		return nil, false
@@ -103,93 +103,101 @@ func (cp *Pool) tryToGet() (*poolClient, bool) {
 }
 
 // waitToGet waits to get an idle client from pool.
-// TODO Add ctx.Done() to select will cause a performance problem...
-func (cp *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
+// Record: Add ctx.Done() to select will cause a performance problem...
+// The select will call runtime.selectgo if there are more than one case in it, and runtime.selectgo has two steps which is slow:
+//
+//     sellock(scases, lockorder)
+//     sg := acquireSudog()
+//
+// We don't know what to do yet, but we think timeout mechanism should be supported even we haven't solved it.
+func (p *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
 	select {
-	case client := <-cp.clients:
+	case client := <-p.clients:
 		if client == nil {
 			return nil, errClientPoolClosed
 		}
 		return client, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	}
 }
 
 // Get returns a client for use.
-func (cp *Pool) Get(ctx context.Context) (vex.Client, error) {
-	cp.lock.Lock()
-	if cp.closed {
-		cp.lock.Unlock()
+func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
+	p.lock.Lock()
+	if p.closed {
+		p.lock.Unlock()
 		return nil, errClientPoolClosed
 	}
 
-	client, ok := cp.tryToGet()
+	client, ok := p.tryToGet()
 	if ok {
-		cp.state.Idle--
-		cp.lock.Unlock()
+		p.state.Idle--
+		p.lock.Unlock()
 		if client == nil {
 			return nil, errClientPoolClosed
 		}
 		return client, nil
 	}
 
-	if cp.state.Connected < cp.config.MaxConnected {
-		cp.state.Connected++
-		cp.lock.Unlock()
+	if p.state.Connected < p.config.MaxConnected {
+		p.state.Connected++
+		p.lock.Unlock()
 
 		// Increase the connected and unlock before new client may cause the pool becomes full in advance.
 		// So we should decrease the connected if new client failed.
-		client, err := cp.newClient()
+		client, err := p.newClient()
 		if err != nil {
-			cp.lock.Lock()
-			cp.state.Connected--
-			cp.lock.Unlock()
+			p.lock.Lock()
+			p.state.Connected--
+			p.lock.Unlock()
 			return nil, err
 		}
 
 		return client, nil
 	}
 
-	if cp.config.BlockOnFull {
-		cp.state.Waiting++
-		cp.lock.Unlock()
+	if p.config.BlockOnFull {
+		p.state.Waiting++
+		p.lock.Unlock()
 
-		client, err := cp.waitToGet(ctx)
+		client, err := p.waitToGet(ctx)
 		if err != nil {
-			cp.lock.Lock()
-			cp.state.Waiting--
-			cp.lock.Unlock()
+			p.lock.Lock()
+			p.state.Waiting--
+			p.lock.Unlock()
 			return nil, err
 		}
 
-		cp.lock.Lock()
-		cp.state.Idle--
-		cp.state.Waiting--
-		cp.lock.Unlock()
+		p.lock.Lock()
+		p.state.Idle--
+		p.state.Waiting--
+		p.lock.Unlock()
 		return client, nil
 	}
 
-	cp.lock.Unlock()
+	p.lock.Unlock()
 	return nil, errClientPoolFull
 }
 
 // State returns all states of client pool.
-func (cp *Pool) State() State {
-	cp.lock.Lock()
-	defer cp.lock.Unlock()
-	return cp.state
+func (p *Pool) State() State {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	return p.state
 }
 
 // Close closes pool and releases all resources.
-func (cp *Pool) Close() error {
-	cp.lock.Lock()
-	defer cp.lock.Unlock()
+func (p *Pool) Close() error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
 
-	if cp.closed {
+	if p.closed {
 		return nil
 	}
 
-	for i := uint64(0); i < cp.state.Connected; i++ {
-		client := <-cp.clients
+	for i := uint64(0); i < p.state.Connected; i++ {
+		client := <-p.clients
 		if client == nil {
 			continue
 		}
@@ -199,7 +207,7 @@ func (cp *Pool) Close() error {
 		}
 	}
 
-	close(cp.clients)
-	cp.closed = true
+	close(p.clients)
+	p.closed = true
 	return nil
 }

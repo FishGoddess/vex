@@ -21,11 +21,11 @@ type connContext struct {
 }
 
 // wrapContext wraps ctx with conn.
-func wrapContext(ctx context.Context, conn net.Conn) context.Context {
+func wrapContext(ctx context.Context, localAddr net.Addr, remoteAddr net.Addr) context.Context {
 	ctx = &connContext{
 		Context:    ctx,
-		localAddr:  conn.LocalAddr(),
-		remoteAddr: conn.RemoteAddr(),
+		localAddr:  localAddr,
+		remoteAddr: remoteAddr,
 	}
 	return context.WithValue(ctx, connContextKey, ctx)
 }

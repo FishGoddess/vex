@@ -9,6 +9,13 @@ import "time"
 // Option applies functions to config.
 type Option func(c *config)
 
+// WithName sets name to config.
+func WithName(name string) Option {
+	return func(c *config) {
+		c.Name = name
+	}
+}
+
 // WithConnTimeout sets connection timeout to config.
 func WithConnTimeout(timeout time.Duration) Option {
 	return func(c *config) {
@@ -44,9 +51,9 @@ func WithMaxConnected(maxConnected uint64) Option {
 	}
 }
 
-// WithEventHandler sets handler to config.
-func WithEventHandler(handler EventHandler) Option {
+// WithEventListener sets event listener to config.
+func WithEventListener(listener EventListener) Option {
 	return func(c *config) {
-		c.EventHandler = handler
+		c.EventListener = listener
 	}
 }

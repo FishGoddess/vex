@@ -11,32 +11,44 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-type demoEventHandler struct {
-}
-
-func (deh *demoEventHandler) HandleEvent(ctx context.Context, e vex.Event) {
-	fmt.Println("I received an event!", e)
+// newDemoEventListener returns an event listener for demo.
+func newDemoEventListener() vex.EventListener {
+	listener := vex.NewLogEventListener()
+	return vex.EventListener{
+		OnServerStart: func(event vex.ServerStartEvent) {
+			listener.CallOnServerStart(event)
+			fmt.Println("OnServerStart...")
+		},
+		OnServerShutdown: func(event vex.ServerShutdownEvent) {
+			listener.CallOnServerShutdown(event)
+			fmt.Println("OnServerShutdown...")
+		},
+		OnServerGotConnected: func(event vex.ServerGotConnectedEvent) {
+			listener.CallOnServerGotConnected(event)
+			fmt.Println("OnServerGotConnected...")
+		},
+		OnServerGotDisconnected: func(event vex.ServerGotDisconnectedEvent) {
+			listener.CallOnServerGotDisconnected(event)
+			fmt.Println("OnServerGotDisconnected...")
+		},
+	}
 }
 
 func main() {
 	var server *vex.Server
 
-	// We add a default event handler which will logs serving and shutdown events.
+	// We add a default event listener which will log some common events.
 	//server = vex.NewServer()
 
-	// Default event handler has a name field that you can specify.
-	// This name will also be logged, so you can create more than one server using the same handler and its logs can be distinguished, either.
-	//server = vex.NewServer(vex.WithEventHandler(vex.NewDefaultEventHandler("mine")))
+	// Also, you can customize your own event listener by implementing methods in EventListener.
+	server = vex.NewServer("tcp", "127.0.0.1:5837", vex.WithEventListener(newDemoEventListener()))
 
-	// Also, you can customize your own event handler by implementing interface EventHandler.
-	server = vex.NewServer("tcp", "127.0.0.1:5837", vex.WithEventHandler(&demoEventHandler{}))
-
-	// Listen and serve!
-	// Try to connect this server and switch the event handler to see what happens.
+	// Try to connect this server and toggle some events to see what happens.
 	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
 		return requestBody, nil
 	})
 
+	// Listen and serve!
 	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)

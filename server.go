@@ -28,21 +28,26 @@ type PacketHandler func(ctx context.Context, requestBody []byte) (responseBody [
 
 // Server is the vex server.
 type Server struct {
-	config       config
-	listener     net.Listener
-	handlers     map[PacketType]PacketHandler
-	eventHandler EventHandler
-	lock         sync.RWMutex
+	config        config
+	listener      net.Listener
+	handlers      map[PacketType]PacketHandler
+	eventListener EventListener
+	lock          sync.RWMutex
 }
 
 // NewServer returns a new vex server.
 func NewServer(network string, address string, opts ...Option) *Server {
 	config := newDefaultConfig(network, address).ApplyOptions(opts)
 	return &Server{
-		config:       *config,
-		handlers:     make(map[PacketType]PacketHandler, 16),
-		eventHandler: config.EventHandler,
+		config:        *config,
+		handlers:      make(map[PacketType]PacketHandler, 16),
+		eventListener: config.EventListener,
 	}
+}
+
+// Name returns the name of the server.
+func (s *Server) Name() string {
+	return s.config.Name
 }
 
 // RegisterPacketHandler registers handler of packetType.
@@ -68,46 +73,25 @@ func (s *Server) handleConnErr(writer io.Writer, err error) {
 	}
 }
 
-// publishEvent publishes an event and gives it to event handler.
-func (s *Server) publishEvent(ctx context.Context, e Event) {
-	if s.eventHandler != nil {
-		s.eventHandler.HandleEvent(ctx, e)
-	}
-}
-
-// setupConn setups conn and returns an error if failed.
-func (s *Server) setupConn(conn net.Conn) error {
-	return conn.SetDeadline(time.Now().Add(s.config.ConnTimeout))
-}
-
-// newContext returns a context with conn.
-func (s *Server) newContext(conn net.Conn) context.Context {
-	return wrapContext(context.Background(), conn)
-}
-
 // handleConn handles one conn.
 func (s *Server) handleConn(conn net.Conn) {
-	defer conn.Close()
-
-	err := s.setupConn(conn)
-	if err != nil {
-		log("vex: set up connection failed [%+v]", err)
-		return
-	}
-
-	ctx := s.newContext(conn)
-	s.publishEvent(ctx, eventConnected)
-	defer s.publishEvent(ctx, eventDisconnected)
+	var err error
 
 	reader := bufio.NewReaderSize(conn, int(s.config.ReadBufferSize))
 	writer := bufio.NewWriterSize(conn, int(s.config.WriteBufferSize))
 	defer func() {
-		err = writer.Flush()
+		err := writer.Flush()
 		if err != nil {
 			log("vex: writer flushes failed [%+v]", err)
 		}
 	}()
 
+	localAddr := conn.LocalAddr()
+	remoteAddr := conn.RemoteAddr()
+	s.eventListener.CallOnServerGotConnected(ServerGotConnectedEvent{Server: s, LocalAddr: localAddr, RemoteAddr: remoteAddr})
+	defer s.eventListener.CallOnServerGotDisconnected(ServerGotDisconnectedEvent{Server: s, LocalAddr: localAddr, RemoteAddr: remoteAddr})
+
+	ctx := wrapContext(context.Background(), localAddr, remoteAddr)
 	for {
 		if writer.Buffered() > 0 {
 			err = writer.Flush()
@@ -130,7 +114,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		s.lock.RUnlock()
 
 		if !ok {
-			log("vex: handler of %+v not found", packetType)
+			log("vex: handler for %+v not found", packetType)
 			s.handleConnErr(writer, errPacketHandlerNotFound)
 			continue
 		}
@@ -147,10 +131,8 @@ func (s *Server) handleConn(conn net.Conn) {
 
 // serve runs the accepting task.
 func (s *Server) serve() error {
-	ctx := context.Background()
-
-	s.publishEvent(ctx, eventServing)
-	defer s.publishEvent(ctx, eventShutdown)
+	s.eventListener.CallOnServerStart(ServerStartEvent{Server: s})
+	defer s.eventListener.CallOnServerShutdown(ServerShutdownEvent{Server: s})
 
 	var wg sync.WaitGroup
 	for {
@@ -168,6 +150,20 @@ func (s *Server) serve() error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() {
+				err := conn.Close()
+				if err != nil {
+					log("vex: close connection failed [%+v]", err)
+					return
+				}
+			}()
+
+			err := conn.SetDeadline(time.Now().Add(s.config.ConnTimeout))
+			if err != nil {
+				log("vex: set deadline to connection failed [%+v]", err)
+				return
+			}
+
 			s.handleConn(conn)
 		}()
 	}
@@ -175,7 +171,7 @@ func (s *Server) serve() error {
 	// Set a timer, so we won't wait too long.
 	waitCh := make(chan struct{})
 	go func() {
-		wg.Wait()
+		wg.Wait() // Wait() won't stop if close is timeout and there are many connections waiting for handling.
 		waitCh <- struct{}{}
 	}()
 

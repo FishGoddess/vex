@@ -1,5 +1,10 @@
 ## ✒ 未来版本的新特性 (Features in future versions)
 
+### v0.4.x
+
+* [ ] 支持 tcp 通信
+* [ ] 支持 udp 通信
+
 ### v0.3.x
 
 * [x] 修改协议，去除 version，将 magic/type/body_size 混到一个 int64 中，使用位操作处理数值

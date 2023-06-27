@@ -1,0 +1,134 @@
+// Copyright 2023 FishGoddess. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+
+package packet
+
+import (
+	"bytes"
+	"testing"
+)
+
+const (
+	typeTest Type = 1
+)
+
+// go test -v -cover -run=^TestReadPacket$
+func TestReadPacket(t *testing.T) {
+	type expect struct {
+		packetType Type
+		body       []byte
+		err        error
+	}
+
+	cases := []struct {
+		input  []byte
+		expect expect
+	}{
+		{
+			input: []byte{0xC, 0x63, 0x8B, typeTest, 0, 0, 0, 2, 'o', 'k'},
+			expect: expect{
+				packetType: typeTest,
+				body:       []byte{'o', 'k'},
+				err:        nil,
+			},
+		},
+		{
+			input: []byte{0xC, 0x63, 0x8B + 1, typeTest, 0, 0, 0, 2, 'o', 'k'},
+			expect: expect{
+				packetType: 0,
+				body:       nil,
+				err:        errMagicMismatch,
+			},
+		},
+		{
+			input: []byte{0xC, 0x63, 0x8B, typeTest, 0, 0, 0, 0},
+			expect: expect{
+				packetType: typeTest,
+				body:       nil,
+				err:        nil,
+			},
+		},
+		{
+			input: []byte{0xC, 0x63, 0x8B, typeTest, 0, 0, 0, 3, 'o', 'k'},
+			expect: expect{
+				packetType: typeTest,
+				body:       nil,
+				err:        errReadSizeMismatch,
+			},
+		},
+	}
+
+	for i, oneCase := range cases {
+		packetType, body, err := readPacket(bytes.NewReader(oneCase.input))
+		if err != oneCase.expect.err {
+			t.Errorf("i %d, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
+			break
+		}
+
+		if packetType != oneCase.expect.packetType {
+			t.Errorf("i %d, packetType %+v != oneCase.expect.packetType %+v", i, packetType, oneCase.expect.packetType)
+			break
+		}
+
+		if bytes.Compare(body, oneCase.expect.body) != 0 {
+			t.Errorf("i %d, body %+v != oneCase.expect.body %+v", i, body, oneCase.expect.body)
+			break
+		}
+	}
+}
+
+// go test -v -cover -run=^TestWritePacket$
+func TestWritePacket(t *testing.T) {
+	type input struct {
+		packetType Type
+		body       []byte
+	}
+
+	type expect struct {
+		err    error
+		packet []byte
+	}
+
+	cases := []struct {
+		input  input
+		expect expect
+	}{
+		{
+			input: input{
+				packetType: typeOK,
+				body:       []byte{'o', 'k'},
+			},
+			expect: expect{
+				err:    nil,
+				packet: []byte{0xC, 0x63, 0x8B, typeOK, 0, 0, 0, 2, 'o', 'k'},
+			},
+		},
+		{
+			input: input{
+				packetType: typeErr,
+				body:       []byte{'e', 'r', 'r'},
+			},
+			expect: expect{
+				err:    nil,
+				packet: []byte{0xC, 0x63, 0x8B, typeErr, 0, 0, 0, 3, 'e', 'r', 'r'},
+			},
+		},
+	}
+
+	buffer := bytes.NewBuffer(make([]byte, 0, 64))
+	for i, oneCase := range cases {
+		buffer.Reset()
+
+		err := writePacket(buffer, oneCase.input.packetType, oneCase.input.body)
+		if err != oneCase.expect.err {
+			t.Errorf("i %d, err == nil, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
+			break
+		}
+
+		if bytes.Compare(buffer.Bytes(), oneCase.expect.packet) != 0 {
+			t.Errorf("i %d, buffer %+v != oneCase.expect.packet %+v", i, buffer.Bytes(), oneCase.expect.packet)
+			break
+		}
+	}
+}

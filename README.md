@@ -19,7 +19,30 @@
 
 _历史版本的特性请查看 [HISTORY.md](./HISTORY.md)。未来版本的新特性和计划请查看 [FUTURE.md](./FUTURE.md)。_
 
-### 📄 使用案例
+### 📃 协议描述
+
+> 协议抽象出数据包的概念，不管是请求还是响应都视为一种数据包。
+
+ABNF：
+
+```abnf
+PACKET = HEADER BODY ; 数据包
+HEADER = MAGIC TYPE BODYSIZE ; 数据包头，主要是魔数，包类型以及包体大小
+BODY = *OCTET ; 数据包体，大小未知，需要靠 BODYSIZE 来确认
+MAGIC = 3OCTET ; 魔数，3 个字节表示，目前是 0xC638B，也就是 811915
+TYPE = OCTET ; 数据包类型，0x00-0xFF，从 0 开始，最多 255 种数据包类型
+BODYSIZE = 4OCTET ; 数据包体大小，4 个字节表示，最大是 4GB
+```
+
+人类语言描述：
+
+```
+数据包：
+magic     type    body_size    {body}
+3byte     1byte     4byte      unknown
+```
+
+### 🔦 使用案例
 
 ```bash
 $ go get -u github.com/FishGoddess/vex

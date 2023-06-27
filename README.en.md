@@ -19,7 +19,30 @@
 
 _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
 
-### 📄 Example
+### 📃 Protocol
+
+> All is packet including request and response.
+
+ABNF：
+
+```abnf
+PACKET = HEADER BODY
+HEADER = MAGIC TYPE BODYSIZE
+BODY = *OCTET ; Size unknown, see BODYSIZE
+MAGIC = 3OCTET ; 3Bytes, current is 0xC638B
+TYPE = OCTET ; 0x00-0xFF, begin from one, 255 at most
+BODYSIZE = 4OCTET ; 4bytes, 4GB at most
+```
+
+In human:
+
+```
+Packet:
+magic     type    body_size    {body}
+3byte     1byte     4byte      unknown
+```
+
+### 🔦 Examples
 
 ```bash
 $ go get -u github.com/FishGoddess/vex

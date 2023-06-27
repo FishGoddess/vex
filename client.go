@@ -14,17 +14,22 @@ type Client interface {
 }
 
 type client struct {
-	conn *Connection
+	conn *net.TCPConn
 }
 
 func NewClient(address string, readBufferSize int, writeBufferSize int) (Client, error) {
-	conn, err := net.Dial(network, address)
+	resolved, err := net.ResolveTCPAddr(network, address)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := net.DialTCP(network, nil, resolved)
 	if err != nil {
 		return nil, err
 	}
 
 	return &client{
-		conn: newConnection(conn, readBufferSize, writeBufferSize),
+		conn: conn,
 	}, nil
 }
 
@@ -37,5 +42,5 @@ func (c *client) Write(p []byte) (n int, err error) {
 }
 
 func (c *client) Close() error {
-	return c.conn.close()
+	return c.conn.Close()
 }

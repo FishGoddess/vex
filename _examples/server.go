@@ -15,8 +15,6 @@ import (
 type handler struct{}
 
 func (handler) Handle(conn *vex.Connection) {
-	defer conn.Flush()
-
 	buf := make([]byte, 0, 1024)
 	for {
 		n, err := conn.Read(buf)
@@ -30,6 +28,8 @@ func (handler) Handle(conn *vex.Connection) {
 		if _, err = conn.Write([]byte(reply)); err != nil {
 			panic(err)
 		}
+
+		conn.Flush()
 	}
 }
 

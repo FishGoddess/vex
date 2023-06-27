@@ -24,7 +24,7 @@ var (
 )
 
 type Server struct {
-	ServerConfig
+	Config
 
 	listener *net.TCPListener
 	handler  Handler
@@ -44,31 +44,31 @@ func (s *Server) Handle(handler Handler) {
 
 func (s *Server) handleConn(conn *net.TCPConn) {
 	now := time.Now()
-
 	readDeadline := now.Add(s.ReadTimeout)
 	writeDeadline := now.Add(s.WriteTimeout)
 
 	if err := conn.SetReadDeadline(readDeadline); err != nil {
-		logError(err, "set read deadline to connection failed")
+		logError(err, "set read deadline failed")
 		return
 	}
 
 	if err := conn.SetWriteDeadline(writeDeadline); err != nil {
-		logError(err, "set write deadline to connection failed")
+		logError(err, "set write deadline failed")
 		return
 	}
 
 	if err := conn.SetReadBuffer(s.ReadBufferSize); err != nil {
-		logError(err, "set read buffer size of connection failed")
+		logError(err, "set read buffer size failed")
 		return
 	}
 
 	if err := conn.SetWriteBuffer(s.WriteBufferSize); err != nil {
-		logError(err, "set write buffer size of connection failed")
+		logError(err, "set write buffer size failed")
 		return
 	}
 
-	s.handler.Handle(newConnection(conn, s.ReadBufferSize, s.WriteBufferSize))
+	ctx := newContext()
+	s.handler.Handle(ctx, conn, conn)
 }
 
 func (s *Server) serve() error {
@@ -88,13 +88,13 @@ func (s *Server) serve() error {
 
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
-					logError(fmt.Errorf("%+v", r), "recover from connection")
+					logError(fmt.Errorf("%+v", r), "recover from handling")
 				}
 			}()
 
-			defer wg.Done()
 			defer func() {
 				if err := conn.Close(); err != nil {
 					logError(err, "close connection failed")
@@ -105,7 +105,6 @@ func (s *Server) serve() error {
 		}()
 	}
 
-	// Set a timer, so we won't wait too long.
 	closeCh := make(chan struct{})
 	go func() {
 		wg.Wait()

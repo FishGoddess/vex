@@ -6,8 +6,8 @@ package vex
 
 import "time"
 
-// ServerConfig stores all configurations of server.
-type ServerConfig struct {
+// Config stores all configurations of client and server.
+type Config struct {
 	address string
 
 	// Name is a flag of server.
@@ -39,25 +39,45 @@ type ServerConfig struct {
 	MaxConnections int
 }
 
-// newServerConfig returns a new server config.
-func newServerConfig(network string, address string) *ServerConfig {
-	return &ServerConfig{
+// newClientConfig returns a new client config.
+func newClientConfig(address string) *Config {
+	return &Config{
 		address:         address,
-		Name:            network + "/" + address,
+		ReadTimeout:     10 * time.Minute,
+		WriteTimeout:    10 * time.Minute,
+		ReadBufferSize:  16 * 1024, // 16KB
+		WriteBufferSize: 16 * 1024, // 16KB
+	}
+}
+
+// newServerConfig returns a new server config.
+func newServerConfig(address string) *Config {
+	return &Config{
+		address:         address,
+		Name:            address,
 		ReadTimeout:     10 * time.Minute,
 		WriteTimeout:    10 * time.Minute,
 		CloseTimeout:    time.Minute,
-		ReadBufferSize:  64 * 1024, // 64KB
-		WriteBufferSize: 64 * 1024, // 64KB
+		ReadBufferSize:  16 * 1024, // 16KB
+		WriteBufferSize: 16 * 1024, // 16KB
 		MaxConnections:  4096,
 	}
 }
 
-// ApplyOptions applies opts to a server config.
-func (sc *ServerConfig) ApplyOptions(opts []ServerOption) *ServerConfig {
+// ApplyClientOptions applies client options to config.
+func (c *Config) ApplyClientOptions(opts []ClientOption) *Config {
 	for _, opt := range opts {
-		opt.ApplyTo(sc)
+		opt.ApplyTo(c)
 	}
 
-	return sc
+	return c
+}
+
+// ApplyServerOptions applies server options to config.
+func (c *Config) ApplyServerOptions(opts []ServerOption) *Config {
+	for _, opt := range opts {
+		opt.ApplyTo(c)
+	}
+
+	return c
 }

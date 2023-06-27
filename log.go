@@ -8,18 +8,21 @@ import stdlog "log"
 
 var (
 	// LogDebug logs a message as debug.
+	// Set to nil if you want debug logs are ignored.
 	LogDebug = func(format string, v ...any) {
 		format = "[DEBUG] vex: " + format
 		stdlog.Printf(format, v...)
 	}
 
 	// LogInfo logs a message as info.
+	// Set to nil if you want info logs are ignored.
 	LogInfo = func(format string, v ...any) {
 		format = "[INFO] vex: " + format
 		stdlog.Printf(format, v...)
 	}
 
 	// LogError logs a message as error.
+	// Set to nil if you want error logs are ignored.
 	LogError = func(err error, format string, v ...any) {
 		format = "[ERROR] vex: " + format + ": %+v"
 		stdlog.Printf(format, append(v, err)...)

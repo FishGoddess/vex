@@ -3,11 +3,3 @@
 // license that can be found in the LICENSE file.
 
 package vex
-
-import (
-	"io"
-)
-
-type Handler interface {
-	Handle(ctx *Context, reader io.Reader, writer io.Writer)
-}

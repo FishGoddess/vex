@@ -1,4 +1,4 @@
-## ✒ 历史版本的特性介绍 (Features in old versions)
+## 🎡 历史版本的特性介绍 (Features in old versions)
 
 ### v0.3.2-alpha
 

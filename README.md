@@ -5,13 +5,13 @@
 [![Coverage](_icons/coverage.svg)](./_icons/coverage.svg)
 ![Test](https://github.com/FishGoddess/vex/actions/workflows/test.yml/badge.svg)
 
-**Vex** 是一个使用 tcp/udp 通信和传输数据的框架。
+**Vex** 是一个使用 tcp 通信和传输数据的框架。
 
 [Read me in English](./README.en.md)
 
 ### 🍃 功能特性
 
-* 基于 tcp、udp 传输数据，直接使用或二次开发都很简单
+* 基于 tcp 传输数据，直接使用或二次开发都很简单
 * 极简设计的 API，内置连接池，可以对性能进行调优
 * 支持客户端、服务器引入拦截器，方便接入监控和告警
 * 支持信号量监控机制和平滑下线

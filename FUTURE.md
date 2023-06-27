@@ -1,9 +1,8 @@
-## ✒ 未来版本的新特性 (Features in future versions)
+## 🛸 未来版本的新特性 (Features in future versions)
 
 ### v0.4.x
 
-* [ ] 支持 tcp 通信
-* [ ] 支持 udp 通信
+* [ ] 重构项目
 
 ### v0.3.x
 

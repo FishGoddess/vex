@@ -5,13 +5,13 @@
 [![Coverage](_icons/coverage.svg)](./_icons/coverage.svg)
 ![Test](https://github.com/FishGoddess/vex/actions/workflows/test.yml/badge.svg)
 
-**Vex** is a framework which uses tcp/udp to exchange data.
+**Vex** is a framework which uses tcp to exchange data.
 
 [阅读中文版](./README.md)
 
 ### 🍃 Features
 
-* Based on a tcp/udp protocol, easy to use or customize
+* Based on a tcp protocol, easy to use or customize
 * Simple API design, connection pool supports
 * Support client/server interceptors, easy to monitor and notify
 * Signal monitor supports, shutdown gracefully

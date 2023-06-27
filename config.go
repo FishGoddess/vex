@@ -6,7 +6,6 @@ package vex
 
 import "time"
 
-// Config stores all configurations of client and server.
 type Config struct {
 	address string
 
@@ -39,18 +38,16 @@ type Config struct {
 	MaxConnections int
 }
 
-// newClientConfig returns a new client config.
 func newClientConfig(address string) *Config {
 	return &Config{
 		address:         address,
 		ReadTimeout:     10 * time.Minute,
 		WriteTimeout:    10 * time.Minute,
-		ReadBufferSize:  16 * 1024, // 16KB
-		WriteBufferSize: 16 * 1024, // 16KB
+		ReadBufferSize:  64 * 1024, // 16KB
+		WriteBufferSize: 64 * 1024, // 16KB
 	}
 }
 
-// newServerConfig returns a new server config.
 func newServerConfig(address string) *Config {
 	return &Config{
 		address:         address,
@@ -64,17 +61,7 @@ func newServerConfig(address string) *Config {
 	}
 }
 
-// ApplyClientOptions applies client options to config.
-func (c *Config) ApplyClientOptions(opts []ClientOption) *Config {
-	for _, opt := range opts {
-		opt.ApplyTo(c)
-	}
-
-	return c
-}
-
-// ApplyServerOptions applies server options to config.
-func (c *Config) ApplyServerOptions(opts []ServerOption) *Config {
+func (c *Config) ApplyOptions(opts []Option) *Config {
 	for _, opt := range opts {
 		opt.ApplyTo(c)
 	}

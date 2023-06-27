@@ -12,21 +12,21 @@ import (
 )
 
 func main() {
-	client, err := vex.NewClient("127.0.0.1:6789", 4096, 4096)
+	client, err := vex.NewClient("127.0.0.1:6789")
 	if err != nil {
 		panic(err)
 	}
 
 	defer client.Close()
 
-	buf := make([]byte, 0, 1024)
+	var buf [1024]byte
 	for i := 0; i < 100; i++ {
 		msg := strconv.Itoa(i)
 		if _, err := client.Write([]byte(msg)); err != nil {
 			panic(err)
 		}
 
-		n, err := client.Read(buf)
+		n, err := client.Read(buf[:])
 		if err != nil {
 			panic(err)
 		}

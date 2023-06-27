@@ -6,85 +6,49 @@ package vex
 
 import "time"
 
-// ClientOption applies functions to config.
-type ClientOption func(conf *Config)
+type Option func(conf *Config)
 
-func (co ClientOption) ApplyTo(conf *Config) {
-	co(conf)
+func (o Option) ApplyTo(conf *Config) {
+	o(conf)
 }
 
-// WithClientReadTimeout sets read timeout to config.
-func WithClientReadTimeout(timeout time.Duration) ClientOption {
-	return func(conf *Config) {
-		conf.ReadTimeout = timeout
-	}
-}
-
-// WithClientWriteTimeout sets write timeout to config.
-func WithClientWriteTimeout(timeout time.Duration) ClientOption {
-	return func(conf *Config) {
-		conf.WriteTimeout = timeout
-	}
-}
-
-// WithClientReadBufferSize sets read buffer size to config.
-func WithClientReadBufferSize(bufferSize uint32) ClientOption {
-	return func(conf *Config) {
-		conf.ReadBufferSize = int(bufferSize)
-	}
-}
-
-// WithClientWriteBufferSize sets write buffer size to config.
-func WithClientWriteBufferSize(bufferSize uint32) ClientOption {
-	return func(conf *Config) {
-		conf.WriteBufferSize = int(bufferSize)
-	}
-}
-
-// ServerOption applies functions to config.
-type ServerOption func(conf *Config)
-
-func (so ServerOption) ApplyTo(conf *Config) {
-	so(conf)
-}
-
-// WithServerName sets name to config.
-func WithServerName(name string) ServerOption {
+// WithName sets name to config.
+func WithName(name string) Option {
 	return func(conf *Config) {
 		conf.Name = name
 	}
 }
 
-// WithServerReadTimeout sets read timeout to config.
-func WithServerReadTimeout(timeout time.Duration) ServerOption {
+// WithReadTimeout sets read timeout to config.
+func WithReadTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {
 		conf.ReadTimeout = timeout
 	}
 }
 
-// WithServerWriteTimeout sets write timeout to config.
-func WithServerWriteTimeout(timeout time.Duration) ServerOption {
+// WithWriteTimeout sets write timeout to config.
+func WithWriteTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {
 		conf.WriteTimeout = timeout
 	}
 }
 
-// WithServerCloseTimeout sets close timeout to config.
-func WithServerCloseTimeout(timeout time.Duration) ServerOption {
+// WithCloseTimeout sets close timeout to config.
+func WithCloseTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {
 		conf.CloseTimeout = timeout
 	}
 }
 
-// WithServerReadBufferSize sets read buffer size to config.
-func WithServerReadBufferSize(bufferSize uint32) ServerOption {
+// WithReadBufferSize sets read buffer size to config.
+func WithReadBufferSize(bufferSize uint32) Option {
 	return func(conf *Config) {
 		conf.ReadBufferSize = int(bufferSize)
 	}
 }
 
-// WithServerWriteBufferSize sets write buffer size to config.
-func WithServerWriteBufferSize(bufferSize uint32) ServerOption {
+// WithWriteBufferSize sets write buffer size to config.
+func WithWriteBufferSize(bufferSize uint32) Option {
 	return func(conf *Config) {
 		conf.WriteBufferSize = int(bufferSize)
 	}

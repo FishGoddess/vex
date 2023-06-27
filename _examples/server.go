@@ -5,7 +5,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"strconv"
 
@@ -14,10 +16,10 @@ import (
 
 type handler struct{}
 
-func (handler) Handle(conn *vex.Connection) {
-	buf := make([]byte, 0, 1024)
+func (handler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
+	var buf [1024]byte
 	for {
-		n, err := conn.Read(buf)
+		n, err := reader.Read(buf[:])
 		if err != nil {
 			panic(err)
 		}
@@ -25,18 +27,17 @@ func (handler) Handle(conn *vex.Connection) {
 		fmt.Println("Received:", string(buf[:n]))
 
 		reply := strconv.FormatUint(rand.Uint64(), 10)
-		if _, err = conn.Write([]byte(reply)); err != nil {
+		if _, err = writer.Write([]byte(reply)); err != nil {
 			panic(err)
 		}
-
-		conn.Flush()
 	}
 }
 
 func main() {
-	server := vex.NewServer("127.0.0.1:6789")
-	server.Handle(handler{})
+	// Create a server listening on 127.0.0.1:6789 and set a handler to it.
+	server := vex.NewServer("127.0.0.1:6789", handler{})
 
+	// Use Serve() to begin serving.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}

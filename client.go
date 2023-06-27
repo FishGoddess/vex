@@ -14,23 +14,38 @@ type Client interface {
 }
 
 type client struct {
+	Config
+
 	conn *net.TCPConn
 }
 
-func NewClient(address string, readBufferSize int, writeBufferSize int) (Client, error) {
-	resolved, err := net.ResolveTCPAddr(network, address)
+// NewClient creates a new client connecting to address.
+// Return an error if connect failed.
+func NewClient(address string, opts ...Option) (Client, error) {
+	client := &client{
+		Config: *newClientConfig(address).ApplyOptions(opts),
+	}
+
+	return client, client.connect()
+}
+
+func (c *client) connect() error {
+	resolved, err := net.ResolveTCPAddr(network, c.address)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	conn, err := net.DialTCP(network, nil, resolved)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &client{
-		conn: conn,
-	}, nil
+	if err = setupConn(&c.Config, conn); err != nil {
+		return err
+	}
+
+	c.conn = conn
+	return nil
 }
 
 func (c *client) Read(p []byte) (n int, err error) {

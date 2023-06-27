@@ -5,8 +5,10 @@
 package vex
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -20,58 +22,65 @@ const (
 )
 
 var (
-	errCloseTimeout = errors.New("vex: close server timeout")
+	ErrCloseServerTimeout = errors.New("vex: close server timeout")
 )
 
-type Server struct {
+// Handler is a handler for handling connection.
+type Handler interface {
+	// Handle handles a connection with reader and writer.
+	// Some information can be fetched in context.
+	Handle(ctx context.Context, reader io.Reader, writer io.Writer)
+}
+
+type Server interface {
+	io.Closer
+
+	Serve() error
+}
+
+type server struct {
 	Config
 
-	listener *net.TCPListener
 	handler  Handler
+	listener *net.TCPListener
 }
 
-func NewServer(address string, opts ...ServerOption) *Server {
-	conf := newServerConfig(network, address).ApplyOptions(opts)
-
-	return &Server{
-		ServerConfig: *conf,
+// NewServer creates a new server serving on address.
+// Handler is an interface of handling a connection.
+func NewServer(address string, handler Handler, opts ...Option) Server {
+	server := &server{
+		Config:  *newServerConfig(address).ApplyOptions(opts),
+		handler: handler,
 	}
+
+	return server
 }
 
-func (s *Server) Handle(handler Handler) {
-	s.handler = handler
-}
+func (s *server) handleConn(conn *net.TCPConn) {
+	defer func() {
+		if r := recover(); r != nil {
+			logError(fmt.Errorf("%+v", r), "recover from handling")
+		}
+	}()
 
-func (s *Server) handleConn(conn *net.TCPConn) {
-	now := time.Now()
-	readDeadline := now.Add(s.ReadTimeout)
-	writeDeadline := now.Add(s.WriteTimeout)
+	defer func() {
+		if err := conn.Close(); err != nil {
+			logError(err, "close connection failed")
+		}
+	}()
 
-	if err := conn.SetReadDeadline(readDeadline); err != nil {
-		logError(err, "set read deadline failed")
+	if err := setupConn(&s.Config, conn); err != nil {
+		logError(err, "setup connection failed")
 		return
 	}
 
-	if err := conn.SetWriteDeadline(writeDeadline); err != nil {
-		logError(err, "set write deadline failed")
-		return
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	if err := conn.SetReadBuffer(s.ReadBufferSize); err != nil {
-		logError(err, "set read buffer size failed")
-		return
-	}
-
-	if err := conn.SetWriteBuffer(s.WriteBufferSize); err != nil {
-		logError(err, "set write buffer size failed")
-		return
-	}
-
-	ctx := newContext()
 	s.handler.Handle(ctx, conn, conn)
 }
 
-func (s *Server) serve() error {
+func (s *server) serve() error {
 	var wg sync.WaitGroup
 	for {
 		conn, err := s.listener.AcceptTCP()
@@ -89,17 +98,6 @@ func (s *Server) serve() error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			defer func() {
-				if r := recover(); r != nil {
-					logError(fmt.Errorf("%+v", r), "recover from handling")
-				}
-			}()
-
-			defer func() {
-				if err := conn.Close(); err != nil {
-					logError(err, "close connection failed")
-				}
-			}()
 
 			s.handleConn(conn)
 		}()
@@ -118,11 +116,11 @@ func (s *Server) serve() error {
 	case <-closeCh:
 		return nil
 	case <-timer.C:
-		return errCloseTimeout
+		return ErrCloseServerTimeout
 	}
 }
 
-func (s *Server) monitorSignals() {
+func (s *server) monitorSignals() {
 	signalCh := make(chan os.Signal)
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
@@ -134,7 +132,7 @@ func (s *Server) monitorSignals() {
 	}
 }
 
-func (s *Server) Serve() error {
+func (s *server) Serve() error {
 	address, err := net.ResolveTCPAddr(network, s.address)
 	if err != nil {
 		return err
@@ -152,6 +150,6 @@ func (s *Server) Serve() error {
 	return s.serve()
 }
 
-func (s *Server) Close() error {
+func (s *server) Close() error {
 	return s.listener.Close()
 }

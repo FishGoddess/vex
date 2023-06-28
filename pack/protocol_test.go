@@ -2,7 +2,7 @@
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
-package packet
+package pack
 
 import (
 	"bytes"
@@ -10,13 +10,13 @@ import (
 )
 
 const (
-	typeTest Type = 1
+	packetTypeTest PacketType = 1
 )
 
 // go test -v -cover -run=^TestReadPacket$
 func TestReadPacket(t *testing.T) {
 	type expect struct {
-		packetType Type
+		packetType PacketType
 		body       []byte
 		err        error
 	}
@@ -26,35 +26,35 @@ func TestReadPacket(t *testing.T) {
 		expect expect
 	}{
 		{
-			input: []byte{0xC, 0x63, 0x8B, typeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
 			expect: expect{
-				packetType: typeTest,
+				packetType: packetTypeTest,
 				body:       []byte{'o', 'k'},
 				err:        nil,
 			},
 		},
 		{
-			input: []byte{0xC, 0x63, 0x8B + 1, typeTest, 0, 0, 0, 2, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B + 1, packetTypeTest, 0, 0, 0, 2, 'o', 'k'},
 			expect: expect{
 				packetType: 0,
 				body:       nil,
-				err:        errMagicMismatch,
+				err:        ErrWrongMagicNumber,
 			},
 		},
 		{
-			input: []byte{0xC, 0x63, 0x8B, typeTest, 0, 0, 0, 0},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 0},
 			expect: expect{
-				packetType: typeTest,
+				packetType: packetTypeTest,
 				body:       nil,
 				err:        nil,
 			},
 		},
 		{
-			input: []byte{0xC, 0x63, 0x8B, typeTest, 0, 0, 0, 3, 'o', 'k'},
+			input: []byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 3, 'o', 'k'},
 			expect: expect{
-				packetType: typeTest,
+				packetType: packetTypeTest,
 				body:       nil,
-				err:        errReadSizeMismatch,
+				err:        ErrReadSizeMismatch,
 			},
 		},
 	}
@@ -81,7 +81,7 @@ func TestReadPacket(t *testing.T) {
 // go test -v -cover -run=^TestWritePacket$
 func TestWritePacket(t *testing.T) {
 	type input struct {
-		packetType Type
+		packetType PacketType
 		body       []byte
 	}
 
@@ -96,22 +96,22 @@ func TestWritePacket(t *testing.T) {
 	}{
 		{
 			input: input{
-				packetType: typeOK,
+				packetType: packetTypeOK,
 				body:       []byte{'o', 'k'},
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0xC, 0x63, 0x8B, typeOK, 0, 0, 0, 2, 'o', 'k'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeOK, 0, 0, 0, 2, 'o', 'k'},
 			},
 		},
 		{
 			input: input{
-				packetType: typeErr,
+				packetType: packetTypeErr,
 				body:       []byte{'e', 'r', 'r'},
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0xC, 0x63, 0x8B, typeErr, 0, 0, 0, 3, 'e', 'r', 'r'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeErr, 0, 0, 0, 3, 'e', 'r', 'r'},
 			},
 		},
 	}

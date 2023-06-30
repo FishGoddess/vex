@@ -38,14 +38,14 @@ func (sh *ServerHandler) RegisterPacketHandler(packetType PacketType, handler Pa
 }
 
 func (sh *ServerHandler) writePacketOK(writer io.Writer, body []byte) {
-	err := writePacket(writer, packetTypeOK, body)
+	err := writePacket(writer, packetTypeNormal, body)
 	if err != nil {
 
 	}
 }
 
 func (sh *ServerHandler) writePacketErr(writer io.Writer, err error) {
-	err = writePacket(writer, packetTypeErr, []byte(err.Error()))
+	err = writePacket(writer, packetTypeError, []byte(err.Error()))
 	if err != nil {
 
 	}

@@ -96,22 +96,22 @@ func TestWritePacket(t *testing.T) {
 	}{
 		{
 			input: input{
-				packetType: packetTypeOK,
+				packetType: packetTypeNormal,
 				body:       []byte{'o', 'k'},
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0xC, 0x63, 0x8B, packetTypeOK, 0, 0, 0, 2, 'o', 'k'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeNormal, 0, 0, 0, 2, 'o', 'k'},
 			},
 		},
 		{
 			input: input{
-				packetType: packetTypeErr,
+				packetType: packetTypeError,
 				body:       []byte{'e', 'r', 'r'},
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0xC, 0x63, 0x8B, packetTypeErr, 0, 0, 0, 3, 'e', 'r', 'r'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeError, 0, 0, 0, 3, 'e', 'r', 'r'},
 			},
 		},
 	}

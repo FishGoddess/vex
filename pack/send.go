@@ -22,7 +22,7 @@ func Send(client vex.Client, packetType PacketType, requestPacket []byte) (respo
 		return nil, err
 	}
 
-	if packetType == packetTypeErr {
+	if packetType == packetTypeError {
 		err = errors.New(string(responsePacket))
 	}
 

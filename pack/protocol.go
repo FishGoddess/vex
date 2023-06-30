@@ -26,8 +26,8 @@ const (
 )
 
 const (
-	packetTypeOK  PacketType = 0
-	packetTypeErr PacketType = 1
+	packetTypeNormal PacketType = 0
+	packetTypeError  PacketType = 1
 )
 
 var (

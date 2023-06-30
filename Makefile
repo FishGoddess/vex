@@ -7,6 +7,6 @@ test:
 	go test -cover ./...
 
 bench:
-	go test -v -bench=. -benchtime=1s ./_examples/performance_test.go
+	go test -v -run=. -bench=. -benchtime=1s ./_examples/performance_test.go
 
 all: fmt test bench

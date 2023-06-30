@@ -15,6 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/FishGoddess/vex/log"
 )
 
 const (
@@ -22,7 +24,7 @@ const (
 )
 
 var (
-	ErrCloseServerTimeout = errors.New("vex: close server timeout")
+	errCloseServerTimeout = errors.New("vex: close server timeout")
 )
 
 // Handler is a handler for handling connection.
@@ -59,18 +61,18 @@ func NewServer(address string, handler Handler, opts ...Option) Server {
 func (s *server) handleConn(conn *net.TCPConn) {
 	defer func() {
 		if r := recover(); r != nil {
-			logError(fmt.Errorf("%+v", r), "recover from handling")
+			log.Error(fmt.Errorf("%+v", r), "recover from handling")
 		}
 	}()
 
 	defer func() {
 		if err := conn.Close(); err != nil {
-			logError(err, "close connection failed")
+			log.Error(err, "close connection failed")
 		}
 	}()
 
 	if err := setupConn(&s.Config, conn); err != nil {
-		logError(err, "setup connection failed")
+		log.Error(err, "setup connection failed")
 		return
 	}
 
@@ -87,13 +89,15 @@ func (s *server) serve() error {
 		if err != nil {
 			// Listener has been closed.
 			if errors.Is(err, net.ErrClosed) {
-				logDebug("server listener closed")
+				log.Info("server listener closed")
 				break
 			}
 
-			logError(err, "listener accepts failed")
+			log.Error(err, "listener accepts failed")
 			continue
 		}
+
+		log.Debug("accepted from %s", conn.RemoteAddr())
 
 		wg.Add(1)
 		go func() {
@@ -116,7 +120,7 @@ func (s *server) serve() error {
 	case <-closeCh:
 		return nil
 	case <-timer.C:
-		return ErrCloseServerTimeout
+		return errCloseServerTimeout
 	}
 }
 
@@ -125,10 +129,10 @@ func (s *server) monitorSignals() {
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
 	sig := <-signalCh
-	logInfo("received signal %+v", sig)
+	log.Info("received signal %+v", sig)
 
 	if err := s.Close(); err != nil {
-		logError(err, "close server failed")
+		log.Error(err, "close server failed")
 	}
 }
 
@@ -146,7 +150,7 @@ func (s *server) Serve() error {
 	s.listener = listener
 	go s.monitorSignals()
 
-	logInfo("server %s is serving on %s", s.Name, s.address)
+	log.Info("server %s is serving on %s", s.Name, s.address)
 	return s.serve()
 }
 

@@ -7,6 +7,8 @@ package vex
 import (
 	"io"
 	"net"
+
+	"github.com/FishGoddess/vex/log"
 )
 
 type Client interface {
@@ -34,6 +36,8 @@ func (c *client) connect() error {
 	if err != nil {
 		return err
 	}
+
+	log.Debug("address resolved to %s", resolved)
 
 	conn, err := net.DialTCP(network, nil, resolved)
 	if err != nil {

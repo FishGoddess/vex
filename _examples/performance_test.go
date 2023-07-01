@@ -50,7 +50,7 @@ func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer
 				}
 
 				if err != nil {
-					panic(err)
+					panic("server: " + err.Error())
 				}
 			}
 		}()
@@ -68,7 +68,7 @@ func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer
 				}
 
 				if err != nil {
-					panic(err)
+					panic("server: " + err.Error())
 				}
 			}
 		}()
@@ -122,6 +122,7 @@ func BenchmarkClientReadServerWrite(b *testing.B) {
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkClientWriteServerRead$ -benchtime=1s
+// BenchmarkClientWriteServerRead-12         287038              4232 ns/op               0 B/op          0 allocs/op
 func BenchmarkClientWriteServerRead(b *testing.B) {
 	address := "127.0.0.1:6789"
 
@@ -180,7 +181,7 @@ func TestClientRPS(t *testing.T) {
 
 	servers := make([]vex.Server, 0, len(addresses))
 	for _, address := range addresses {
-		servers = append(servers, newBenchmarkServer(address, true, true))
+		servers = append(servers, newBenchmarkServer(address, true, false))
 	}
 
 	defer func() {
@@ -243,12 +244,12 @@ func TestClientRPS(t *testing.T) {
 
 // go test ./_examples/performance_test.go -v -run=^TestClientPoolRPS$
 func TestClientPoolRPS(t *testing.T) {
-	//addresses := []string{"127.0.0.1:16789", "127.0.0.1:17890", "127.0.0.1:18901", "127.0.0.1:19012"}
-	addresses := []string{"127.0.0.1:16789"}
+	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
+	addresses := []string{"127.0.0.1:6789"}
 
 	servers := make([]vex.Server, 0, len(addresses))
 	for _, address := range addresses {
-		servers = append(servers, newBenchmarkServer(address, true, true))
+		servers = append(servers, newBenchmarkServer(address, true, false))
 	}
 
 	defer func() {

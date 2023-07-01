@@ -9,6 +9,8 @@ import (
 	"errors"
 	"io"
 	"sync"
+
+	"github.com/FishGoddess/vex/log"
 )
 
 var (
@@ -53,6 +55,13 @@ func (sh *ServerHandler) writePacketErr(writer io.Writer, err error) {
 
 func (sh *ServerHandler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
 	for {
+		select {
+		case <-ctx.Done():
+			log.Debug("context has done")
+			return
+		default:
+		}
+
 		packetType, requestPacket, err := readPacket(reader)
 		if err == io.EOF {
 			return

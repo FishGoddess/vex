@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/FishGoddess/vex"
+	"github.com/FishGoddess/vex/log"
 	"github.com/FishGoddess/vex/pool"
 )
 
@@ -50,7 +51,7 @@ func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer
 				}
 
 				if err != nil {
-					panic("server: " + err.Error())
+					log.Error(err, "server read")
 				}
 			}
 		}()
@@ -68,7 +69,7 @@ func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer
 				}
 
 				if err != nil {
-					panic("server: " + err.Error())
+					log.Error(err, "server write")
 				}
 			}
 		}()
@@ -87,7 +88,7 @@ func newBenchmarkClient(address string) vex.Client {
 }
 
 func newBenchmarkServer(address string, read bool, write bool) vex.Server {
-	server := vex.NewServer(address, newBenchmarkHandler(read, write), vex.WithCloseTimeout(30*time.Second))
+	server := vex.NewServer(address, newBenchmarkHandler(read, write), vex.WithCloseTimeout(10*time.Second))
 
 	go func() {
 		if err := server.Serve(); err != nil {
@@ -103,11 +104,14 @@ func newBenchmarkServer(address string, read bool, write bool) vex.Server {
 func BenchmarkClientReadServerWrite(b *testing.B) {
 	address := "127.0.0.1:6789"
 
-	server := newBenchmarkServer(address, false, true)
+	server := newBenchmarkServer(address, true, true)
 	defer server.Close()
 
 	client := newBenchmarkClient(address)
-	defer client.Close()
+	defer func() {
+		log.Info("client close")
+		client.Close()
+	}()
 
 	b.ReportAllocs()
 	b.ResetTimer()

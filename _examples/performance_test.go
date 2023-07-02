@@ -29,10 +29,12 @@ type benchmarkHandler struct {
 }
 
 func newBenchmarkHandler(read bool, write bool) vex.Handler {
-	return &benchmarkHandler{
+	handler := &benchmarkHandler{
 		read:  read,
 		write: write,
 	}
+
+	return handler
 }
 
 func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
@@ -42,16 +44,23 @@ func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer log.Debug("server read done")
 
 			buf := make([]byte, len(benchmarkPacket))
 			for {
-				_, err := reader.Read(buf)
-				if err == io.EOF {
-					break
-				}
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					_, err := reader.Read(buf)
+					if err == io.EOF {
+						log.Info("server read eof")
+						break
+					}
 
-				if err != nil {
-					log.Error(err, "server read")
+					if err != nil {
+						log.Error(err, "server read")
+					}
 				}
 			}
 		}()
@@ -61,15 +70,22 @@ func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer log.Debug("server write done")
 
 			for {
-				_, err := writer.Write(benchmarkPacket)
-				if err == io.EOF {
-					break
-				}
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					_, err := writer.Write(benchmarkPacket)
+					if err == io.EOF {
+						log.Info("server write eof")
+						break
+					}
 
-				if err != nil {
-					log.Error(err, "server write")
+					if err != nil {
+						log.Error(err, "server write")
+					}
 				}
 			}
 		}()
@@ -178,76 +194,8 @@ func calculateRPS(loop int, cost time.Duration) float64 {
 	return math.Round(float64(loop) * float64(time.Second) / float64(cost))
 }
 
-// go test ./_examples/performance_test.go -v -run=^TestClientRPS$
-func TestClientRPS(t *testing.T) {
-	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
-	addresses := []string{"127.0.0.1:6789"}
-
-	servers := make([]vex.Server, 0, len(addresses))
-	for _, address := range addresses {
-		servers = append(servers, newBenchmarkServer(address, true, false))
-	}
-
-	defer func() {
-		for _, server := range servers {
-			if err := server.Close(); err != nil {
-				t.Error(err)
-			}
-		}
-	}()
-
-	index := uint64(0)
-	dial := func() (vex.Client, error) {
-		next := atomic.AddUint64(&index, 1)
-		i := int(next) % len(addresses)
-		return vex.NewClient(addresses[i])
-	}
-
-	poolSize := uint64(1)
-	clientPool := pool.New(dial, pool.WithConnections(poolSize))
-	defer clientPool.Close()
-
-	go func() {
-		for {
-			t.Logf("%+v", clientPool.Status())
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-
-	loop := 100000
-	beginTime := time.Now()
-
-	var wg sync.WaitGroup
-	for i := 0; i < loop; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			client, err := clientPool.Get(context.Background())
-			if err != nil {
-				t.Error(err)
-				return
-			}
-
-			defer client.Close()
-
-			_, err = client.Write(benchmarkPacket)
-			if err != nil {
-				t.Error(err)
-				return
-			}
-		}()
-	}
-
-	wg.Wait()
-	cost := time.Since(beginTime)
-
-	t.Logf("%+v", clientPool.Status())
-	t.Logf("PoolSize is %d, took %s, rps is %.0f!\n", poolSize, cost, calculateRPS(loop, cost))
-}
-
-// go test ./_examples/performance_test.go -v -run=^TestClientPoolRPS$
-func TestClientPoolRPS(t *testing.T) {
+// go test ./_examples/performance_test.go -v -run=^TestRPS$
+func TestRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
 	addresses := []string{"127.0.0.1:6789"}
 

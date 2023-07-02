@@ -64,13 +64,13 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ```bash
 $ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        136586              9063 ns/op            2080 B/op          6 allocs/op
+BenchmarkServer-12         40834             27093 ns/op            2080 B/op          6 allocs/op
 ```
 
 > 数据包大小为 1KB。
 
-_测试环境：R7-5800X@3.8GHZ CPU，32GB RAM，manjaro linux。_
+_测试环境：i7-9750H @ 2.60GHz，16GB RAM，mac os。_
 
-_单连接：10w 个请求的执行耗时为 1.5s，结果为 **66876 rps**。_
+_单连接：10w 个请求的执行耗时为 4.2s，结果为 **23820 rps**。_
 
-_16个连接：10w 个请求的执行耗时为 359.9ms，结果为 **277859 rps**。_
+_16个连接：10w 个请求的执行耗时为 2s，结果为 **49918 rps**。_

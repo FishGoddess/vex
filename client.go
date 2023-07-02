@@ -37,12 +37,12 @@ func (c *client) connect() error {
 		return err
 	}
 
-	log.Debug("address resolved to %s", resolved)
-
 	conn, err := net.DialTCP(network, nil, resolved)
 	if err != nil {
 		return err
 	}
+
+	log.Debug("client %s has connected to %s", conn.LocalAddr(), conn.RemoteAddr())
 
 	if err = setupConn(&c.Config, conn); err != nil {
 		return err

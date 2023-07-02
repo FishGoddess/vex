@@ -45,6 +45,9 @@ type server struct {
 
 	handler  Handler
 	listener *net.TCPListener
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewServer creates a new server serving on address.
@@ -61,25 +64,22 @@ func NewServer(address string, handler Handler, opts ...Option) Server {
 func (s *server) handleConn(conn *net.TCPConn) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(fmt.Errorf("%+v", r), "recover from handling")
+			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.Name, conn.RemoteAddr())
 		}
 	}()
 
 	defer func() {
 		if err := conn.Close(); err != nil {
-			log.Error(err, "close connection failed")
+			log.Error(err, "server %s closes connection %s failed", s.Name, conn.RemoteAddr())
 		}
 	}()
 
 	if err := setupConn(&s.Config, conn); err != nil {
-		log.Error(err, "setup connection failed")
+		log.Error(err, "server %s setups connection %s failed", s.Name, conn.RemoteAddr())
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.handler.Handle(ctx, conn, conn)
+	s.handler.Handle(s.ctx, conn, conn)
 }
 
 func (s *server) serve() error {
@@ -89,15 +89,15 @@ func (s *server) serve() error {
 		if err != nil {
 			// Listener has been closed.
 			if errors.Is(err, net.ErrClosed) {
-				log.Info("server listener closed")
+				log.Debug("server %s listener closed", s.Name)
 				break
 			}
 
-			log.Error(err, "listener accepts failed")
+			log.Error(err, "server %s listener accepts failed", s.Name)
 			continue
 		}
 
-		log.Debug("accepted from %s", conn.RemoteAddr())
+		log.Debug("server %s accepted from %s", s.Name, conn.RemoteAddr())
 
 		wg.Add(1)
 		go func() {
@@ -129,14 +129,16 @@ func (s *server) monitorSignals() {
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
 	sig := <-signalCh
-	log.Info("received signal %+v", sig)
+	log.Info("server %s received signal %+v", s.Name, sig)
 
 	if err := s.Close(); err != nil {
-		log.Error(err, "close server failed")
+		log.Error(err, "close server %s failed", s.Name)
 	}
 }
 
 func (s *server) Serve() error {
+	defer log.Info("server %s finished serving", s.Name)
+
 	address, err := net.ResolveTCPAddr(network, s.address)
 	if err != nil {
 		return err
@@ -148,6 +150,7 @@ func (s *server) Serve() error {
 	}
 
 	s.listener = listener
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	go s.monitorSignals()
 
 	log.Info("server %s is serving on %s", s.Name, s.address)
@@ -155,5 +158,12 @@ func (s *server) Serve() error {
 }
 
 func (s *server) Close() error {
-	return s.listener.Close()
+	log.Info("server %s is closing", s.Name)
+
+	if err := s.listener.Close(); err != nil {
+		return err
+	}
+
+	s.cancel()
+	return nil
 }

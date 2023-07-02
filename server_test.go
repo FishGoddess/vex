@@ -16,11 +16,11 @@ import (
 
 type testHandler struct{}
 
-func (testHandler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
+func (testHandler) Handle(ctx context.Context, conn *Connection) {
 	var buf [1024]byte
 
 	for {
-		n, err := reader.Read(buf[:])
+		n, err := conn.Read(buf[:])
 		if err == io.EOF {
 			break
 		}
@@ -29,7 +29,7 @@ func (testHandler) Handle(ctx context.Context, reader io.Reader, writer io.Write
 			panic(err)
 		}
 
-		_, err = writer.Write(buf[:n])
+		_, err = conn.Write(buf[:n])
 		if err == io.EOF {
 			break
 		}

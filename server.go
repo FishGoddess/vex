@@ -27,7 +27,7 @@ const (
 type Handler interface {
 	// Handle handles a connection with reader and writer.
 	// Some information can be fetched in context.
-	Handle(ctx context.Context, reader io.Reader, writer io.Writer)
+	Handle(ctx context.Context, conn *Connection)
 }
 
 type Server interface {
@@ -55,6 +55,8 @@ func NewServer(address string, handler Handler, opts ...Option) Server {
 }
 
 func (s *server) handleConn(conn *net.TCPConn) {
+	connection := newConnection(conn)
+
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.Name, conn.RemoteAddr())
@@ -62,12 +64,12 @@ func (s *server) handleConn(conn *net.TCPConn) {
 	}()
 
 	defer func() {
-		if err := conn.Close(); err != nil {
+		if err := connection.close(); err != nil {
 			log.Error(err, "server %s closes connection %s failed", s.Name, conn.RemoteAddr())
 		}
 	}()
 
-	if err := setupConn(&s.Config, conn); err != nil {
+	if err := connection.setup(&s.Config); err != nil {
 		log.Error(err, "server %s setups connection %s failed", s.Name, conn.RemoteAddr())
 		return
 	}
@@ -75,7 +77,7 @@ func (s *server) handleConn(conn *net.TCPConn) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.handler.Handle(ctx, conn, conn)
+	s.handler.Handle(ctx, connection)
 }
 
 func (s *server) serve() error {

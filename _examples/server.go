@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"math/rand"
 	"strconv"
 
@@ -16,10 +15,10 @@ import (
 
 type handler struct{}
 
-func (handler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
+func (handler) Handle(ctx context.Context, conn *vex.Connection) {
 	var buf [1024]byte
 	for {
-		n, err := reader.Read(buf[:])
+		n, err := conn.Read(buf[:])
 		if err != nil {
 			panic(err)
 		}
@@ -27,7 +26,7 @@ func (handler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
 		fmt.Println("Received:", string(buf[:n]))
 
 		reply := strconv.FormatUint(rand.Uint64(), 10)
-		if _, err = writer.Write([]byte(reply)); err != nil {
+		if _, err = conn.Write([]byte(reply)); err != nil {
 			panic(err)
 		}
 	}

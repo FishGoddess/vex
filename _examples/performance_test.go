@@ -23,24 +23,16 @@ var (
 	benchmarkPacket = make([]byte, 1024)
 )
 
-type benchmarkHandler struct {
-	read  bool
-	write bool
+type benchmarkHandler struct{}
+
+func newBenchmarkHandler() vex.Handler {
+	return &benchmarkHandler{}
 }
 
-func newBenchmarkHandler(read bool, write bool) vex.Handler {
-	handler := &benchmarkHandler{
-		read:  read,
-		write: write,
-	}
-
-	return handler
-}
-
-func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
+func (bh *benchmarkHandler) Handle(ctx context.Context, conn *vex.Connection) {
 	buf := make([]byte, len(benchmarkPacket))
 	for {
-		_, err := reader.Read(buf)
+		_, err := conn.Read(buf)
 		if err == io.EOF {
 			log.Info("server read eof")
 			break
@@ -50,7 +42,7 @@ func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer
 			log.Error(err, "server read")
 		}
 
-		_, err = writer.Write(benchmarkPacket)
+		_, err = conn.Write(benchmarkPacket)
 		if err == io.EOF {
 			log.Info("server write eof")
 			break
@@ -71,8 +63,8 @@ func newBenchmarkClient(address string) vex.Client {
 	return client
 }
 
-func newBenchmarkServer(address string, read bool, write bool) vex.Server {
-	server := vex.NewServer(address, newBenchmarkHandler(read, write), vex.WithCloseTimeout(10*time.Second))
+func newBenchmarkServer(address string) vex.Server {
+	server := vex.NewServer(address, newBenchmarkHandler(), vex.WithCloseTimeout(10*time.Second))
 
 	go func() {
 		if err := server.Serve(); err != nil {
@@ -84,11 +76,12 @@ func newBenchmarkServer(address string, read bool, write bool) vex.Server {
 	return server
 }
 
-// go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkExchange$ -benchtime=1s
-func BenchmarkExchange(b *testing.B) {
+// go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkReadWrite$ -benchtime=1s
+// BenchmarkReadWrite-12              51894             21424 ns/op               0 B/op          0 allocs/op
+func BenchmarkReadWrite(b *testing.B) {
 	address := "127.0.0.1:6789"
 
-	server := newBenchmarkServer(address, true, true)
+	server := newBenchmarkServer(address)
 	defer server.Close()
 
 	client := newBenchmarkClient(address)
@@ -122,7 +115,7 @@ func TestRPS(t *testing.T) {
 
 	servers := make([]vex.Server, 0, len(addresses))
 	for _, address := range addresses {
-		servers = append(servers, newBenchmarkServer(address, true, false))
+		servers = append(servers, newBenchmarkServer(address))
 	}
 
 	defer func() {
@@ -140,7 +133,7 @@ func TestRPS(t *testing.T) {
 		return vex.NewClient(addresses[i])
 	}
 
-	poolSize := uint64(1)
+	poolSize := uint64(16)
 	clientPool := pool.New(dial, pool.WithConnections(poolSize))
 	defer clientPool.Close()
 

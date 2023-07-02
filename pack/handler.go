@@ -10,6 +10,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/FishGoddess/vex"
 	"github.com/FishGoddess/vex/log"
 )
 
@@ -53,7 +54,7 @@ func (sh *ServerHandler) writePacketErr(writer io.Writer, err error) {
 	}
 }
 
-func (sh *ServerHandler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
+func (sh *ServerHandler) Handle(ctx context.Context, conn *vex.Connection) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -62,13 +63,13 @@ func (sh *ServerHandler) Handle(ctx context.Context, reader io.Reader, writer io
 		default:
 		}
 
-		packetType, requestPacket, err := readPacket(reader)
+		packetType, requestPacket, err := readPacket(conn)
 		if err == io.EOF {
 			return
 		}
 
 		if err != nil {
-			sh.writePacketErr(writer, err)
+			sh.writePacketErr(conn, err)
 			continue
 		}
 
@@ -77,16 +78,16 @@ func (sh *ServerHandler) Handle(ctx context.Context, reader io.Reader, writer io
 		sh.lock.RUnlock()
 
 		if !ok {
-			sh.writePacketErr(writer, errPacketHandlerNotFound)
+			sh.writePacketErr(conn, errPacketHandlerNotFound)
 			continue
 		}
 
 		responsePacket, err := handle(ctx, packetType, requestPacket)
 		if err != nil {
-			sh.writePacketErr(writer, err)
+			sh.writePacketErr(conn, err)
 			continue
 		}
 
-		sh.writePacketOK(writer, responsePacket)
+		sh.writePacketOK(conn, responsePacket)
 	}
 }

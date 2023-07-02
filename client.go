@@ -18,7 +18,7 @@ type Client interface {
 type client struct {
 	Config
 
-	conn *net.TCPConn
+	connection *Connection
 }
 
 // NewClient creates a new client connecting to address.
@@ -43,23 +43,23 @@ func (c *client) connect() error {
 	}
 
 	log.Debug("client %s has connected to %s", conn.LocalAddr(), conn.RemoteAddr())
+	c.connection = newConnection(conn)
 
-	if err = setupConn(&c.Config, conn); err != nil {
+	if err = c.connection.setup(&c.Config); err != nil {
 		return err
 	}
 
-	c.conn = conn
 	return nil
 }
 
 func (c *client) Read(p []byte) (n int, err error) {
-	return c.conn.Read(p)
+	return c.connection.Read(p)
 }
 
 func (c *client) Write(p []byte) (n int, err error) {
-	return c.conn.Write(p)
+	return c.connection.Write(p)
 }
 
 func (c *client) Close() error {
-	return c.conn.Close()
+	return c.connection.close()
 }

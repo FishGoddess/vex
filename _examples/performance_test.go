@@ -38,60 +38,28 @@ func newBenchmarkHandler(read bool, write bool) vex.Handler {
 }
 
 func (bh *benchmarkHandler) Handle(ctx context.Context, reader io.Reader, writer io.Writer) {
-	var wg sync.WaitGroup
+	buf := make([]byte, len(benchmarkPacket))
+	for {
+		_, err := reader.Read(buf)
+		if err == io.EOF {
+			log.Info("server read eof")
+			break
+		}
 
-	if bh.read {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer log.Debug("server read done")
+		if err != nil {
+			log.Error(err, "server read")
+		}
 
-			buf := make([]byte, len(benchmarkPacket))
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					_, err := reader.Read(buf)
-					if err == io.EOF {
-						log.Info("server read eof")
-						break
-					}
+		_, err = writer.Write(benchmarkPacket)
+		if err == io.EOF {
+			log.Info("server write eof")
+			break
+		}
 
-					if err != nil {
-						log.Error(err, "server read")
-					}
-				}
-			}
-		}()
+		if err != nil {
+			log.Error(err, "server write")
+		}
 	}
-
-	if bh.write {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			defer log.Debug("server write done")
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					_, err := writer.Write(benchmarkPacket)
-					if err == io.EOF {
-						log.Info("server write eof")
-						break
-					}
-
-					if err != nil {
-						log.Error(err, "server write")
-					}
-				}
-			}
-		}()
-	}
-
-	wg.Wait()
 }
 
 func newBenchmarkClient(address string) vex.Client {
@@ -116,37 +84,11 @@ func newBenchmarkServer(address string, read bool, write bool) vex.Server {
 	return server
 }
 
-// go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkClientReadServerWrite$ -benchtime=1s
-func BenchmarkClientReadServerWrite(b *testing.B) {
+// go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkExchange$ -benchtime=1s
+func BenchmarkExchange(b *testing.B) {
 	address := "127.0.0.1:6789"
 
 	server := newBenchmarkServer(address, true, true)
-	defer server.Close()
-
-	client := newBenchmarkClient(address)
-	defer func() {
-		log.Info("client close")
-		client.Close()
-	}()
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	buf := make([]byte, len(benchmarkPacket))
-	for i := 0; i < b.N; i++ {
-		_, err := client.Read(buf)
-		if err != nil {
-			b.Error(i, err)
-		}
-	}
-}
-
-// go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkClientWriteServerRead$ -benchtime=1s
-// BenchmarkClientWriteServerRead-12         287038              4232 ns/op               0 B/op          0 allocs/op
-func BenchmarkClientWriteServerRead(b *testing.B) {
-	address := "127.0.0.1:6789"
-
-	server := newBenchmarkServer(address, true, false)
 	defer server.Close()
 
 	client := newBenchmarkClient(address)
@@ -155,37 +97,16 @@ func BenchmarkClientWriteServerRead(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	buf := make([]byte, len(benchmarkPacket))
 	for i := 0; i < b.N; i++ {
 		_, err := client.Write(benchmarkPacket)
 		if err != nil {
-			b.Error(i, err)
-		}
-	}
-}
-
-// go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkClientServerExchange$ -benchtime=1s
-func BenchmarkClientServerExchange(b *testing.B) {
-	address := "127.0.0.1:6789"
-
-	server := newBenchmarkServer(address, true, true)
-	defer server.Close()
-
-	client := newBenchmarkClient(address)
-	defer client.Close()
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	buf := make([]byte, len(benchmarkPacket))
-	for i := 0; i < b.N; i++ {
-		_, err := client.Read(buf)
-		if err != nil {
-			b.Error(i, err)
+			b.Error(err)
 		}
 
-		_, err = client.Write(benchmarkPacket)
+		_, err = client.Read(buf)
 		if err != nil {
-			b.Error(i, err)
+			b.Error(err)
 		}
 	}
 }
@@ -219,7 +140,7 @@ func TestRPS(t *testing.T) {
 		return vex.NewClient(addresses[i])
 	}
 
-	poolSize := uint64(16)
+	poolSize := uint64(1)
 	clientPool := pool.New(dial, pool.WithConnections(poolSize))
 	defer clientPool.Close()
 
@@ -250,7 +171,12 @@ func TestRPS(t *testing.T) {
 			_, err = client.Write(benchmarkPacket)
 			if err != nil {
 				t.Error(err)
-				return
+			}
+
+			buf := make([]byte, len(benchmarkPacket))
+			_, err = client.Read(buf)
+			if err != nil {
+				t.Error(err)
 			}
 		}()
 	}

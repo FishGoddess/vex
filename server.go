@@ -23,10 +23,6 @@ const (
 	network = "tcp"
 )
 
-var (
-	errCloseServerTimeout = errors.New("vex: close server timeout")
-)
-
 // Handler is a handler for handling connection.
 type Handler interface {
 	// Handle handles a connection with reader and writer.
@@ -45,9 +41,6 @@ type server struct {
 
 	handler  Handler
 	listener *net.TCPListener
-
-	ctx    context.Context
-	cancel context.CancelFunc
 }
 
 // NewServer creates a new server serving on address.
@@ -79,7 +72,10 @@ func (s *server) handleConn(conn *net.TCPConn) {
 		return
 	}
 
-	s.handler.Handle(s.ctx, conn, conn)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.handler.Handle(ctx, conn, conn)
 }
 
 func (s *server) serve() error {
@@ -120,7 +116,7 @@ func (s *server) serve() error {
 	case <-closeCh:
 		return nil
 	case <-timer.C:
-		return errCloseServerTimeout
+		return fmt.Errorf("vex: close server %s timeout", s.Name)
 	}
 }
 
@@ -150,7 +146,6 @@ func (s *server) Serve() error {
 	}
 
 	s.listener = listener
-	s.ctx, s.cancel = context.WithCancel(context.Background())
 	go s.monitorSignals()
 
 	log.Info("server %s is serving on %s", s.Name, s.address)
@@ -158,12 +153,6 @@ func (s *server) Serve() error {
 }
 
 func (s *server) Close() error {
-	log.Info("server %s is closing", s.Name)
-
-	if err := s.listener.Close(); err != nil {
-		return err
-	}
-
-	s.cancel()
-	return nil
+	log.Debug("server %s is closing", s.Name)
+	return s.listener.Close()
 }

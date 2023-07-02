@@ -34,6 +34,7 @@ func setupConn(conf *Config, conn *net.TCPConn) error {
 	return nil
 }
 
+// Context connects client and server which can be read and written.
 type Context struct {
 	parent context.Context
 	cancel context.CancelFunc
@@ -55,34 +56,48 @@ func (c *Context) finish() (err error) {
 	return nil
 }
 
+// Deadline returns the time when context is done.
+// See context.Context.
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
 	return c.parent.Deadline()
 }
 
+// Done returns a channel that's closed when context is done.
+// See context.Context.
 func (c *Context) Done() <-chan struct{} {
 	return c.parent.Done()
 }
 
+// Err returns the underlying error.
+// See context.Context.
 func (c *Context) Err() error {
 	return c.parent.Err()
 }
 
+// Value returns the value associated with this context for key, or nil if no value is associated with key.
+// See context.Context.
 func (c *Context) Value(key any) any {
 	return c.parent.Value(key)
 }
 
+// Read reads data to p.
+// See io.Reader.
 func (c *Context) Read(p []byte) (n int, err error) {
 	return c.conn.Read(p)
 }
 
+// Write writes p to data.
+// See io.Writer.
 func (c *Context) Write(p []byte) (n int, err error) {
 	return c.conn.Write(p)
 }
 
+// LocalAddr returns the local network address.
 func (c *Context) LocalAddr() net.Addr {
 	return c.conn.LocalAddr()
 }
 
+// RemoteAddr returns the remote network address.
 func (c *Context) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
 }

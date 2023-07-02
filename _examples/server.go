@@ -13,31 +13,31 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-func handleConn(ctx *vex.Context) {
-	var buf [1024]byte
-	for {
-		n, err := ctx.Read(buf[:])
-		if err == io.EOF {
-			break
-		}
+func main() {
+	handle := func(ctx *vex.Context) {
+		var buf [1024]byte
+		for {
+			n, err := ctx.Read(buf[:])
+			if err == io.EOF {
+				break
+			}
 
-		if err != nil {
-			panic(err)
-		}
+			if err != nil {
+				panic(err)
+			}
 
-		fmt.Println("Received:", string(buf[:n]))
+			fmt.Println("Received:", string(buf[:n]))
 
-		reply := strconv.FormatUint(rand.Uint64(), 10)
-		if _, err = ctx.Write([]byte(reply)); err != nil {
-			panic(err)
+			reply := strconv.FormatUint(rand.Uint64(), 10)
+			if _, err = ctx.Write([]byte(reply)); err != nil {
+				panic(err)
+			}
 		}
 	}
-}
 
-func main() {
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	// Also, we can give it a name like "example" so we can see it in logs.
-	server := vex.NewServer("127.0.0.1:6789", handleConn, vex.WithName("example"))
+	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("example"))
 	//defer server.Close()
 
 	// Use Serve() to begin serving.

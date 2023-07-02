@@ -58,14 +58,19 @@ func (c *client) connect() error {
 	return nil
 }
 
+// Read reads data to p.
+// See io.Reader.
 func (c *client) Read(p []byte) (n int, err error) {
 	return c.conn.Read(p)
 }
 
+// Write writes p to data.
+// See io.Writer.
 func (c *client) Write(p []byte) (n int, err error) {
 	return c.conn.Write(p)
 }
 
+// Close closes the client and returns an error if failed.
 func (c *client) Close() error {
 	return c.conn.Close()
 }

@@ -35,6 +35,8 @@ type server struct {
 
 	handle   HandleFunc
 	listener *net.TCPListener
+
+	contextPool *sync.Pool
 }
 
 // NewServer creates a new server serving on address.
@@ -42,18 +44,27 @@ type server struct {
 func NewServer(address string, handle HandleFunc, opts ...Option) Server {
 	conf := newServerConfig(address).ApplyOptions(opts)
 
+	contextPool := &sync.Pool{New: func() any {
+		return new(Context)
+	}}
+
 	server := &server{
-		Config: *conf,
-		handle: handle,
+		Config:      *conf,
+		handle:      handle,
+		contextPool: contextPool,
 	}
 
 	return server
 }
 
 func (s *server) newContext(conn *net.TCPConn) *Context {
-	ctx := new(Context)
+	ctx := s.contextPool.Get().(*Context)
 	ctx.setup(conn)
 	return ctx
+}
+
+func (s *server) releaseContext(ctx *Context) {
+	s.contextPool.Put(ctx)
 }
 
 func (s *server) handleConn(conn *net.TCPConn) {
@@ -76,6 +87,8 @@ func (s *server) handleConn(conn *net.TCPConn) {
 		if err := ctx.finish(); err != nil {
 			log.Error(err, "server %s finished connection %s failed", s.Name, remoteAddr)
 		}
+
+		s.releaseContext(ctx)
 	}()
 
 	log.Debug("server %s handles connection %s begin", s.Name, remoteAddr)

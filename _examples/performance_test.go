@@ -23,7 +23,7 @@ var (
 	benchmarkPacket = make([]byte, 1024)
 )
 
-func benchmarkHandler(ctx *vex.Context) {
+func benchmarkHandle(ctx *vex.Context) {
 	buf := make([]byte, len(benchmarkPacket))
 	for {
 		_, err := ctx.Read(buf)
@@ -47,7 +47,7 @@ func benchmarkHandler(ctx *vex.Context) {
 }
 
 func newBenchmarkServer(address string) vex.Server {
-	server := vex.NewServer(address, benchmarkHandler, vex.WithCloseTimeout(10*time.Second))
+	server := vex.NewServer(address, benchmarkHandle, vex.WithCloseTimeout(10*time.Second))
 
 	go func() {
 		if err := server.Serve(); err != nil {

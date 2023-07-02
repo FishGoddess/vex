@@ -15,7 +15,7 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-func handleConn(ctx *vex.Context) {
+func handle(ctx *vex.Context) {
 	var buf [1024]byte
 
 	for {
@@ -41,7 +41,7 @@ func handleConn(ctx *vex.Context) {
 
 // go test -v -cover -run=^TestPool$
 func TestPool(t *testing.T) {
-	server := vex.NewServer("127.0.0.1:6789", handleConn)
+	server := vex.NewServer("127.0.0.1:6789", handle)
 	defer server.Close()
 
 	go func() {

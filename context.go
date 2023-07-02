@@ -56,13 +56,13 @@ func (c *Context) finish() (err error) {
 	return nil
 }
 
-// Deadline returns the time when context is done.
+// Deadline returns the time when context has done.
 // See context.Context.
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
 	return c.parent.Deadline()
 }
 
-// Done returns a channel that's closed when context is done.
+// Done returns a channel that's closed when context has done.
 // See context.Context.
 func (c *Context) Done() <-chan struct{} {
 	return c.parent.Done()

@@ -33,10 +33,11 @@ type Server interface {
 type server struct {
 	Config
 
-	handle   HandleFunc
 	listener *net.TCPListener
+	handle   HandleFunc
 
 	contextPool *sync.Pool
+	lock        sync.RWMutex
 }
 
 // NewServer creates a new server serving on address.
@@ -55,6 +56,13 @@ func NewServer(address string, handle HandleFunc, opts ...Option) Server {
 	}
 
 	return server
+}
+
+func (s *server) serving() bool {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	return s.listener != nil
 }
 
 func (s *server) newContext(conn *net.TCPConn) *Context {
@@ -152,6 +160,10 @@ func (s *server) monitorSignals() {
 }
 
 func (s *server) Serve() error {
+	if s.serving() {
+		return fmt.Errorf("server %s already serving", s.Name)
+	}
+
 	address, err := net.ResolveTCPAddr(network, s.address)
 	if err != nil {
 		return err
@@ -162,13 +174,28 @@ func (s *server) Serve() error {
 		return err
 	}
 
+	s.lock.Lock()
 	s.listener = listener
-	go s.monitorSignals()
+	s.lock.Unlock()
 
+	go s.monitorSignals()
 	log.Info("server %s is serving on %s", s.Name, s.address)
+
 	return s.serve()
 }
 
 func (s *server) Close() (err error) {
+	if !s.serving() {
+		return nil
+	}
+
+	defer func() {
+		if err == nil {
+			s.lock.Lock()
+			s.listener = nil
+			s.lock.Unlock()
+		}
+	}()
+
 	return s.listener.Close()
 }

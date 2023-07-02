@@ -22,14 +22,19 @@ func (pc *poolClient) closeUnderlying() error {
 	return pc.client.Close()
 }
 
+// Read reads data to p.
+// See io.Reader.
 func (pc *poolClient) Read(p []byte) (n int, err error) {
 	return pc.client.Read(p)
 }
 
+// Write writes p to data.
+// See io.Writer.
 func (pc *poolClient) Write(p []byte) (n int, err error) {
 	return pc.client.Write(p)
 }
 
+// Close closes the client and returns an error if failed.
 func (pc *poolClient) Close() error {
 	return pc.pool.put(pc)
 }

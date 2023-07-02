@@ -131,6 +131,8 @@ func (p *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
 }
 
 // Get gets a client from pool and returns an error if failed.
+// You should call client.Close() to put a client back to the pool.
+// We recommend you use a defer after getting a client.
 func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
 	p.lock.Lock()
 	if p.closed {

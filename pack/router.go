@@ -22,43 +22,44 @@ var (
 // You will receive a byte slice of request and should return a byte slice or error if necessary.
 type PacketHandler func(ctx context.Context, packetType PacketType, requestPacket []byte) (responsePacket []byte, err error)
 
-type ServerHandler struct {
+type Router struct {
 	handlers map[PacketType]PacketHandler
 	lock     sync.RWMutex
 }
 
-func Handler() *ServerHandler {
-	return &ServerHandler{
+// NewRouter creates a router for registering some packet handlers.
+func NewRouter() *Router {
+	return &Router{
 		handlers: make(map[PacketType]PacketHandler, 16),
 	}
 }
 
-// RegisterPacketHandler registers a handler for packetType.
-func (sh *ServerHandler) RegisterPacketHandler(packetType PacketType, handler PacketHandler) {
+// Register registers a packet handler to router.
+func (sh *Router) Register(packetType PacketType, handler PacketHandler) {
 	sh.lock.Lock()
 	sh.handlers[packetType] = handler
 	sh.lock.Unlock()
 }
 
-func (sh *ServerHandler) writePacketOK(writer io.Writer, body []byte) {
+func (sh *Router) writePacketOK(writer io.Writer, body []byte) {
 	err := writePacket(writer, packetTypeNormal, body)
 	if err != nil {
 
 	}
 }
 
-func (sh *ServerHandler) writePacketErr(writer io.Writer, err error) {
+func (sh *Router) writePacketErr(writer io.Writer, err error) {
 	err = writePacket(writer, packetTypeError, []byte(err.Error()))
 	if err != nil {
 
 	}
 }
 
-func (sh *ServerHandler) Handle(ctx *vex.Context) {
+func (sh *Router) Handle(ctx *vex.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Debug("context has done")
+			log.Debug("router context from has done", ctx.RemoteAddr())
 			return
 		default:
 		}

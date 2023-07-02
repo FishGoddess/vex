@@ -54,7 +54,7 @@ func (sh *ServerHandler) writePacketErr(writer io.Writer, err error) {
 	}
 }
 
-func (sh *ServerHandler) Handle(ctx context.Context, conn *vex.Connection) {
+func (sh *ServerHandler) Handle(ctx *vex.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,13 +63,13 @@ func (sh *ServerHandler) Handle(ctx context.Context, conn *vex.Connection) {
 		default:
 		}
 
-		packetType, requestPacket, err := readPacket(conn)
+		packetType, requestPacket, err := readPacket(ctx)
 		if err == io.EOF {
 			return
 		}
 
 		if err != nil {
-			sh.writePacketErr(conn, err)
+			sh.writePacketErr(ctx, err)
 			continue
 		}
 
@@ -78,16 +78,16 @@ func (sh *ServerHandler) Handle(ctx context.Context, conn *vex.Connection) {
 		sh.lock.RUnlock()
 
 		if !ok {
-			sh.writePacketErr(conn, errPacketHandlerNotFound)
+			sh.writePacketErr(ctx, errPacketHandlerNotFound)
 			continue
 		}
 
 		responsePacket, err := handle(ctx, packetType, requestPacket)
 		if err != nil {
-			sh.writePacketErr(conn, err)
+			sh.writePacketErr(ctx, err)
 			continue
 		}
 
-		sh.writePacketOK(conn, responsePacket)
+		sh.writePacketOK(ctx, responsePacket)
 	}
 }

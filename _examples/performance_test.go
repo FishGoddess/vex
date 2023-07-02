@@ -23,38 +23,27 @@ var (
 	benchmarkPacket = make([]byte, 1024)
 )
 
-func benchmarkHandler(ctx context.Context, conn *vex.Connection) {
+func benchmarkHandler(ctx *vex.Context) {
 	buf := make([]byte, len(benchmarkPacket))
 	for {
-		_, err := conn.Read(buf)
+		_, err := ctx.Read(buf)
 		if err == io.EOF {
-			log.Info("server read eof")
 			break
 		}
 
 		if err != nil {
-			log.Error(err, "server read")
+			log.Error(err, "server read failed")
 		}
 
-		_, err = conn.Write(benchmarkPacket)
+		_, err = ctx.Write(benchmarkPacket)
 		if err == io.EOF {
-			log.Info("server write eof")
 			break
 		}
 
 		if err != nil {
-			log.Error(err, "server write")
+			log.Error(err, "server write failed")
 		}
 	}
-}
-
-func newBenchmarkClient(address string) vex.Client {
-	client, err := vex.NewClient(address)
-	if err != nil {
-		panic(err)
-	}
-
-	return client
 }
 
 func newBenchmarkServer(address string) vex.Server {
@@ -71,28 +60,40 @@ func newBenchmarkServer(address string) vex.Server {
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkReadWrite$ -benchtime=1s
-// BenchmarkReadWrite-12              51894             21424 ns/op               0 B/op          0 allocs/op
+// BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
 func BenchmarkReadWrite(b *testing.B) {
 	address := "127.0.0.1:6789"
 
 	server := newBenchmarkServer(address)
 	defer server.Close()
 
-	client := newBenchmarkClient(address)
-	defer client.Close()
+	//client := newBenchmarkClient(address)
+	//defer client.Close()
+
+	clientPool := pool.New(pool.Dial(address), pool.WithConnections(1))
+	defer clientPool.Close()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	buf := make([]byte, len(benchmarkPacket))
 	for i := 0; i < b.N; i++ {
-		_, err := client.Write(benchmarkPacket)
+		client, err := clientPool.Get(context.Background())
+		if err != nil {
+			b.Error(err)
+		}
+
+		_, err = client.Write(benchmarkPacket)
 		if err != nil {
 			b.Error(err)
 		}
 
 		_, err = client.Read(buf)
 		if err != nil {
+			b.Error(err)
+		}
+
+		if err = client.Close(); err != nil {
 			b.Error(err)
 		}
 	}
@@ -103,6 +104,8 @@ func calculateRPS(loop int, cost time.Duration) float64 {
 }
 
 // go test ./_examples/performance_test.go -v -run=^TestRPS$
+// PoolSize is 1, took 1.266500745s, rps is 78958
+// PoolSize is 16, took 393.082456ms, rps is 254400
 func TestRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
 	addresses := []string{"127.0.0.1:6789"}
@@ -131,10 +134,20 @@ func TestRPS(t *testing.T) {
 	clientPool := pool.New(dial, pool.WithConnections(poolSize))
 	defer clientPool.Close()
 
+	doneCh := make(chan struct{}, 1)
+	defer func() {
+		doneCh <- struct{}{}
+	}()
+
 	go func() {
 		for {
-			t.Logf("%+v", clientPool.Status())
-			time.Sleep(100 * time.Millisecond)
+			select {
+			case <-doneCh:
+				return
+			default:
+				t.Logf("%+v", clientPool.Status())
+				time.Sleep(100 * time.Millisecond)
+			}
 		}
 	}()
 

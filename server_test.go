@@ -5,7 +5,6 @@
 package vex
 
 import (
-	"context"
 	"io"
 	"math/rand"
 	"net"
@@ -14,11 +13,11 @@ import (
 	"time"
 )
 
-func testHandler(ctx context.Context, conn *Connection) {
+func testHandle(ctx *Context) {
 	var buf [1024]byte
 
 	for {
-		n, err := conn.Read(buf[:])
+		n, err := ctx.Read(buf[:])
 		if err == io.EOF {
 			break
 		}
@@ -27,7 +26,7 @@ func testHandler(ctx context.Context, conn *Connection) {
 			panic(err)
 		}
 
-		_, err = conn.Write(buf[:n])
+		_, err = ctx.Write(buf[:n])
 		if err == io.EOF {
 			break
 		}
@@ -81,7 +80,7 @@ func TestServer(t *testing.T) {
 	closeCh := make(chan struct{})
 	go runTestClient(t, address, ch, closeCh)
 
-	server := NewServer(address, testHandler)
+	server := NewServer(address, testHandle)
 	close(ch)
 
 	go func() {

@@ -15,11 +15,11 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-func handleConn(ctx context.Context, conn *vex.Connection) {
+func handleConn(ctx *vex.Context) {
 	var buf [1024]byte
 
 	for {
-		n, err := conn.Read(buf[:])
+		n, err := ctx.Read(buf[:])
 		if err == io.EOF {
 			break
 		}
@@ -28,7 +28,7 @@ func handleConn(ctx context.Context, conn *vex.Connection) {
 			panic(err)
 		}
 
-		n, err = conn.Write(buf[:n])
+		n, err = ctx.Write(buf[:n])
 		if err == io.EOF {
 			break
 		}

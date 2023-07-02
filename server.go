@@ -5,7 +5,6 @@
 package vex
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -23,13 +22,7 @@ const (
 	network = "tcp"
 )
 
-// Handler handles a connection with context.
-// Some information can be fetched in context.
-type Handler func(ctx context.Context, conn *Connection)
-
-func (h Handler) Handle(ctx context.Context, conn *Connection) {
-	h(ctx, conn)
-}
+type HandleFunc func(ctx *Context)
 
 type Server interface {
 	io.Closer
@@ -40,45 +33,54 @@ type Server interface {
 type server struct {
 	Config
 
-	handler  Handler
+	handle   HandleFunc
 	listener *net.TCPListener
 }
 
 // NewServer creates a new server serving on address.
 // Handler is an interface of handling a connection.
-func NewServer(address string, handler Handler, opts ...Option) Server {
+func NewServer(address string, handle HandleFunc, opts ...Option) Server {
+	conf := newServerConfig(address).ApplyOptions(opts)
+
 	server := &server{
-		Config:  *newServerConfig(address).ApplyOptions(opts),
-		handler: handler,
+		Config: *conf,
+		handle: handle,
 	}
 
 	return server
 }
 
+func (s *server) newContext(conn *net.TCPConn) *Context {
+	ctx := new(Context)
+	ctx.setup(conn)
+	return ctx
+}
+
 func (s *server) handleConn(conn *net.TCPConn) {
-	connection := newConnection(conn)
+	remoteAddr := conn.RemoteAddr()
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.Name, connection.RemoteAddr())
+			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.Name, remoteAddr)
 		}
 	}()
 
-	defer func() {
-		if err := connection.close(); err != nil {
-			log.Error(err, "server %s closes connection %s failed", s.Name, connection.RemoteAddr())
-		}
-	}()
-
-	if err := connection.setup(&s.Config); err != nil {
-		log.Error(err, "server %s setups connection %s failed", s.Name, connection.RemoteAddr())
+	if err := setupConn(&s.Config, conn); err != nil {
+		log.Error(err, "server %s setups connection %s failed", s.Name, remoteAddr)
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := s.newContext(conn)
 
-	s.handler.Handle(ctx, connection)
+	defer func() {
+		if err := ctx.finish(); err != nil {
+			log.Error(err, "server %s finished connection %s failed", s.Name, remoteAddr)
+		}
+	}()
+
+	log.Debug("server %s handles connection %s begin", s.Name, remoteAddr)
+	s.handle(ctx)
+	log.Debug("server %s handles connection %s end", s.Name, remoteAddr)
 }
 
 func (s *server) serve() error {
@@ -88,15 +90,15 @@ func (s *server) serve() error {
 		if err != nil {
 			// Listener has been closed.
 			if errors.Is(err, net.ErrClosed) {
-				log.Debug("server %s listener closed", s.Name)
+				log.Debug("server %s stopped listening", s.Name)
 				break
 			}
 
-			log.Error(err, "server %s listener accepts failed", s.Name)
+			log.Error(err, "server %s accepted failed", s.Name)
 			continue
 		}
 
-		log.Debug("server %s accepted from %s", s.Name, conn.RemoteAddr())
+		log.Debug("server %s accepts from %s", s.Name, conn.RemoteAddr())
 
 		wg.Add(1)
 		go func() {
@@ -117,6 +119,7 @@ func (s *server) serve() error {
 
 	select {
 	case <-closeCh:
+		log.Info("server %s closed", s.Name)
 		return nil
 	case <-timer.C:
 		return fmt.Errorf("vex: close server %s timeout", s.Name)
@@ -136,8 +139,6 @@ func (s *server) monitorSignals() {
 }
 
 func (s *server) Serve() error {
-	defer log.Info("server %s finished serving", s.Name)
-
 	address, err := net.ResolveTCPAddr(network, s.address)
 	if err != nil {
 		return err
@@ -155,7 +156,6 @@ func (s *server) Serve() error {
 	return s.serve()
 }
 
-func (s *server) Close() error {
-	log.Debug("server %s is closing", s.Name)
+func (s *server) Close() (err error) {
 	return s.listener.Close()
 }

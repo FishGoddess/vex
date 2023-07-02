@@ -29,6 +29,28 @@ var (
 	}
 )
 
+// DisableDebug disables the output of debug logs.
+func DisableDebug() {
+	DebugFunc = nil
+}
+
+// DisableInfo disables the output of info logs.
+func DisableInfo() {
+	InfoFunc = nil
+}
+
+// DisableError disables the output of error logs.
+func DisableError() {
+	ErrorFunc = nil
+}
+
+// DisableAll disables the output of all logs.
+func DisableAll() {
+	DisableDebug()
+	DisableInfo()
+	DisableError()
+}
+
 // Debug logs a debug message.
 func Debug(format string, v ...interface{}) {
 	if DebugFunc != nil {

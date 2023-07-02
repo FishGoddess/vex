@@ -5,18 +5,22 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"strconv"
 
 	"github.com/FishGoddess/vex"
 )
 
-func handleConn(ctx context.Context, conn *vex.Connection) {
+func handleConn(ctx *vex.Context) {
 	var buf [1024]byte
 	for {
-		n, err := conn.Read(buf[:])
+		n, err := ctx.Read(buf[:])
+		if err == io.EOF {
+			break
+		}
+
 		if err != nil {
 			panic(err)
 		}
@@ -24,17 +28,20 @@ func handleConn(ctx context.Context, conn *vex.Connection) {
 		fmt.Println("Received:", string(buf[:n]))
 
 		reply := strconv.FormatUint(rand.Uint64(), 10)
-		if _, err = conn.Write([]byte(reply)); err != nil {
+		if _, err = ctx.Write([]byte(reply)); err != nil {
 			panic(err)
 		}
 	}
 }
 
 func main() {
-	// Create a server listening on 127.0.0.1:6789 and set a handler to it.
-	server := vex.NewServer("127.0.0.1:6789", handleConn)
+	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
+	// Also, we can give it a name like "example" so we can see it in logs.
+	server := vex.NewServer("127.0.0.1:6789", handleConn, vex.WithName("example"))
+	//defer server.Close()
 
 	// Use Serve() to begin serving.
+	// Press ctrl+c/command+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}

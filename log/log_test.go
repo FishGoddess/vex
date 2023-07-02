@@ -9,8 +9,47 @@ import (
 	"testing"
 )
 
-// go test -v -cover -run=^TestDebugFunc$
-func TestDebugFunc(t *testing.T) {
+// go test -v -cover -run=^TestDisableDebug$
+func TestDisableDebug(t *testing.T) {
+	old := DebugFunc
+	defer func() {
+		DebugFunc = old
+	}()
+
+	DisableDebug()
+	if DebugFunc != nil {
+		t.Error("disable debug failed")
+	}
+}
+
+// go test -v -cover -run=^TestDisableInfo$
+func TestDisableInfo(t *testing.T) {
+	old := InfoFunc
+	defer func() {
+		InfoFunc = old
+	}()
+
+	DisableInfo()
+	if InfoFunc != nil {
+		t.Error("disable info failed")
+	}
+}
+
+// go test -v -cover -run=^TestDisableError$
+func TestDisableError(t *testing.T) {
+	old := ErrorFunc
+	defer func() {
+		ErrorFunc = old
+	}()
+
+	DisableError()
+	if ErrorFunc != nil {
+		t.Error("disable error failed")
+	}
+}
+
+// go test -v -cover -run=^TestDebug$
+func TestDebug(t *testing.T) {
 	if DebugFunc == nil {
 		t.Error("DebugFunc == nil")
 	}
@@ -28,8 +67,8 @@ func TestDebugFunc(t *testing.T) {
 	Debug("...%d...", 1)
 }
 
-// go test -v -cover -run=^TestInfoFunc$
-func TestInfoFunc(t *testing.T) {
+// go test -v -cover -run=^TestInfo$
+func TestInfo(t *testing.T) {
 	if InfoFunc == nil {
 		t.Error("InfoFunc == nil")
 	}
@@ -47,8 +86,8 @@ func TestInfoFunc(t *testing.T) {
 	Info("...%d...", 1)
 }
 
-// go test -v -cover -run=^TestErrorFunc$
-func TestErrorFunc(t *testing.T) {
+// go test -v -cover -run=^TestError$
+func TestError(t *testing.T) {
 	if ErrorFunc == nil {
 		t.Error("ErrorFunc == nil")
 	}

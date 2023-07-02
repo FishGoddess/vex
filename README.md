@@ -63,14 +63,14 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 ### 🛠 性能测试
 
 ```bash
-$ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-12         40834             27093 ns/op            2080 B/op          6 allocs/op
+$ make bench
+BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
 ```
 
 > 数据包大小为 1KB。
 
-_测试环境：i7-9750H @ 2.60GHz，16GB RAM，mac os。_
+_测试环境：R7-5800X@3.8GHZ CPU, 32GB RAM, deepin linux。_
 
-_单连接：10w 个请求的执行耗时为 4.2s，结果为 **23820 rps**。_
+_单连接：10w 个请求的执行耗时为 1.26s，结果为 **78958 rps**。_
 
-_16个连接：10w 个请求的执行耗时为 2s，结果为 **49918 rps**。_
+_16个连接：10w 个请求的执行耗时为 393.08ms，结果为 **254400 rps**。_

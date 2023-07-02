@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// go test -v -cover -run=^TestSetupConn$
-func TestSetupConn(t *testing.T) {
+// go test -v -cover -run=^TestConnectionSetup$
+func TestConnectionSetup(t *testing.T) {
 	conf := newServerConfig("127.0.0.1:6789")
 
 	listener, err := net.Listen(network, conf.address)
@@ -34,7 +34,8 @@ func TestSetupConn(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err = setupConn(conf, conn); err != nil {
+	connection := newConnection(conn)
+	if err = connection.setup(conf); err != nil {
 		t.Error(err)
 	}
 }

@@ -13,9 +13,7 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-type handler struct{}
-
-func (handler) Handle(ctx context.Context, conn *vex.Connection) {
+func handleConn(ctx context.Context, conn *vex.Connection) {
 	var buf [1024]byte
 	for {
 		n, err := conn.Read(buf[:])
@@ -34,7 +32,7 @@ func (handler) Handle(ctx context.Context, conn *vex.Connection) {
 
 func main() {
 	// Create a server listening on 127.0.0.1:6789 and set a handler to it.
-	server := vex.NewServer("127.0.0.1:6789", handler{})
+	server := vex.NewServer("127.0.0.1:6789", handleConn)
 
 	// Use Serve() to begin serving.
 	if err := server.Serve(); err != nil {

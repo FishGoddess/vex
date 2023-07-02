@@ -23,11 +23,12 @@ const (
 	network = "tcp"
 )
 
-// Handler is a handler for handling connection.
-type Handler interface {
-	// Handle handles a connection with reader and writer.
-	// Some information can be fetched in context.
-	Handle(ctx context.Context, conn *Connection)
+// Handler handles a connection with context.
+// Some information can be fetched in context.
+type Handler func(ctx context.Context, conn *Connection)
+
+func (h Handler) Handle(ctx context.Context, conn *Connection) {
+	h(ctx, conn)
 }
 
 type Server interface {
@@ -59,18 +60,18 @@ func (s *server) handleConn(conn *net.TCPConn) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.Name, conn.RemoteAddr())
+			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.Name, connection.RemoteAddr())
 		}
 	}()
 
 	defer func() {
 		if err := connection.close(); err != nil {
-			log.Error(err, "server %s closes connection %s failed", s.Name, conn.RemoteAddr())
+			log.Error(err, "server %s closes connection %s failed", s.Name, connection.RemoteAddr())
 		}
 	}()
 
 	if err := connection.setup(&s.Config); err != nil {
-		log.Error(err, "server %s setups connection %s failed", s.Name, conn.RemoteAddr())
+		log.Error(err, "server %s setups connection %s failed", s.Name, connection.RemoteAddr())
 		return
 	}
 

@@ -42,12 +42,12 @@ func (c *client) connect() error {
 		return err
 	}
 
-	log.Debug("client %s has connected to %s", conn.LocalAddr(), conn.RemoteAddr())
 	c.connection = newConnection(conn)
-
 	if err = c.connection.setup(&c.Config); err != nil {
 		return err
 	}
+
+	log.Debug("client %s has connected to %s", c.connection.LocalAddr(), c.connection.RemoteAddr())
 
 	return nil
 }

@@ -23,13 +23,7 @@ var (
 	benchmarkPacket = make([]byte, 1024)
 )
 
-type benchmarkHandler struct{}
-
-func newBenchmarkHandler() vex.Handler {
-	return &benchmarkHandler{}
-}
-
-func (bh *benchmarkHandler) Handle(ctx context.Context, conn *vex.Connection) {
+func benchmarkHandler(ctx context.Context, conn *vex.Connection) {
 	buf := make([]byte, len(benchmarkPacket))
 	for {
 		_, err := conn.Read(buf)
@@ -64,7 +58,7 @@ func newBenchmarkClient(address string) vex.Client {
 }
 
 func newBenchmarkServer(address string) vex.Server {
-	server := vex.NewServer(address, newBenchmarkHandler(), vex.WithCloseTimeout(10*time.Second))
+	server := vex.NewServer(address, benchmarkHandler, vex.WithCloseTimeout(10*time.Second))
 
 	go func() {
 		if err := server.Serve(); err != nil {

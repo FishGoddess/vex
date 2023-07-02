@@ -14,9 +14,7 @@ import (
 	"time"
 )
 
-type testHandler struct{}
-
-func (testHandler) Handle(ctx context.Context, conn *Connection) {
+func testHandler(ctx context.Context, conn *Connection) {
 	var buf [1024]byte
 
 	for {
@@ -83,7 +81,7 @@ func TestServer(t *testing.T) {
 	closeCh := make(chan struct{})
 	go runTestClient(t, address, ch, closeCh)
 
-	server := NewServer(address, testHandler{})
+	server := NewServer(address, testHandler)
 	close(ch)
 
 	go func() {

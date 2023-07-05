@@ -11,7 +11,15 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-func useClient(client vex.Client) {
+func onConnected(clientAddress string, serverAddress string) {
+	fmt.Printf("on connected %s to %s\n", clientAddress, serverAddress)
+}
+
+func onDisconnected(clientAddress string, serverAddress string) {
+	fmt.Printf("on disconnected %s from %s\n", clientAddress, serverAddress)
+}
+
+func useClientWithHook(client vex.Client) {
 	var buf [1024]byte
 	for i := 0; i < 10; i++ {
 		msg := strconv.Itoa(i)
@@ -29,11 +37,16 @@ func useClient(client vex.Client) {
 }
 
 func main() {
-	client, err := vex.NewClient("127.0.0.1:6789")
+	opts := []vex.Option{
+		vex.WithOnConnected(onConnected),
+		vex.WithOnDisconnected(onDisconnected),
+	}
+
+	client, err := vex.NewClient("127.0.0.1:6789", opts...)
 	if err != nil {
 		panic(err)
 	}
 
 	defer client.Close()
-	useClient(client)
+	useClientWithHook(client)
 }

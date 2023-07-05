@@ -54,6 +54,20 @@ func WithWriteBufferSize(bufferSize uint32) Option {
 	}
 }
 
+// WithOnConnected sets on connected function to config.
+func WithOnConnected(onConnected func(clientAddress string, serverAddress string)) Option {
+	return func(conf *Config) {
+		conf.onConnectedFunc = onConnected
+	}
+}
+
+// WithOnDisconnected sets on disconnected function to config.
+func WithOnDisconnected(onDisconnected func(clientAddress string, serverAddress string)) Option {
+	return func(conf *Config) {
+		conf.onDisconnectedFunc = onDisconnected
+	}
+}
+
 // WithBeforeServing sets before serving function to config.
 func WithBeforeServing(beforeServing func(address string)) Option {
 	return func(conf *Config) {

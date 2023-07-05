@@ -18,7 +18,8 @@ type Client interface {
 type client struct {
 	Config
 
-	conn *net.TCPConn
+	conn        *net.TCPConn
+	connAddress string
 }
 
 // NewClient creates a new client connecting to address.
@@ -37,7 +38,14 @@ func NewClient(address string, opts ...Option) (Client, error) {
 	return client, nil
 }
 
-func (c *client) connect() error {
+func (c *client) connect() (err error) {
+	defer func() {
+		if err == nil {
+			c.onConnected(c.connAddress, c.address)
+			log.Debug("client %s has connected to %s", c.connAddress, c.address)
+		}
+	}()
+
 	resolved, err := net.ResolveTCPAddr(network, c.address)
 	if err != nil {
 		return err
@@ -53,7 +61,7 @@ func (c *client) connect() error {
 	}
 
 	c.conn = conn
-	log.Debug("client %s has connected to %s", c.conn.LocalAddr(), c.conn.RemoteAddr())
+	c.connAddress = c.conn.LocalAddr().String()
 
 	return nil
 }
@@ -71,6 +79,13 @@ func (c *client) Write(p []byte) (n int, err error) {
 }
 
 // Close closes the client and returns an error if failed.
-func (c *client) Close() error {
+func (c *client) Close() (err error) {
+	defer func() {
+		if err == nil {
+			c.onDisconnected(c.connAddress, c.address)
+			log.Debug("client %s has disconnected from %s", c.connAddress, c.address)
+		}
+	}()
+
 	return c.conn.Close()
 }

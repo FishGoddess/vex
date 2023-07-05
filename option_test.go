@@ -73,6 +73,30 @@ func TestWithWriteBufferSize(t *testing.T) {
 	}
 }
 
+// go test -v -cover -run=^TestWithOnConnected$
+func TestWithOnConnected(t *testing.T) {
+	onConnectedFunc := func(clientAddress string, serverAddress string) {}
+
+	conf := &Config{onConnectedFunc: nil}
+	WithOnConnected(onConnectedFunc)(conf)
+
+	if unsafe.Sizeof(conf.onConnectedFunc) != unsafe.Sizeof(onConnectedFunc) {
+		t.Errorf("c.onConnectedFunc %d is wrong", unsafe.Sizeof(conf.onConnectedFunc))
+	}
+}
+
+// go test -v -cover -run=^TestWithOnDisconnected$
+func TestWithOnDisconnected(t *testing.T) {
+	onDisconnectedFunc := func(clientAddress string, serverAddress string) {}
+
+	conf := &Config{onDisconnectedFunc: nil}
+	WithOnDisconnected(onDisconnectedFunc)(conf)
+
+	if unsafe.Sizeof(conf.onDisconnectedFunc) != unsafe.Sizeof(onDisconnectedFunc) {
+		t.Errorf("c.onDisconnectedFunc %d is wrong", unsafe.Sizeof(conf.onDisconnectedFunc))
+	}
+}
+
 // go test -v -cover -run=^TestWithBeforeServing$
 func TestWithBeforeServing(t *testing.T) {
 	beforeServingFunc := func(address string) {}

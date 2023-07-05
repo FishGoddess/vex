@@ -37,10 +37,20 @@ type Config struct {
 	// maxConnections is the max number of connections.
 	maxConnections int
 
+	// onConnectedFunc is a function called on connected to a server.
+	// It receives the client address and server address in the function.
+	onConnectedFunc func(clientAddress string, serverAddress string)
+
+	// onDisconnectedFunc is a function called on disconnected from a server.
+	// It receives the client address and server address in the function.
+	onDisconnectedFunc func(clientAddress string, serverAddress string)
+
 	// beforeServingFunc is a function called before serving a server.
+	// It receives the server address in the function.
 	beforeServingFunc func(address string)
 
 	// afterServingFunc is a function called after serving a server.
+	// It receives the server address in the function.
 	afterServingFunc func(address string, err error)
 
 	// beforeHandlingFunc is a function called before handling a server.
@@ -50,9 +60,11 @@ type Config struct {
 	afterHandlingFunc func(ctx *Context)
 
 	// beforeClosingFunc is a function called before closing a server.
+	// It receives the client/server address in the function.
 	beforeClosingFunc func(address string)
 
 	// afterClosingFunc is a function called after closing a server.
+	// It receives the client/server address in the function.
 	afterClosingFunc func(address string, err error)
 }
 
@@ -85,6 +97,18 @@ func (c *Config) ApplyOptions(opts []Option) *Config {
 	}
 
 	return c
+}
+
+func (c *Config) onConnected(clientAddress string, serverAddress string) {
+	if c.onConnectedFunc != nil {
+		c.onConnectedFunc(clientAddress, serverAddress)
+	}
+}
+
+func (c *Config) onDisconnected(clientAddress string, serverAddress string) {
+	if c.onDisconnectedFunc != nil {
+		c.onDisconnectedFunc(clientAddress, serverAddress)
+	}
 }
 
 func (c *Config) beforeServing(address string) {

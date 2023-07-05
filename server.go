@@ -157,7 +157,10 @@ func (s *server) monitorSignals() {
 	}
 }
 
-func (s *server) Serve() error {
+func (s *server) Serve() (err error) {
+	s.beforeServing(s.address)
+	defer s.afterServing(s.address, err)
+
 	address, err := net.ResolveTCPAddr(network, s.address)
 	if err != nil {
 		return err
@@ -175,15 +178,12 @@ func (s *server) Serve() error {
 	go s.monitorSignals()
 	log.Info("server %s is serving on %s", s.name, s.address)
 
-	s.beforeServing(s.address)
-	defer s.afterServing(s.address)
-
 	return s.serve()
 }
 
 func (s *server) Close() (err error) {
 	s.beforeClosing(s.address)
-	defer s.afterClosing(s.address)
+	defer s.afterClosing(s.address, err)
 
 	s.lock.Lock()
 	defer s.lock.Unlock()

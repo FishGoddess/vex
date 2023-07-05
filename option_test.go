@@ -87,7 +87,7 @@ func TestWithBeforeServing(t *testing.T) {
 
 // go test -v -cover -run=^TestWithAfterServing$
 func TestWithAfterServing(t *testing.T) {
-	afterServingFunc := func(address string) {}
+	afterServingFunc := func(address string, err error) {}
 
 	conf := &Config{afterServingFunc: nil}
 	WithAfterServing(afterServingFunc)(conf)
@@ -135,7 +135,7 @@ func TestWithBeforeClosing(t *testing.T) {
 
 // go test -v -cover -run=^TestWithAfterClosing$
 func TestWithAfterClosing(t *testing.T) {
-	afterClosingFunc := func(address string) {}
+	afterClosingFunc := func(address string, err error) {}
 
 	conf := &Config{afterClosingFunc: nil}
 	WithAfterClosing(afterClosingFunc)(conf)

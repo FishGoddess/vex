@@ -10,16 +10,16 @@ import "testing"
 func TestNewDefaultConfig(t *testing.T) {
 	conf := newDefaultConfig()
 
-	if conf.MaxConnected != 256 {
-		t.Errorf("conf.MaxConnected %d is wrong", conf.MaxConnected)
+	if conf.maxConnected != 256 {
+		t.Errorf("conf.maxConnected %d is wrong", conf.maxConnected)
 	}
 
-	if conf.MaxIdle != 256 {
-		t.Errorf("conf.MaxIdle %d is wrong", conf.MaxIdle)
+	if conf.maxIdle != 256 {
+		t.Errorf("conf.maxIdle %d is wrong", conf.maxIdle)
 	}
 
-	if conf.BlockOnFull != true {
-		t.Errorf("conf.LimitStrategy %+v is wrong", conf.BlockOnFull)
+	if conf.blockOnFull != true {
+		t.Errorf("conf.LimitStrategy %+v is wrong", conf.blockOnFull)
 	}
 }
 
@@ -33,15 +33,15 @@ func TestConfigApplyOptions(t *testing.T) {
 		WithNonBlockOnFull(),
 	})
 
-	if conf.MaxConnected != 128 {
-		t.Errorf("conf.MaxConnected %d is wrong", conf.MaxConnected)
+	if conf.maxConnected != 128 {
+		t.Errorf("conf.maxConnected %d is wrong", conf.maxConnected)
 	}
 
-	if conf.MaxIdle != 32 {
-		t.Errorf("conf.MaxIdle %d is wrong", conf.MaxIdle)
+	if conf.maxIdle != 32 {
+		t.Errorf("conf.maxIdle %d is wrong", conf.maxIdle)
 	}
 
-	if conf.BlockOnFull {
-		t.Errorf("conf.BlockOnFull %+v is wrong", conf.BlockOnFull)
+	if conf.blockOnFull {
+		t.Errorf("conf.blockOnFull %+v is wrong", conf.blockOnFull)
 	}
 }

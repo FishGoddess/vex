@@ -39,7 +39,7 @@ type Status struct {
 }
 
 type Pool struct {
-	conf Config
+	Config
 
 	// dial is for creating a new Client.
 	dial DialFunc
@@ -55,9 +55,9 @@ func New(dial DialFunc, opts ...Option) *Pool {
 	conf := newDefaultConfig().ApplyOptions(opts)
 
 	return &Pool{
-		conf:    *conf,
+		Config:  *conf,
 		dial:    dial,
-		clients: make(chan *poolClient, conf.MaxConnected),
+		clients: make(chan *poolClient, conf.maxConnected),
 		closed:  false,
 	}
 }
@@ -81,7 +81,7 @@ func (p *Pool) put(client *poolClient) error {
 	}
 
 	// Only waiting count < idle count will close the client immediately.
-	if p.status.Waiting < p.status.Idle && p.status.Idle >= p.conf.MaxIdle {
+	if p.status.Waiting < p.status.Idle && p.status.Idle >= p.maxIdle {
 		p.status.Connected--
 		p.lock.Unlock()
 
@@ -153,7 +153,7 @@ func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
 		return client, nil
 	}
 
-	if p.status.Connected < p.conf.MaxConnected {
+	if p.status.Connected < p.maxConnected {
 		p.status.Connected++
 		p.lock.Unlock()
 
@@ -171,7 +171,7 @@ func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
 		return client, nil
 	}
 
-	if p.conf.BlockOnFull {
+	if p.blockOnFull {
 		p.status.Waiting++
 		p.lock.Unlock()
 

@@ -9,55 +9,73 @@ import "time"
 type Config struct {
 	address string
 
-	// Name is a flag of server.
-	Name string
+	// name is a flag of server.
+	name string
 
-	// ReadTimeout is the timeout of reading from connection and any call will return an error if read timeout.
+	// readTimeout is the timeout of reading from connection and any call will return an error if read timeout.
 	// See net.Conn's SetReadDeadline.
-	ReadTimeout time.Duration
+	readTimeout time.Duration
 
-	// WriteTimeout is the timeout of writing to connection and any call will return an error if write timeout.
+	// writeTimeout is the timeout of writing to connection and any call will return an error if write timeout.
 	// See net.Conn's SetWriteDeadline.
-	WriteTimeout time.Duration
+	writeTimeout time.Duration
 
-	// CloseTimeout is the timeout of closing a server.
+	// closeTimeout is the timeout of closing a server.
 	// Close may take a long time to wait all connections to be closed, so a timeout is necessary.
-	CloseTimeout time.Duration
+	closeTimeout time.Duration
 
-	// ReadBufferSize is the buffer size used in reading.
+	// readBufferSize is the buffer size used in reading.
 	// This value can be smaller if your reading data are often smaller.
 	// This value can be bigger if your reading data are often bigger.
-	ReadBufferSize int
+	readBufferSize int
 
-	// WriteBufferSize is the buffer size used in writing.
+	// writeBufferSize is the buffer size used in writing.
 	// This value can be smaller if your writing data are often smaller.
 	// This value can be bigger if your writing data are often bigger.
-	WriteBufferSize int
+	writeBufferSize int
 
-	// MaxConnections is the max number of connections.
-	MaxConnections int
+	// maxConnections is the max number of connections.
+	maxConnections int
+
+	// beforeServingFunc is a function called before serving a server.
+	beforeServingFunc func(address string)
+
+	// afterServingFunc is a function called after serving a server.
+	afterServingFunc func(address string)
+
+	// beforeHandlingFunc is a function called before handling a server.
+	beforeHandlingFunc func(ctx *Context)
+
+	// afterHandlingFunc is a function called after handling a server.
+	afterHandlingFunc func(ctx *Context)
+
+	// beforeClosingFunc is a function called before closing a server.
+	beforeClosingFunc func(address string)
+
+	// afterClosingFunc is a function called after closing a server.
+	afterClosingFunc func(address string)
 }
 
 func newClientConfig(address string) *Config {
 	return &Config{
 		address:         address,
-		ReadTimeout:     10 * time.Minute,
-		WriteTimeout:    10 * time.Minute,
-		ReadBufferSize:  64 * 1024, // 16KB
-		WriteBufferSize: 64 * 1024, // 16KB
+		readTimeout:     10 * time.Minute,
+		writeTimeout:    10 * time.Minute,
+		readBufferSize:  64 * 1024, // 16KB
+		writeBufferSize: 64 * 1024, // 16KB
 	}
 }
 
 func newServerConfig(address string) *Config {
 	return &Config{
 		address:         address,
-		Name:            address,
-		ReadTimeout:     10 * time.Minute,
-		WriteTimeout:    10 * time.Minute,
-		CloseTimeout:    time.Minute,
-		ReadBufferSize:  16 * 1024, // 16KB
-		WriteBufferSize: 16 * 1024, // 16KB
-		MaxConnections:  4096,
+		name:            address,
+		readTimeout:     10 * time.Minute,
+		writeTimeout:    10 * time.Minute,
+		closeTimeout:    time.Minute,
+		readBufferSize:  16 * 1024, // 16KB
+		writeBufferSize: 16 * 1024, // 16KB
+		maxConnections:  4096,
 	}
 }
 
@@ -67,4 +85,40 @@ func (c *Config) ApplyOptions(opts []Option) *Config {
 	}
 
 	return c
+}
+
+func (c *Config) beforeServing(address string) {
+	if c.beforeServingFunc != nil {
+		c.beforeServingFunc(address)
+	}
+}
+
+func (c *Config) afterServing(address string) {
+	if c.afterServingFunc != nil {
+		c.afterServingFunc(address)
+	}
+}
+
+func (c *Config) beforeHandling(ctx *Context) {
+	if c.beforeHandlingFunc != nil {
+		c.beforeHandlingFunc(ctx)
+	}
+}
+
+func (c *Config) afterHandling(ctx *Context) {
+	if c.afterHandlingFunc != nil {
+		c.afterHandlingFunc(ctx)
+	}
+}
+
+func (c *Config) beforeClosing(address string) {
+	if c.beforeClosingFunc != nil {
+		c.beforeClosingFunc(address)
+	}
+}
+
+func (c *Config) afterClosing(address string) {
+	if c.afterClosingFunc != nil {
+		c.afterClosingFunc(address)
+	}
 }

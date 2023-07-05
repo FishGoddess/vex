@@ -13,28 +13,28 @@ func (o Option) ApplyTo(conf *Config) {
 // WithMaxConnected sets maxConnected to config.
 func WithMaxConnected(maxConnected uint64) Option {
 	return func(conf *Config) {
-		conf.MaxConnected = maxConnected
+		conf.maxConnected = maxConnected
 	}
 }
 
 // WithMaxIdle sets maxIdle to config.
 func WithMaxIdle(maxIdle uint64) Option {
 	return func(conf *Config) {
-		conf.MaxIdle = maxIdle
+		conf.maxIdle = maxIdle
 	}
 }
 
 // WithConnections sets maxConnected and maxIdle to config.
 func WithConnections(connections uint64) Option {
 	return func(conf *Config) {
-		conf.MaxConnected = connections
-		conf.MaxIdle = connections
+		conf.maxConnected = connections
+		conf.maxIdle = connections
 	}
 }
 
 // WithNonBlockOnFull sets non-block on full to config.
 func WithNonBlockOnFull() Option {
 	return func(conf *Config) {
-		conf.BlockOnFull = false
+		conf.blockOnFull = false
 	}
 }

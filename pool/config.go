@@ -5,21 +5,21 @@
 package pool
 
 type Config struct {
-	// MaxConnected is the max-opened count of connections.
-	MaxConnected uint64
+	// maxConnected is the max-opened count of connections.
+	maxConnected uint64
 
-	// MaxIdle is the max-idle count of connections.
-	MaxIdle uint64
+	// maxIdle is the max-idle count of connections.
+	maxIdle uint64
 
-	// BlockOnFull means getting clients from pool will block if connected is greater than max connected.
-	BlockOnFull bool
+	// blockOnFull means getting clients from pool will block if connected is greater than max connected.
+	blockOnFull bool
 }
 
 func newDefaultConfig() *Config {
 	return &Config{
-		MaxConnected: 256,
-		MaxIdle:      256,
-		BlockOnFull:  true,
+		maxConnected: 256,
+		maxIdle:      256,
+		blockOnFull:  true,
 	}
 }
 

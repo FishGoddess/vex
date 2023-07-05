@@ -15,41 +15,83 @@ func (o Option) ApplyTo(conf *Config) {
 // WithName sets name to config.
 func WithName(name string) Option {
 	return func(conf *Config) {
-		conf.Name = name
+		conf.name = name
 	}
 }
 
 // WithReadTimeout sets read timeout to config.
 func WithReadTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {
-		conf.ReadTimeout = timeout
+		conf.readTimeout = timeout
 	}
 }
 
 // WithWriteTimeout sets write timeout to config.
 func WithWriteTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {
-		conf.WriteTimeout = timeout
+		conf.writeTimeout = timeout
 	}
 }
 
 // WithCloseTimeout sets close timeout to config.
 func WithCloseTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {
-		conf.CloseTimeout = timeout
+		conf.closeTimeout = timeout
 	}
 }
 
 // WithReadBufferSize sets read buffer size to config.
 func WithReadBufferSize(bufferSize uint32) Option {
 	return func(conf *Config) {
-		conf.ReadBufferSize = int(bufferSize)
+		conf.readBufferSize = int(bufferSize)
 	}
 }
 
 // WithWriteBufferSize sets write buffer size to config.
 func WithWriteBufferSize(bufferSize uint32) Option {
 	return func(conf *Config) {
-		conf.WriteBufferSize = int(bufferSize)
+		conf.writeBufferSize = int(bufferSize)
+	}
+}
+
+// WithBeforeServing sets before serving function to config.
+func WithBeforeServing(beforeServing func(address string)) Option {
+	return func(conf *Config) {
+		conf.beforeServingFunc = beforeServing
+	}
+}
+
+// WithAfterServing sets after serving function to config.
+func WithAfterServing(afterServing func(address string)) Option {
+	return func(conf *Config) {
+		conf.afterServingFunc = afterServing
+	}
+}
+
+// WithBeforeHandling sets before handling function to config.
+func WithBeforeHandling(beforeHandling func(ctx *Context)) Option {
+	return func(conf *Config) {
+		conf.beforeHandlingFunc = beforeHandling
+	}
+}
+
+// WithAfterHandling sets after handling function to config.
+func WithAfterHandling(afterHandling func(ctx *Context)) Option {
+	return func(conf *Config) {
+		conf.afterHandlingFunc = afterHandling
+	}
+}
+
+// WithBeforeClosing sets before closing function to config.
+func WithBeforeClosing(beforeClosing func(address string)) Option {
+	return func(conf *Config) {
+		conf.beforeClosingFunc = beforeClosing
+	}
+}
+
+// WithAfterClosing sets after closing function to config.
+func WithAfterClosing(afterClosing func(address string)) Option {
+	return func(conf *Config) {
+		conf.afterClosingFunc = afterClosing
 	}
 }

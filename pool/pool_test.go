@@ -119,11 +119,11 @@ func TestPool(t *testing.T) {
 			test(i)
 
 			status := pool.Status()
-			if status.Connected > pool.conf.MaxConnected {
+			if status.Connected > pool.maxConnected {
 				t.Errorf("status.Connected %d is wrong", status.Connected)
 			}
 
-			if status.Idle > pool.conf.MaxIdle {
+			if status.Idle > pool.maxIdle {
 				t.Errorf("status.Idle %d is wrong", status.Idle)
 			}
 		}(i)

@@ -17,20 +17,20 @@ func TestNewClientConfig(t *testing.T) {
 		t.Errorf("conf.address %s is wrong", conf.address)
 	}
 
-	if conf.ReadTimeout != 10*time.Minute {
-		t.Errorf("conf.ReadTimeout %d is wrong", conf.ReadTimeout)
+	if conf.readTimeout != 10*time.Minute {
+		t.Errorf("conf.readTimeout %d is wrong", conf.readTimeout)
 	}
 
-	if conf.WriteTimeout != 10*time.Minute {
-		t.Errorf("conf.WriteTimeout %d is wrong", conf.WriteTimeout)
+	if conf.writeTimeout != 10*time.Minute {
+		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
-	if conf.ReadBufferSize != 64*1024 {
-		t.Errorf("conf.ReadBufferSize %d is wrong", conf.ReadBufferSize)
+	if conf.readBufferSize != 64*1024 {
+		t.Errorf("conf.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 
-	if conf.WriteBufferSize != 64*1024 {
-		t.Errorf("conf.WriteBufferSize %d is wrong", conf.WriteBufferSize)
+	if conf.writeBufferSize != 64*1024 {
+		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }
 
@@ -42,28 +42,28 @@ func TestNewServerConfig(t *testing.T) {
 		t.Errorf("conf.address %s is wrong", conf.address)
 	}
 
-	if conf.Name != "127.0.0.1:5837" {
-		t.Errorf("conf.Name %s is wrong", conf.Name)
+	if conf.name != "127.0.0.1:5837" {
+		t.Errorf("conf.name %s is wrong", conf.name)
 	}
 
-	if conf.ReadTimeout != 10*time.Minute {
-		t.Errorf("conf.ReadTimeout %d is wrong", conf.ReadTimeout)
+	if conf.readTimeout != 10*time.Minute {
+		t.Errorf("conf.readTimeout %d is wrong", conf.readTimeout)
 	}
 
-	if conf.WriteTimeout != 10*time.Minute {
-		t.Errorf("conf.WriteTimeout %d is wrong", conf.WriteTimeout)
+	if conf.writeTimeout != 10*time.Minute {
+		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
-	if conf.CloseTimeout != time.Minute {
-		t.Errorf("conf.CloseTimeout %d is wrong", conf.CloseTimeout)
+	if conf.closeTimeout != time.Minute {
+		t.Errorf("conf.closeTimeout %d is wrong", conf.closeTimeout)
 	}
 
-	if conf.ReadBufferSize != 16*1024 {
-		t.Errorf("conf.ReadBufferSize %d is wrong", conf.ReadBufferSize)
+	if conf.readBufferSize != 16*1024 {
+		t.Errorf("conf.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 
-	if conf.WriteBufferSize != 16*1024 {
-		t.Errorf("conf.WriteBufferSize %d is wrong", conf.WriteBufferSize)
+	if conf.writeBufferSize != 16*1024 {
+		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }
 
@@ -82,19 +82,19 @@ func TestConfigApplyOptions(t *testing.T) {
 		t.Errorf("conf.address %s is wrong", conf.address)
 	}
 
-	if conf.ReadTimeout != time.Second {
-		t.Errorf("conf.ReadTimeout %d is wrong", conf.ReadTimeout)
+	if conf.readTimeout != time.Second {
+		t.Errorf("conf.readTimeout %d is wrong", conf.readTimeout)
 	}
 
-	if conf.WriteTimeout != 3*time.Second {
-		t.Errorf("conf.WriteTimeout %d is wrong", conf.WriteTimeout)
+	if conf.writeTimeout != 3*time.Second {
+		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
-	if conf.ReadBufferSize != 64 {
-		t.Errorf("config.ReadBufferSize %d is wrong", conf.ReadBufferSize)
+	if conf.readBufferSize != 64 {
+		t.Errorf("config.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 
-	if conf.WriteBufferSize != 512 {
-		t.Errorf("config.WriteBufferSize %d is wrong", conf.WriteBufferSize)
+	if conf.writeBufferSize != 512 {
+		t.Errorf("config.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }

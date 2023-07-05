@@ -22,6 +22,8 @@ const (
 	network = "tcp"
 )
 
+// HandleFunc is a function for handling connected context.
+// You should design your own handler function for your server.
 type HandleFunc func(ctx *Context)
 
 type Server interface {
@@ -58,13 +60,6 @@ func NewServer(address string, handle HandleFunc, opts ...Option) Server {
 	return server
 }
 
-func (s *server) serving() bool {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	return s.listener != nil
-}
-
 func (s *server) newContext(conn *net.TCPConn) *Context {
 	ctx := s.contextPool.Get().(*Context)
 	ctx.setup(conn)
@@ -80,28 +75,31 @@ func (s *server) handleConn(conn *net.TCPConn) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.Name, remoteAddr)
+			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.name, remoteAddr)
 		}
 	}()
 
 	if err := setupConn(&s.Config, conn); err != nil {
-		log.Error(err, "server %s setups connection %s failed", s.Name, remoteAddr)
+		log.Error(err, "server %s setups connection %s failed", s.name, remoteAddr)
 		return
 	}
 
 	ctx := s.newContext(conn)
+	defer s.releaseContext(ctx)
 
 	defer func() {
 		if err := ctx.finish(); err != nil {
-			log.Error(err, "server %s finished connection %s failed", s.Name, remoteAddr)
+			log.Error(err, "server %s finished connection %s failed", s.name, remoteAddr)
 		}
-
-		s.releaseContext(ctx)
 	}()
 
-	log.Debug("server %s handles connection %s begin", s.Name, remoteAddr)
+	log.Debug("server %s handles connection %s begin", s.name, remoteAddr)
+	defer log.Debug("server %s handles connection %s end", s.name, remoteAddr)
+
+	s.beforeHandling(ctx)
+	defer s.afterHandling(ctx)
+
 	s.handle(ctx)
-	log.Debug("server %s handles connection %s end", s.Name, remoteAddr)
 }
 
 func (s *server) serve() error {
@@ -111,15 +109,15 @@ func (s *server) serve() error {
 		if err != nil {
 			// Listener has been closed.
 			if errors.Is(err, net.ErrClosed) {
-				log.Debug("server %s stopped listening", s.Name)
+				log.Debug("server %s stopped listening", s.name)
 				break
 			}
 
-			log.Error(err, "server %s accepted failed", s.Name)
+			log.Error(err, "server %s accepted failed", s.name)
 			continue
 		}
 
-		log.Debug("server %s accepts from %s", s.Name, conn.RemoteAddr())
+		log.Debug("server %s accepts from %s", s.name, conn.RemoteAddr())
 
 		wg.Add(1)
 		go func() {
@@ -135,15 +133,15 @@ func (s *server) serve() error {
 		close(closeCh)
 	}()
 
-	timer := time.NewTimer(s.CloseTimeout)
+	timer := time.NewTimer(s.closeTimeout)
 	defer timer.Stop()
 
 	select {
 	case <-closeCh:
-		log.Info("server %s closed", s.Name)
+		log.Info("server %s closed", s.name)
 		return nil
 	case <-timer.C:
-		return fmt.Errorf("vex: close server %s timeout", s.Name)
+		return fmt.Errorf("vex: close server %s timeout", s.name)
 	}
 }
 
@@ -152,18 +150,14 @@ func (s *server) monitorSignals() {
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
 	sig := <-signalCh
-	log.Info("server %s received signal %+v", s.Name, sig)
+	log.Info("server %s received signal %+v", s.name, sig)
 
 	if err := s.Close(); err != nil {
-		log.Error(err, "close server %s failed", s.Name)
+		log.Error(err, "close server %s failed", s.name)
 	}
 }
 
 func (s *server) Serve() error {
-	if s.serving() {
-		return fmt.Errorf("server %s already serving", s.Name)
-	}
-
 	address, err := net.ResolveTCPAddr(network, s.address)
 	if err != nil {
 		return err
@@ -179,21 +173,28 @@ func (s *server) Serve() error {
 	s.lock.Unlock()
 
 	go s.monitorSignals()
-	log.Info("server %s is serving on %s", s.Name, s.address)
+	log.Info("server %s is serving on %s", s.name, s.address)
+
+	s.beforeServing(s.address)
+	defer s.afterServing(s.address)
 
 	return s.serve()
 }
 
 func (s *server) Close() (err error) {
-	if !s.serving() {
+	s.beforeClosing(s.address)
+	defer s.afterClosing(s.address)
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if s.listener == nil {
 		return nil
 	}
 
 	defer func() {
 		if err == nil {
-			s.lock.Lock()
 			s.listener = nil
-			s.lock.Unlock()
 		}
 	}()
 

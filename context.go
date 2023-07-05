@@ -12,8 +12,8 @@ import (
 
 func setupConn(conf *Config, conn *net.TCPConn) error {
 	now := time.Now()
-	readDeadline := now.Add(conf.ReadTimeout)
-	writeDeadline := now.Add(conf.WriteTimeout)
+	readDeadline := now.Add(conf.readTimeout)
+	writeDeadline := now.Add(conf.writeTimeout)
 
 	if err := conn.SetReadDeadline(readDeadline); err != nil {
 		return err
@@ -23,11 +23,11 @@ func setupConn(conf *Config, conn *net.TCPConn) error {
 		return err
 	}
 
-	if err := conn.SetReadBuffer(conf.ReadBufferSize); err != nil {
+	if err := conn.SetReadBuffer(conf.readBufferSize); err != nil {
 		return err
 	}
 
-	if err := conn.SetWriteBuffer(conf.WriteBufferSize); err != nil {
+	if err := conn.SetWriteBuffer(conf.writeBufferSize); err != nil {
 		return err
 	}
 

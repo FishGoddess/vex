@@ -20,7 +20,7 @@ const (
 	maxDataSize = 1<<dataSizeBits - 1
 
 	// Ha! Guess what this number means?
-	magicNumber = 0x7CD
+	magicNumber = 0xC638B
 
 	headerSize = (magicBits + typeBits + dataSizeBits) / 8 // Bytes
 )

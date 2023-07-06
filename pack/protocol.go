@@ -11,18 +11,18 @@ import (
 )
 
 const (
-	headerSize = 8 // Bytes
-
 	magicBits    = 24
 	typeBits     = 8
-	bodySizeBits = 32
+	dataSizeBits = 32
 
 	maxMagic    = 1<<magicBits - 1
 	maxType     = 1<<typeBits - 1
-	maxBodySize = 1<<bodySizeBits - 1
+	maxDataSize = 1<<dataSizeBits - 1
 
 	// Ha! Guess what this number means?
-	magicNumber = 0xC638B
+	magicNumber = 0x7CD
+
+	headerSize = (magicBits + typeBits + dataSizeBits) / 8 // Bytes
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	endian = binary.BigEndian
+	Endian = binary.BigEndian
 )
 
 var (
@@ -55,15 +55,15 @@ func readPacketHeader(reader io.Reader) (PacketType, int32, error) {
 		return 0, 0, ErrReadSizeMismatch
 	}
 
-	header := endian.Uint64(headerBytes[:])
-	magic := (header >> (typeBits + bodySizeBits)) & maxMagic
+	header := Endian.Uint64(headerBytes[:])
+	magic := (header >> (typeBits + dataSizeBits)) & maxMagic
 
 	if magic != magicNumber {
 		return 0, 0, ErrWrongMagicNumber
 	}
 
-	packetType := PacketType((header >> bodySizeBits) & maxType)
-	bodySize := int32(header & maxBodySize)
+	packetType := PacketType((header >> dataSizeBits) & maxType)
+	bodySize := int32(header & maxDataSize)
 	return packetType, bodySize, nil
 }
 
@@ -103,8 +103,8 @@ func readPacket(reader io.Reader) (PacketType, []byte, error) {
 
 func writePacketHeader(writer io.Writer, packetType PacketType, bodySize int32) error {
 	var headerBytes [headerSize]byte
-	var header = magicNumber<<(typeBits+bodySizeBits) | uint64(packetType)<<bodySizeBits | uint64(bodySize)
-	endian.PutUint64(headerBytes[:], header)
+	var header = magicNumber<<(typeBits+dataSizeBits) | uint64(packetType)<<dataSizeBits | uint64(bodySize)
+	Endian.PutUint64(headerBytes[:], header)
 
 	n, err := writer.Write(headerBytes[:])
 	if err != nil {

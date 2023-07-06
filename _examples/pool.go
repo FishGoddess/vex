@@ -1,4 +1,4 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -6,44 +6,35 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"sync"
 
 	"github.com/FishGoddess/vex"
 	"github.com/FishGoddess/vex/pool"
 )
 
-func newClient() (vex.Client, error) {
-	// In production, we often start several servers to keep high availability, and these servers may have different ips and ports.
-	// You can choose one from all servers to return with your balancing strategy.
-	return vex.NewClient("tcp", "127.0.0.1:5837")
-}
-
 func main() {
-	clientPool := pool.NewPool(newClient, pool.WithMaxConnected(64), pool.WithMaxIdle(16))
+	// We provide a client pool for limiting the number of clients.
+	// It needs a dial function to create a new client when it needs.
+	// You can pass any client options to Dial to create the client as usual.
+	clientPool := pool.New(pool.Dial("127.0.0.1:6789"))
+	defer clientPool.Close()
 
-	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			client, err := clientPool.Get(context.Background())
-			if err != nil {
-				panic(err)
-			}
-			defer client.Close()
-
-			responseBody, err := client.Send(1, []byte("client pool test"))
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Println(string(responseBody))
-			fmt.Printf("%+v\n", clientPool.State())
-		}()
+	client, err := clientPool.Get(context.Background())
+	if err != nil {
+		panic(err)
 	}
 
-	wg.Wait()
-	fmt.Printf("%+v\n", clientPool.State())
+	defer client.Close()
+
+	// Use client as usual.
+	// Also, you can customize your dial function:
+	dial := func() (vex.Client, error) {
+		// You can do anything you want to customize the client.
+		return vex.NewClient("127.0.0.1:6789", vex.WithReadBufferSize(4096), vex.WithWriteBufferSize(4096))
+	}
+
+	pool.New(dial)
+
+	// The pool has some default configurations like max connections.
+	// If you want to change it, check pool.Option in New parameters.
+	pool.New(dial, pool.WithConnections(16), pool.WithMaxIdle(8))
 }

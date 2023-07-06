@@ -11,8 +11,21 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
+func onConnected(clientAddress string, serverAddress string) {
+	fmt.Printf("on connected %s to %s\n", clientAddress, serverAddress)
+}
+
+func onDisconnected(clientAddress string, serverAddress string) {
+	fmt.Printf("on disconnected %s from %s\n", clientAddress, serverAddress)
+}
+
 func main() {
-	client, err := vex.NewClient("127.0.0.1:6789")
+	opts := []vex.Option{
+		vex.WithOnConnected(onConnected),
+		vex.WithOnDisconnected(onDisconnected),
+	}
+
+	client, err := vex.NewClient("127.0.0.1:6789", opts...)
 	if err != nil {
 		panic(err)
 	}

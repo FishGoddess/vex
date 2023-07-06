@@ -1,4 +1,4 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -6,60 +6,143 @@ package vex
 
 import "time"
 
-// config stores all configuration of client and server.
-type config struct {
-	network string
+type Config struct {
 	address string
 
-	// Name is a flag of client or server.
-	Name string
+	// name is a flag of server.
+	name string
 
-	// ConnTimeout is the timeout of a connection and any call will return an error if one connection has timeout.
-	// See net.Conn's SetDeadline.
-	ConnTimeout time.Duration
+	// readTimeout is the timeout of reading from connection and any call will return an error if read timeout.
+	// See net.Conn's SetReadDeadline.
+	readTimeout time.Duration
 
-	// CloseTimeout is the timeout of a closing operation.
+	// writeTimeout is the timeout of writing to connection and any call will return an error if write timeout.
+	// See net.Conn's SetWriteDeadline.
+	writeTimeout time.Duration
+
+	// closeTimeout is the timeout of closing a server.
 	// Close may take a long time to wait all connections to be closed, so a timeout is necessary.
-	CloseTimeout time.Duration
+	closeTimeout time.Duration
 
-	// ReadBufferSize is the buffer size using in reading.
+	// readBufferSize is the buffer size used in reading.
 	// This value can be smaller if your reading data are often smaller.
 	// This value can be bigger if your reading data are often bigger.
-	// Notice: it applies to client and server.
-	ReadBufferSize uint32
+	readBufferSize int
 
-	// WriteBufferSize is the buffer size using in writing.
+	// writeBufferSize is the buffer size used in writing.
 	// This value can be smaller if your writing data are often smaller.
 	// This value can be bigger if your writing data are often bigger.
-	// Notice: it applies to client and server.
-	WriteBufferSize uint32
+	writeBufferSize int
 
-	// MaxConnected is the max-opened count of connections.
-	MaxConnected uint64
+	// maxConnections is the max number of connections.
+	maxConnections int
 
-	// EventListener is the listener of events from client or server.
-	EventListener EventListener
+	// onConnectedFunc is a function called on connected to a server.
+	// It receives the client address and server address in the function.
+	onConnectedFunc func(clientAddress string, serverAddress string)
+
+	// onDisconnectedFunc is a function called on disconnected from a server.
+	// It receives the client address and server address in the function.
+	onDisconnectedFunc func(clientAddress string, serverAddress string)
+
+	// beforeServingFunc is a function called before serving a server.
+	// It receives the server address in the function.
+	beforeServingFunc func(address string)
+
+	// afterServingFunc is a function called after serving a server.
+	// It receives the server address in the function.
+	afterServingFunc func(address string, err error)
+
+	// beforeHandlingFunc is a function called before handling a server.
+	beforeHandlingFunc func(ctx *Context)
+
+	// afterHandlingFunc is a function called after handling a server.
+	afterHandlingFunc func(ctx *Context)
+
+	// beforeClosingFunc is a function called before closing a server.
+	// It receives the client/server address in the function.
+	beforeClosingFunc func(address string)
+
+	// afterClosingFunc is a function called after closing a server.
+	// It receives the client/server address in the function.
+	afterClosingFunc func(address string, err error)
 }
 
-// newDefaultConfig returns a default config.
-func newDefaultConfig(network string, address string) *config {
-	return &config{
-		network:         network,
+func newClientConfig(address string) *Config {
+	return &Config{
 		address:         address,
-		Name:            network + "/" + address,
-		ConnTimeout:     8 * time.Hour,
-		CloseTimeout:    time.Minute,
-		ReadBufferSize:  4 * 1024 * 1024, // 4 MB.
-		WriteBufferSize: 4 * 1024 * 1024, // 4 MB.
-		MaxConnected:    4096,
-		EventListener:   NewLogEventListener(),
+		readTimeout:     10 * time.Minute,
+		writeTimeout:    10 * time.Minute,
+		readBufferSize:  16 * 1024, // 16KB
+		writeBufferSize: 16 * 1024, // 16KB
 	}
 }
 
-// ApplyOptions applies opts to config.
-func (c *config) ApplyOptions(opts []Option) *config {
-	for _, opt := range opts {
-		opt(c)
+func newServerConfig(address string) *Config {
+	return &Config{
+		address:         address,
+		name:            address,
+		readTimeout:     10 * time.Minute,
+		writeTimeout:    10 * time.Minute,
+		closeTimeout:    time.Minute,
+		readBufferSize:  4 * 1024, // 4KB
+		writeBufferSize: 4 * 1024, // 4KB
+		maxConnections:  4096,
 	}
+}
+
+func (c *Config) ApplyOptions(opts []Option) *Config {
+	for _, opt := range opts {
+		opt.ApplyTo(c)
+	}
+
 	return c
+}
+
+func (c *Config) onConnected(clientAddress string, serverAddress string) {
+	if c.onConnectedFunc != nil {
+		c.onConnectedFunc(clientAddress, serverAddress)
+	}
+}
+
+func (c *Config) onDisconnected(clientAddress string, serverAddress string) {
+	if c.onDisconnectedFunc != nil {
+		c.onDisconnectedFunc(clientAddress, serverAddress)
+	}
+}
+
+func (c *Config) beforeServing(address string) {
+	if c.beforeServingFunc != nil {
+		c.beforeServingFunc(address)
+	}
+}
+
+func (c *Config) afterServing(address string, err error) {
+	if c.afterServingFunc != nil {
+		c.afterServingFunc(address, err)
+	}
+}
+
+func (c *Config) beforeHandling(ctx *Context) {
+	if c.beforeHandlingFunc != nil {
+		c.beforeHandlingFunc(ctx)
+	}
+}
+
+func (c *Config) afterHandling(ctx *Context) {
+	if c.afterHandlingFunc != nil {
+		c.afterHandlingFunc(ctx)
+	}
+}
+
+func (c *Config) beforeClosing(address string) {
+	if c.beforeClosingFunc != nil {
+		c.beforeClosingFunc(address)
+	}
+}
+
+func (c *Config) afterClosing(address string, err error) {
+	if c.afterClosingFunc != nil {
+		c.afterClosingFunc(address, err)
+	}
 }

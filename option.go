@@ -1,4 +1,4 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -6,54 +6,106 @@ package vex
 
 import "time"
 
-// Option applies functions to config.
-type Option func(c *config)
+type Option func(conf *Config)
+
+func (o Option) ApplyTo(conf *Config) {
+	o(conf)
+}
 
 // WithName sets name to config.
 func WithName(name string) Option {
-	return func(c *config) {
-		c.Name = name
+	return func(conf *Config) {
+		conf.name = name
 	}
 }
 
-// WithConnTimeout sets connection timeout to config.
-func WithConnTimeout(timeout time.Duration) Option {
-	return func(c *config) {
-		c.ConnTimeout = timeout
+// WithReadTimeout sets read timeout to config.
+func WithReadTimeout(timeout time.Duration) Option {
+	return func(conf *Config) {
+		conf.readTimeout = timeout
+	}
+}
+
+// WithWriteTimeout sets write timeout to config.
+func WithWriteTimeout(timeout time.Duration) Option {
+	return func(conf *Config) {
+		conf.writeTimeout = timeout
 	}
 }
 
 // WithCloseTimeout sets close timeout to config.
 func WithCloseTimeout(timeout time.Duration) Option {
-	return func(c *config) {
-		c.CloseTimeout = timeout
+	return func(conf *Config) {
+		conf.closeTimeout = timeout
 	}
 }
 
-// WithReadBufferSize sets bufferSize to config.
+// WithReadBufferSize sets read buffer size to config.
 func WithReadBufferSize(bufferSize uint32) Option {
-	return func(c *config) {
-		c.ReadBufferSize = bufferSize
+	return func(conf *Config) {
+		conf.readBufferSize = int(bufferSize)
 	}
 }
 
-// WithWriteBufferSize sets bufferSize to config.
+// WithWriteBufferSize sets write buffer size to config.
 func WithWriteBufferSize(bufferSize uint32) Option {
-	return func(c *config) {
-		c.WriteBufferSize = bufferSize
+	return func(conf *Config) {
+		conf.writeBufferSize = int(bufferSize)
 	}
 }
 
-// WithMaxConnected sets maxConnected to config.
-func WithMaxConnected(maxConnected uint64) Option {
-	return func(c *config) {
-		c.MaxConnected = maxConnected
+// WithOnConnected sets on connected function to config.
+func WithOnConnected(onConnected func(clientAddress string, serverAddress string)) Option {
+	return func(conf *Config) {
+		conf.onConnectedFunc = onConnected
 	}
 }
 
-// WithEventListener sets event listener to config.
-func WithEventListener(listener EventListener) Option {
-	return func(c *config) {
-		c.EventListener = listener
+// WithOnDisconnected sets on disconnected function to config.
+func WithOnDisconnected(onDisconnected func(clientAddress string, serverAddress string)) Option {
+	return func(conf *Config) {
+		conf.onDisconnectedFunc = onDisconnected
+	}
+}
+
+// WithBeforeServing sets before serving function to config.
+func WithBeforeServing(beforeServing func(address string)) Option {
+	return func(conf *Config) {
+		conf.beforeServingFunc = beforeServing
+	}
+}
+
+// WithAfterServing sets after serving function to config.
+func WithAfterServing(afterServing func(address string, err error)) Option {
+	return func(conf *Config) {
+		conf.afterServingFunc = afterServing
+	}
+}
+
+// WithBeforeHandling sets before handling function to config.
+func WithBeforeHandling(beforeHandling func(ctx *Context)) Option {
+	return func(conf *Config) {
+		conf.beforeHandlingFunc = beforeHandling
+	}
+}
+
+// WithAfterHandling sets after handling function to config.
+func WithAfterHandling(afterHandling func(ctx *Context)) Option {
+	return func(conf *Config) {
+		conf.afterHandlingFunc = afterHandling
+	}
+}
+
+// WithBeforeClosing sets before closing function to config.
+func WithBeforeClosing(beforeClosing func(address string)) Option {
+	return func(conf *Config) {
+		conf.beforeClosingFunc = beforeClosing
+	}
+}
+
+// WithAfterClosing sets after closing function to config.
+func WithAfterClosing(afterClosing func(address string, err error)) Option {
+	return func(conf *Config) {
+		conf.afterClosingFunc = afterClosing
 	}
 }

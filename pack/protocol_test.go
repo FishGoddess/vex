@@ -1,8 +1,8 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
-// license that can be found in the LICENSE file.¬
+// license that can be found in the LICENSE file.
 
-package vex
+package pack
 
 import (
 	"bytes"
@@ -38,7 +38,7 @@ func TestReadPacket(t *testing.T) {
 			expect: expect{
 				packetType: 0,
 				body:       nil,
-				err:        errMagicMismatch,
+				err:        ErrWrongMagicNumber,
 			},
 		},
 		{
@@ -54,13 +54,15 @@ func TestReadPacket(t *testing.T) {
 			expect: expect{
 				packetType: packetTypeTest,
 				body:       nil,
-				err:        errReadSizeMismatch,
+				err:        ErrReadSizeMismatch,
 			},
 		},
 	}
 
 	for i, oneCase := range cases {
-		packetType, body, err := readPacket(bytes.NewReader(oneCase.input))
+		reader := bytes.NewReader(oneCase.input)
+
+		packetType, body, err := readPacket(reader)
 		if err != oneCase.expect.err {
 			t.Errorf("i %d, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
 			break
@@ -96,22 +98,22 @@ func TestWritePacket(t *testing.T) {
 	}{
 		{
 			input: input{
-				packetType: packetTypeOK,
+				packetType: packetTypeStandard,
 				body:       []byte{'o', 'k'},
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0xC, 0x63, 0x8B, packetTypeOK, 0, 0, 0, 2, 'o', 'k'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeStandard, 0, 0, 0, 2, 'o', 'k'},
 			},
 		},
 		{
 			input: input{
-				packetType: packetTypeErr,
+				packetType: packetTypeError,
 				body:       []byte{'e', 'r', 'r'},
 			},
 			expect: expect{
 				err:    nil,
-				packet: []byte{0xC, 0x63, 0x8B, packetTypeErr, 0, 0, 0, 3, 'e', 'r', 'r'},
+				packet: []byte{0xC, 0x63, 0x8B, packetTypeError, 0, 0, 0, 3, 'e', 'r', 'r'},
 			},
 		},
 	}

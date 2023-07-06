@@ -1,4 +1,4 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -17,78 +17,85 @@ var (
 	errClientPoolClosed = errors.New("vex: client pool is closed")
 )
 
-// State stores all states of Pool.
-type State struct {
-	// Connected is the opened count of connections.
+// DialFunc is a function dials to somewhere and returns a client and error if failed.
+type DialFunc func() (vex.Client, error)
+
+// Dial returns a function which dials to address with opts.
+func Dial(address string, opts ...vex.Option) DialFunc {
+	return func() (vex.Client, error) {
+		return vex.NewClient(address, opts...)
+	}
+}
+
+type Status struct {
+	// Connected is the count of connected connections.
 	Connected uint64 `json:"connected"`
 
-	// Idle is the idle count of connections.
+	// Idle is the count of idle connections.
 	Idle uint64 `json:"idle"`
 
-	// Waiting is the waiting count of getting requests.
+	// Waiting is the count of requests waiting for a client.
 	Waiting uint64 `json:"waiting"`
 }
 
-// Pool is the pool of client.
 type Pool struct {
-	// config stores all configuration of Pool.
-	config config
-
-	// state stores all states of Pool.
-	state State
-
-	// clients stores all unused connections.
-	clients chan *poolClient
+	Config
 
 	// dial is for creating a new Client.
-	dial func() (vex.Client, error)
+	dial DialFunc
 
-	closed bool
-	lock   sync.Mutex
+	clients chan *poolClient
+	status  Status
+	closed  bool
+
+	lock sync.RWMutex
 }
 
-// NewPool returns a client pool storing some clients.
-func NewPool(dial func() (vex.Client, error), opts ...Option) *Pool {
-	config := newDefaultConfig().ApplyOptions(opts)
+func New(dial DialFunc, opts ...Option) *Pool {
+	conf := newDefaultConfig().ApplyOptions(opts)
+
 	return &Pool{
-		config:  *config,
-		clients: make(chan *poolClient, config.MaxConnected),
+		Config:  *conf,
 		dial:    dial,
+		clients: make(chan *poolClient, conf.maxConnected),
 		closed:  false,
 	}
 }
 
-// newClient returns a new Client.
 func (p *Pool) newClient() (vex.Client, error) {
 	client, err := p.dial()
 	if err != nil {
 		return nil, err
 	}
-	return wrapClient(p, client), nil
+
+	client = newPoolClient(p, client)
+	return client, nil
 }
 
-// put adds an idle client to pool.
 func (p *Pool) put(client *poolClient) error {
 	p.lock.Lock()
 	if p.closed {
 		p.lock.Unlock()
-		return client.client.Close()
+
+		return client.closeUnderlying()
 	}
 
-	// Only waiting count < idle count will close idle client immediately.
-	if p.state.Waiting < p.state.Idle && p.state.Idle >= p.config.MaxIdle {
-		p.state.Connected--
+	// Only waiting count < idle count will close the client immediately.
+	if p.status.Waiting < p.status.Idle && p.status.Idle >= p.maxIdle {
+		p.status.Connected--
 		p.lock.Unlock()
-		return client.client.Close()
+
+		return client.closeUnderlying()
 	}
 
 	defer p.lock.Unlock()
+
 	select {
 	case p.clients <- client:
-		p.state.Idle++
+		p.status.Idle++
 		return nil
 	default:
-		return client.client.Close()
+		return client.closeUnderlying()
 	}
 }
 
@@ -116,32 +123,38 @@ func (p *Pool) waitToGet(ctx context.Context) (*poolClient, error) {
 		if client == nil {
 			return nil, errClientPoolClosed
 		}
+
 		return client, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 }
 
-// Get returns a client for use.
+// Get gets a client from pool and returns an error if failed.
+// You should call client.Close() to put a client back to the pool.
+// We recommend you use a defer after getting a client.
 func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
 	p.lock.Lock()
 	if p.closed {
 		p.lock.Unlock()
+
 		return nil, errClientPoolClosed
 	}
 
 	client, ok := p.tryToGet()
 	if ok {
-		p.state.Idle--
+		p.status.Idle--
 		p.lock.Unlock()
+
 		if client == nil {
 			return nil, errClientPoolClosed
 		}
+
 		return client, nil
 	}
 
-	if p.state.Connected < p.config.MaxConnected {
-		p.state.Connected++
+	if p.status.Connected < p.maxConnected {
+		p.status.Connected++
 		p.lock.Unlock()
 
 		// Increase the connected and unlock before new client may cause the pool becomes full in advance.
@@ -149,30 +162,33 @@ func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
 		client, err := p.newClient()
 		if err != nil {
 			p.lock.Lock()
-			p.state.Connected--
+			p.status.Connected--
 			p.lock.Unlock()
+
 			return nil, err
 		}
 
 		return client, nil
 	}
 
-	if p.config.BlockOnFull {
-		p.state.Waiting++
+	if p.blockOnFull {
+		p.status.Waiting++
 		p.lock.Unlock()
 
 		client, err := p.waitToGet(ctx)
 		if err != nil {
 			p.lock.Lock()
-			p.state.Waiting--
+			p.status.Waiting--
 			p.lock.Unlock()
+
 			return nil, err
 		}
 
 		p.lock.Lock()
-		p.state.Idle--
-		p.state.Waiting--
+		p.status.Idle--
+		p.status.Waiting--
 		p.lock.Unlock()
+
 		return client, nil
 	}
 
@@ -180,11 +196,12 @@ func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
 	return nil, errClientPoolFull
 }
 
-// State returns all states of client pool.
-func (p *Pool) State() State {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-	return p.state
+// Status returns the status of the pool.
+func (p *Pool) Status() Status {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.status
 }
 
 // Close closes pool and releases all resources.
@@ -196,18 +213,20 @@ func (p *Pool) Close() error {
 		return nil
 	}
 
-	for i := uint64(0); i < p.state.Connected; i++ {
+	for i := uint64(0); i < p.status.Connected; i++ {
 		client := <-p.clients
 		if client == nil {
 			continue
 		}
 
-		if err := client.client.Close(); err != nil {
+		if err := client.closeUnderlying(); err != nil {
 			return err
 		}
 	}
 
-	close(p.clients)
+	p.status = Status{}
 	p.closed = true
+
+	close(p.clients)
 	return nil
 }

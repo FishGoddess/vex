@@ -1,34 +1,32 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
 package pool
 
-// config stores all configuration of Pool.
-type config struct {
-	// MaxConnected is the max-opened count of connections.
-	MaxConnected uint64
+type Config struct {
+	// maxConnected is the max-opened count of connections.
+	maxConnected uint64
 
-	// MaxIdle is the max-idle count of connections.
-	MaxIdle uint64
+	// maxIdle is the max-idle count of connections.
+	maxIdle uint64
 
-	// BlockOnFull means getting clients from pool will block if connected is greater than max connected.
-	BlockOnFull bool
+	// blockOnFull means getting clients from pool will block if connected is greater than max connected.
+	blockOnFull bool
 }
 
-// newDefaultConfig returns a default config.
-func newDefaultConfig() *config {
-	return &config{
-		MaxConnected: 256,
-		MaxIdle:      256,
-		BlockOnFull:  true,
+func newDefaultConfig() *Config {
+	return &Config{
+		maxConnected: 256,
+		maxIdle:      256,
+		blockOnFull:  true,
 	}
 }
 
-// ApplyOptions applies opts to config.
-func (c *config) ApplyOptions(opts []Option) *config {
+func (c *Config) ApplyOptions(opts []Option) *Config {
 	for _, opt := range opts {
-		opt(c)
+		opt.ApplyTo(c)
 	}
+
 	return c
 }

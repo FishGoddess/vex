@@ -1,74 +1,91 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
 package vex
 
 import (
-	"bufio"
-	"errors"
+	"io"
 	"net"
+
+	"github.com/FishGoddess/vex/log"
 )
 
-// Client is the interface of vex client.
 type Client interface {
-	// Send sends a packet with requestBody to server and returns responseBody responded from server.
-	Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error)
-
-	// Close closes current client.
-	Close() error
+	io.ReadWriteCloser
 }
 
-// defaultClient is the default client implement which using one independent tcp connection.
-type defaultClient struct {
-	conn   net.Conn
-	reader *bufio.Reader
-	writer *bufio.Writer
+type client struct {
+	Config
+
+	conn        *net.TCPConn
+	connAddress string
 }
 
-// NewClient creates a new client to address with given network.
-func NewClient(network string, address string, opts ...Option) (Client, error) {
-	conn, err := dial(network, address)
-	if err != nil {
+// NewClient creates a new client connecting to address.
+// Return an error if connect failed.
+func NewClient(address string, opts ...Option) (Client, error) {
+	conf := newClientConfig(address).ApplyOptions(opts)
+
+	client := &client{
+		Config: *conf,
+	}
+
+	if err := client.connect(); err != nil {
 		return nil, err
 	}
 
-	config := newDefaultConfig(network, address).ApplyOptions(opts)
-	return &defaultClient{
-		conn:   conn,
-		reader: bufio.NewReaderSize(conn, int(config.ReadBufferSize)),
-		writer: bufio.NewWriterSize(conn, int(config.WriteBufferSize)),
-	}, nil
+	return client, nil
 }
 
-// Send sends a packet with requestBody to server and returns responseBody responded from server.
-func (c *defaultClient) Send(packetType PacketType, requestBody []byte) (responseBody []byte, err error) {
-	err = writePacket(c.writer, packetType, requestBody)
+func (c *client) connect() (err error) {
+	defer func() {
+		if err == nil {
+			c.onConnected(c.connAddress, c.address)
+			log.Debug("client %s has connected to %s", c.connAddress, c.address)
+		}
+	}()
+
+	resolved, err := net.ResolveTCPAddr(network, c.address)
 	if err != nil {
-		return nil, err
-	}
-
-	err = c.writer.Flush()
-	if err != nil {
-		return nil, err
-	}
-
-	packetType, responseBody, err = readPacket(c.reader)
-	if err != nil {
-		return nil, err
-	}
-
-	if packetType == packetTypeErr {
-		return responseBody, errors.New(string(responseBody))
-	}
-
-	return responseBody, nil
-}
-
-// Close closes current client.
-func (c *defaultClient) Close() error {
-	if err := c.writer.Flush(); err != nil {
 		return err
 	}
+
+	conn, err := net.DialTCP(network, nil, resolved)
+	if err != nil {
+		return err
+	}
+
+	if err = setupConn(&c.Config, conn); err != nil {
+		return err
+	}
+
+	c.conn = conn
+	c.connAddress = c.conn.LocalAddr().String()
+
+	return nil
+}
+
+// Read reads data to p.
+// See io.Reader.
+func (c *client) Read(p []byte) (n int, err error) {
+	return c.conn.Read(p)
+}
+
+// Write writes p to data.
+// See io.Writer.
+func (c *client) Write(p []byte) (n int, err error) {
+	return c.conn.Write(p)
+}
+
+// Close closes the client and returns an error if failed.
+func (c *client) Close() (err error) {
+	defer func() {
+		if err == nil {
+			c.onDisconnected(c.connAddress, c.address)
+			log.Debug("client %s has disconnected from %s", c.connAddress, c.address)
+		}
+	}()
+
 	return c.conn.Close()
 }

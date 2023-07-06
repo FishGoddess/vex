@@ -6,9 +6,9 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/FishGoddess/vex"
+	"github.com/FishGoddess/vex/pack"
 )
 
 func main() {
@@ -19,18 +19,12 @@ func main() {
 
 	defer client.Close()
 
-	var buf [1024]byte
-	for i := 0; i < 10; i++ {
-		msg := strconv.Itoa(i)
-		if _, err := client.Write([]byte(msg)); err != nil {
-			panic(err)
-		}
-
-		n, err := client.Read(buf[:])
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("Received:", string(buf[:n]))
+	// Use Send method to send a packet to server and receive a packet from server.
+	// Try to change 'hello' to 'error' and see what happens.
+	packet, err := pack.Send(client, 1, []byte("error"))
+	if err != nil {
+		panic(err)
 	}
+
+	fmt.Println(string(packet))
 }

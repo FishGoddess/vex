@@ -1,30 +1,45 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
 package main
 
 import (
-	"context"
 	"fmt"
+	"io"
 
 	"github.com/FishGoddess/vex"
 )
 
-func main() {
-	server := vex.NewServer("tcp", "127.0.0.1:5837", vex.WithName("example"))
-	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
-		addr, ok := vex.RemoteAddr(ctx)
-		if !ok {
-			fmt.Println(string(requestBody))
-		} else {
-			fmt.Println(string(requestBody), "from", addr)
+func handle(ctx *vex.Context) {
+	var buf [1024]byte
+	for {
+		n, err := ctx.Read(buf[:])
+		if err == io.EOF {
+			break
 		}
-		return []byte("server test"), nil
-	})
 
-	err := server.ListenAndServe()
-	if err != nil {
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Received:", string(buf[:n]))
+
+		if _, err = ctx.Write(buf[:n]); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func main() {
+	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
+	// Also, we can give it a name like "echo" so we can see it in logs.
+	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
+	defer server.Close()
+
+	// Use Serve() to begin serving.
+	// Press ctrl+c/command+c to close the server.
+	if err := server.Serve(); err != nil {
 		panic(err)
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2022 FishGoddess.  All rights reserved.
+// Copyright 2023 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -9,75 +9,92 @@ import (
 	"time"
 )
 
-// go test -v -cover -run=^TestNewDefaultConfig$
-func TestNewDefaultConfig(t *testing.T) {
-	config := newDefaultConfig("tcp", "127.0.0.1:5837")
-	if config.network != "tcp" || config.address != "127.0.0.1:5837" {
-		t.Errorf("config.network %s != 'tcp' || config.address %s != '127.0.0.1:5837'", config.network, config.address)
+// go test -v -cover -run=^TestNewClientConfig$
+func TestNewClientConfig(t *testing.T) {
+	conf := newClientConfig("127.0.0.1:5837")
+
+	if conf.address != "127.0.0.1:5837" {
+		t.Errorf("conf.address %s is wrong", conf.address)
 	}
 
-	if config.Name != config.network+"/"+config.address {
-		t.Errorf("config.Name %s != config.network %s + '/' + config.address %s", config.Name, config.network, config.address)
+	if conf.readTimeout != 10*time.Minute {
+		t.Errorf("conf.readTimeout %d is wrong", conf.readTimeout)
 	}
 
-	if config.ConnTimeout != 8*time.Hour {
-		t.Errorf("config.ConnTimeout %d != 8*time.Hour", config.ConnTimeout)
+	if conf.writeTimeout != 10*time.Minute {
+		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
-	if config.CloseTimeout != time.Minute {
-		t.Errorf("config.CloseTimeout %d != time.Minute", config.CloseTimeout)
+	if conf.readBufferSize != 16*1024 {
+		t.Errorf("conf.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 
-	if config.ReadBufferSize != 4*1024*1024 {
-		t.Errorf("config.ReadBufferSize %d != 4*1024*1024", config.ReadBufferSize)
+	if conf.writeBufferSize != 16*1024 {
+		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
+	}
+}
+
+// go test -v -cover -run=^TestNewServerConfig$
+func TestNewServerConfig(t *testing.T) {
+	conf := newServerConfig("127.0.0.1:5837")
+
+	if conf.address != "127.0.0.1:5837" {
+		t.Errorf("conf.address %s is wrong", conf.address)
 	}
 
-	if config.WriteBufferSize != 4*1024*1024 {
-		t.Errorf("config.WriteBufferSize %d != 4*1024*1024", config.WriteBufferSize)
+	if conf.name != "127.0.0.1:5837" {
+		t.Errorf("conf.name %s is wrong", conf.name)
 	}
 
-	if config.MaxConnected != 4096 {
-		t.Errorf("config.MaxConnected %d != 4096", config.MaxConnected)
+	if conf.readTimeout != 10*time.Minute {
+		t.Errorf("conf.readTimeout %d is wrong", conf.readTimeout)
+	}
+
+	if conf.writeTimeout != 10*time.Minute {
+		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
+	}
+
+	if conf.closeTimeout != time.Minute {
+		t.Errorf("conf.closeTimeout %d is wrong", conf.closeTimeout)
+	}
+
+	if conf.readBufferSize != 4*1024 {
+		t.Errorf("conf.readBufferSize %d is wrong", conf.readBufferSize)
+	}
+
+	if conf.writeBufferSize != 4*1024 {
+		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }
 
 // go test -v -cover -run=^TestConfigApplyOptions$
 func TestConfigApplyOptions(t *testing.T) {
-	config := newDefaultConfig("tcp", "127.0.0.1:5837")
-	config.ApplyOptions([]Option{
-		WithName("test-name"),
-		WithConnTimeout(time.Hour),
-		WithCloseTimeout(time.Second),
+	conf := &Config{address: "127.0.0.1:5837"}
+
+	conf.ApplyOptions([]Option{
+		WithReadTimeout(time.Second),
+		WithWriteTimeout(3 * time.Second),
 		WithReadBufferSize(64),
 		WithWriteBufferSize(512),
-		WithMaxConnected(128),
 	})
 
-	if config.Name != "test-name" {
-		t.Errorf("config.Name %s != 'test-name'", config.Name)
+	if conf.address != "127.0.0.1:5837" {
+		t.Errorf("conf.address %s is wrong", conf.address)
 	}
 
-	if config.network != "tcp" || config.address != "127.0.0.1:5837" {
-		t.Errorf("config.network %s != 'tcp' || config.address %s != '127.0.0.1:5837'", config.network, config.address)
+	if conf.readTimeout != time.Second {
+		t.Errorf("conf.readTimeout %d is wrong", conf.readTimeout)
 	}
 
-	if config.ConnTimeout != time.Hour {
-		t.Errorf("config.ConnTimeout %d != time.Hour", config.ConnTimeout)
+	if conf.writeTimeout != 3*time.Second {
+		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
-	if config.CloseTimeout != time.Second {
-		t.Errorf("config.CloseTimeout %d != time.Second", config.CloseTimeout)
+	if conf.readBufferSize != 64 {
+		t.Errorf("config.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 
-	if config.ReadBufferSize != 64 {
-		t.Errorf("config.ReadBufferSize %d != 64", config.ReadBufferSize)
-	}
-
-	if config.WriteBufferSize != 512 {
-		t.Errorf("config.WriteBufferSize %d != 512", config.WriteBufferSize)
-	}
-
-	if config.MaxConnected != 128 {
-		t.Errorf("config.MaxConnected %d != 128", config.MaxConnected)
+	if conf.writeBufferSize != 512 {
+		t.Errorf("config.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }

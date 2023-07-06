@@ -1,4 +1,10 @@
-## ✒ 历史版本的特性介绍 (Features in old versions)
+## 🎡 历史版本的特性介绍 (Features in old versions)
+
+### v0.4.0-alpha
+
+> 此版本发布于 2023-07-06
+
+* 重构项目，优化代码
 
 ### v0.3.2-alpha
 

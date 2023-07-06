@@ -1,6 +1,14 @@
+.PHONY: fmt test bench
+
+fmt:
+	go fmt ./...
+
 test:
-	go test -v -cover ./...
+	go test -cover ./...
+
 bench:
-	go test ./_examples/performance_test.go -v -run=^$$ -bench=. -benchtime=1s
-benchrps:
-	go test ./_examples/performance_test.go -v -run=^TestServerRPS$$
+	go test -v -run=. -bench=. -benchtime=1s ./_examples/performance_test.go
+	sleep 1s
+	go test -v -run=. -bench=. -benchtime=1s ./_examples/pack_test.go
+
+all: fmt test bench

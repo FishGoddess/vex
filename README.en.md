@@ -1,55 +1,140 @@
 ## ⛓ Vex
 
-[![License](./_icons/license.svg)](https://opensource.org/licenses/MIT)
-[![Build](./_icons/build.svg)](./_icons/build.svg)
-[![Coverage](./_icons/coverage.svg)](./_icons/coverage.svg)
+[![Go Doc](_icons/godoc.svg)](https://pkg.go.dev/github.com/FishGoddess/vex)
+[![License](_icons/license.svg)](https://opensource.org/licenses/MIT)
+[![Coverage](_icons/coverage.svg)](./_icons/coverage.svg)
+![Test](https://github.com/FishGoddess/vex/actions/workflows/test.yml/badge.svg)
 
-**Vex** is a framework which uses tcp to send packets and exchange data through two processes.
+**Vex** is a framework which uses tcp to exchange data.
 
 [阅读中文版](./README.md)
 
-> Concurrent protocol is too complex and vex doesn't support.
+### 🍃 Features
 
-### 🥇 Features
-
-* Based on a customized tcp protocol, easy to use and develop
-* Simple API design, client pool supports
-* Server event callback supports, easy to monitor and notify
-* Signal supports, shutdown server gracefully
-* Server connection token supports, and three limit strategies supports.
+* Based on a tcp protocol, easy to use or customize
+* Simple API design, connection pool supports
+* Support client/server interceptors, easy to monitor and notify
+* Signal monitor supports, shutdown gracefully
+* Connection limit supports, provided several limit strategies
+* Provided pack protocol, which is for simple data transmission protocol
 
 _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
 
 ### 📃 Protocol
 
-> All is packet including request and response.
+> The provided pack protocol defines a conception named packet no matter in request or response.
 
-ABNF：
+ABNF:
 
 ```abnf
-PACKET = HEADER BODY
-HEADER = MAGIC TYPE BODYSIZE
-BODY = *OCTET ; Size unknown, see BODYSIZE
-MAGIC = 3OCTET ; 3Bytes, current is 0xC638B
+PACKET = MAGIC TYPE DATASIZE DATA
+MAGIC = 3OCTET ; 3Bytes, current is 0xC638B which is 811915
 TYPE = OCTET ; 0x00-0xFF, begin from one, 255 at most
-BODYSIZE = 4OCTET ; 4bytes, 4GB at most
+DATASIZE = 4OCTET ; 4bytes, 4GB at most
+DATA = *OCTET ; Size is determined by DATASIZE
 ```
 
 In human:
 
 ```
 Packet:
-magic     type    body_size    {body}
+magic     type    data_size    {data}
 3byte     1byte     4byte      unknown
 ```
 
-### ✒ Example
+### 🔦 Examples
 
 ```bash
 $ go get -u github.com/FishGoddess/vex
 ```
 
-Client:
+> We provide native and pack two ways to use: native is for customizing protocol and pack is a simple data transmission
+> protocol.
+
+Native client:
+
+```go
+package main
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/FishGoddess/vex"
+)
+
+func main() {
+	client, err := vex.NewClient("127.0.0.1:6789")
+	if err != nil {
+		panic(err)
+	}
+
+	defer client.Close()
+
+	var buf [1024]byte
+	for i := 0; i < 10; i++ {
+		msg := strconv.Itoa(i)
+		if _, err := client.Write([]byte(msg)); err != nil {
+			panic(err)
+		}
+
+		n, err := client.Read(buf[:])
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Received:", string(buf[:n]))
+	}
+}
+```
+
+Native server:
+
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+
+	"github.com/FishGoddess/vex"
+)
+
+func handle(ctx *vex.Context) {
+	var buf [1024]byte
+	for {
+		n, err := ctx.Read(buf[:])
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("Received:", string(buf[:n]))
+
+		if _, err = ctx.Write(buf[:n]); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func main() {
+	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
+	// Also, we can give it a name like "echo" so we can see it in logs.
+	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
+	defer server.Close()
+
+	// Use Serve() to begin serving.
+	// Press ctrl+c/command+c to close the server.
+	if err := server.Serve(); err != nil {
+		panic(err)
+	}
+}
+```
+
+Pack client:
 
 ```go
 package main
@@ -58,73 +143,93 @@ import (
 	"fmt"
 
 	"github.com/FishGoddess/vex"
+	"github.com/FishGoddess/vex/pack"
 )
 
 func main() {
-	client, err := vex.NewClient("tcp", "127.0.0.1:5837")
+	client, err := vex.NewClient("127.0.0.1:6789")
 	if err != nil {
 		panic(err)
 	}
+
 	defer client.Close()
 
-	rsp, err := client.Send(1, []byte("client test"))
+	// Use Send method to send a packet to server and receive a packet from server.
+	// Try to change 'hello' to 'error' and see what happens.
+	packet, err := pack.Send(client, 1, []byte("error"))
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(string(rsp))
+	fmt.Println(string(packet))
 }
 ```
 
-Server:
+Pack server:
 
 ```go
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/FishGoddess/vex"
+	"github.com/FishGoddess/vex/pack"
 )
 
-func main() {
-	server := vex.NewServer("tcp", "127.0.0.1:5837", vex.WithName("example"))
-	server.RegisterPacketHandler(1, func(ctx context.Context, requestBody []byte) (responseBody []byte, err error) {
-		addr, ok := vex.RemoteAddr(ctx)
-		if !ok {
-			fmt.Println(string(requestBody))
+func newRouter() *pack.Router {
+	router := pack.NewRouter()
+
+	// Use Register method to register your handler for some packets.
+	router.Register(1, func(ctx context.Context, packetType pack.PacketType, requestPacket []byte) (responsePacket []byte, err error) {
+		msg := string(requestPacket)
+		fmt.Println(msg)
+
+		if msg == "error" {
+			return nil, errors.New(msg)
 		} else {
-			fmt.Println(string(requestBody), "from", addr)
+			return requestPacket, nil
 		}
-		return []byte("server test"), nil
 	})
 
-	err := server.ListenAndServe()
-	if err != nil {
+	return router
+}
+
+func main() {
+	// Create a router for packets.
+	router := newRouter()
+
+	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
+	server := vex.NewServer("127.0.0.1:6789", router.Handle, vex.WithName("pack"))
+	defer server.Close()
+
+	// Use Serve() to begin serving.
+	// Press ctrl+c/command+c to close the server.
+	if err := server.Serve(); err != nil {
 		panic(err)
 	}
 }
 ```
-
-* [client](./_examples/client.go)
-* [server](./_examples/server.go)
-* [pool](./_examples/pool.go)
-* [event](./_examples/event.go)
 
 _All examples can be found in [_examples](./_examples)._
 
 ### 🛠 Benchmarks
 
 ```bash
-$ go test -v ./_examples/performance_test.go -bench=^BenchmarkServer$ -benchtime=1s
-BenchmarkServer-16        136586              9063 ns/op            2080 B/op          6 allocs/op
+$ make bench
+BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
+BenchmarkPackReadWrite-16          78781             15287 ns/op            2080 B/op          6 allocs/op
 ```
 
-> Packet size is 1KB.
+| Protocol | Connections | rps          |
+|----------|-------------|--------------|
+| -        | &nbsp; 1    | &nbsp; 76849 |
+| -        | 16          | 282590       |
+| Pack     | &nbsp; 1    | &nbsp; 50273 |
+| Pack     | 16          | 200484       |
 
-_Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, manjaro linux._
+_Packet size is 1KB._
 
-_Single connection: 10w requests spent 1.5s, result is **66876 rps**._
-
-_Pool (16connections): 10w requests spent 359.9ms, result is **277859 rps**._
+_Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, deepin linux._

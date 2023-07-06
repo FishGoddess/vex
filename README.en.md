@@ -58,7 +58,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/FishGoddess/vex"
 )
@@ -71,20 +70,18 @@ func main() {
 
 	defer client.Close()
 
-	var buf [1024]byte
-	for i := 0; i < 10; i++ {
-		msg := strconv.Itoa(i)
-		if _, err := client.Write([]byte(msg)); err != nil {
-			panic(err)
-		}
-
-		n, err := client.Read(buf[:])
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("Received:", string(buf[:n]))
+	msg := []byte("hello")
+	if _, err := client.Write(msg); err != nil {
+		panic(err)
 	}
+
+	var buf [1024]byte
+	n, err := client.Read(buf[:])
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Received:", string(buf[:n]))
 }
 ```
 

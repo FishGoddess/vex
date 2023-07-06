@@ -19,7 +19,19 @@ func onDisconnected(clientAddress string, serverAddress string) {
 	fmt.Printf("on disconnected %s from %s\n", clientAddress, serverAddress)
 }
 
-func useClientWithHook(client vex.Client) {
+func main() {
+	opts := []vex.Option{
+		vex.WithOnConnected(onConnected),
+		vex.WithOnDisconnected(onDisconnected),
+	}
+
+	client, err := vex.NewClient("127.0.0.1:6789", opts...)
+	if err != nil {
+		panic(err)
+	}
+
+	defer client.Close()
+
 	var buf [1024]byte
 	for i := 0; i < 10; i++ {
 		msg := strconv.Itoa(i)
@@ -34,19 +46,4 @@ func useClientWithHook(client vex.Client) {
 
 		fmt.Println("Received:", string(buf[:n]))
 	}
-}
-
-func main() {
-	opts := []vex.Option{
-		vex.WithOnConnected(onConnected),
-		vex.WithOnDisconnected(onDisconnected),
-	}
-
-	client, err := vex.NewClient("127.0.0.1:6789", opts...)
-	if err != nil {
-		panic(err)
-	}
-
-	defer client.Close()
-	useClientWithHook(client)
 }

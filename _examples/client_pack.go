@@ -6,23 +6,10 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/FishGoddess/vex"
 	"github.com/FishGoddess/vex/pack"
 )
-
-func useClientWithPack(client vex.Client) {
-	for i := 0; i < 10; i++ {
-		msg := strconv.Itoa(i)
-		if i&1 == 0 {
-			msg = "error"
-		}
-
-		packet, err := pack.Send(client, 1, []byte(msg))
-		fmt.Println(string(packet), err)
-	}
-}
 
 func main() {
 	client, err := vex.NewClient("127.0.0.1:6789")
@@ -31,5 +18,13 @@ func main() {
 	}
 
 	defer client.Close()
-	useClientWithPack(client)
+
+	// Use Send method to send a packet to server and receive a packet from server.
+	// Try to change 'hello' to 'error' and see what happens.
+	packet, err := pack.Send(client, 1, []byte("error"))
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(packet))
 }

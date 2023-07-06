@@ -28,7 +28,6 @@ func runTestServer(t *testing.T, address string, ch chan struct{}) {
 	}
 
 	var buf [1024]byte
-
 	for {
 		n, err := conn.Read(buf[:])
 		if err == io.EOF {

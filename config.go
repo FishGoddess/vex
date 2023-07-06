@@ -73,8 +73,8 @@ func newClientConfig(address string) *Config {
 		address:         address,
 		readTimeout:     10 * time.Minute,
 		writeTimeout:    10 * time.Minute,
-		readBufferSize:  64 * 1024, // 16KB
-		writeBufferSize: 64 * 1024, // 16KB
+		readBufferSize:  16 * 1024, // 16KB
+		writeBufferSize: 16 * 1024, // 16KB
 	}
 }
 
@@ -85,8 +85,8 @@ func newServerConfig(address string) *Config {
 		readTimeout:     10 * time.Minute,
 		writeTimeout:    10 * time.Minute,
 		closeTimeout:    time.Minute,
-		readBufferSize:  16 * 1024, // 16KB
-		writeBufferSize: 16 * 1024, // 16KB
+		readBufferSize:  4 * 1024, // 4KB
+		writeBufferSize: 4 * 1024, // 4KB
 		maxConnections:  4096,
 	}
 }

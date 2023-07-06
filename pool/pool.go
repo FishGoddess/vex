@@ -226,7 +226,7 @@ func (p *Pool) Close() error {
 
 	p.status = Status{}
 	p.closed = true
-	close(p.clients)
 
+	close(p.clients)
 	return nil
 }

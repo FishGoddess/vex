@@ -35,31 +35,32 @@ func NewRouter() *Router {
 }
 
 // Register registers a packet handler to router.
-func (sh *Router) Register(packetType PacketType, handler PacketHandler) {
-	sh.lock.Lock()
-	sh.handlers[packetType] = handler
-	sh.lock.Unlock()
+func (r *Router) Register(packetType PacketType, handler PacketHandler) {
+	r.lock.Lock()
+	r.handlers[packetType] = handler
+	r.lock.Unlock()
 }
 
-func (sh *Router) writePacketOK(writer io.Writer, body []byte) {
-	err := writePacket(writer, packetTypeNormal, body)
+func (r *Router) writeStandardPacket(writer io.Writer, body []byte) {
+	err := writePacket(writer, packetTypeStandard, body)
 	if err != nil {
-
+		log.Error(err, "write standard packet failed")
 	}
 }
 
-func (sh *Router) writePacketErr(writer io.Writer, err error) {
+func (r *Router) writeErrorPacket(writer io.Writer, err error) {
 	err = writePacket(writer, packetTypeError, []byte(err.Error()))
 	if err != nil {
-
+		log.Error(err, "write error packet failed")
 	}
 }
 
-func (sh *Router) Handle(ctx *vex.Context) {
+// Handle handles context of vex, and you can pass it to a server.
+func (r *Router) Handle(ctx *vex.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Debug("router context from has done", ctx.RemoteAddr())
+			log.Debug("router context of %s has done", ctx.RemoteAddr())
 			return
 		default:
 		}
@@ -70,25 +71,25 @@ func (sh *Router) Handle(ctx *vex.Context) {
 		}
 
 		if err != nil {
-			sh.writePacketErr(ctx, err)
+			r.writeErrorPacket(ctx, err)
 			continue
 		}
 
-		sh.lock.RLock()
-		handle, ok := sh.handlers[packetType]
-		sh.lock.RUnlock()
+		r.lock.RLock()
+		handle, ok := r.handlers[packetType]
+		r.lock.RUnlock()
 
 		if !ok {
-			sh.writePacketErr(ctx, errPacketHandlerNotFound)
+			r.writeErrorPacket(ctx, errPacketHandlerNotFound)
 			continue
 		}
 
 		responsePacket, err := handle(ctx, packetType, requestPacket)
 		if err != nil {
-			sh.writePacketErr(ctx, err)
+			r.writeErrorPacket(ctx, err)
 			continue
 		}
 
-		sh.writePacketOK(ctx, responsePacket)
+		r.writeStandardPacket(ctx, responsePacket)
 	}
 }

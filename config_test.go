@@ -25,11 +25,11 @@ func TestNewClientConfig(t *testing.T) {
 		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
-	if conf.readBufferSize != 64*1024 {
+	if conf.readBufferSize != 16*1024 {
 		t.Errorf("conf.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 
-	if conf.writeBufferSize != 64*1024 {
+	if conf.writeBufferSize != 16*1024 {
 		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }
@@ -58,11 +58,11 @@ func TestNewServerConfig(t *testing.T) {
 		t.Errorf("conf.closeTimeout %d is wrong", conf.closeTimeout)
 	}
 
-	if conf.readBufferSize != 16*1024 {
+	if conf.readBufferSize != 4*1024 {
 		t.Errorf("conf.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 
-	if conf.writeBufferSize != 16*1024 {
+	if conf.writeBufferSize != 4*1024 {
 		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }

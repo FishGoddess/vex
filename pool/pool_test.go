@@ -17,7 +17,6 @@ import (
 
 func handle(ctx *vex.Context) {
 	var buf [1024]byte
-
 	for {
 		n, err := ctx.Read(buf[:])
 		if err == io.EOF {

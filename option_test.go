@@ -45,7 +45,6 @@ func TestWithWriteTimeout(t *testing.T) {
 // go test -v -cover -run=^TestWithCloseTimeout$
 func TestWithCloseTimeout(t *testing.T) {
 	conf := &Config{closeTimeout: 0}
-
 	WithCloseTimeout(time.Hour)(conf)
 
 	if conf.closeTimeout != time.Hour {

@@ -11,7 +11,14 @@ import (
 	"github.com/FishGoddess/vex"
 )
 
-func useClient(client vex.Client) {
+func main() {
+	client, err := vex.NewClient("127.0.0.1:6789")
+	if err != nil {
+		panic(err)
+	}
+
+	defer client.Close()
+
 	var buf [1024]byte
 	for i := 0; i < 10; i++ {
 		msg := strconv.Itoa(i)
@@ -26,14 +33,4 @@ func useClient(client vex.Client) {
 
 		fmt.Println("Received:", string(buf[:n]))
 	}
-}
-
-func main() {
-	client, err := vex.NewClient("127.0.0.1:6789")
-	if err != nil {
-		panic(err)
-	}
-
-	defer client.Close()
-	useClient(client)
 }

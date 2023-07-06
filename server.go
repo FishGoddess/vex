@@ -75,12 +75,12 @@ func (s *server) handleConn(conn *net.TCPConn) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling connection %s", s.name, remoteAddr)
+			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling %s", s.name, remoteAddr)
 		}
 	}()
 
 	if err := setupConn(&s.Config, conn); err != nil {
-		log.Error(err, "server %s setups connection %s failed", s.name, remoteAddr)
+		log.Error(err, "server %s setups %s failed", s.name, remoteAddr)
 		return
 	}
 
@@ -89,12 +89,12 @@ func (s *server) handleConn(conn *net.TCPConn) {
 
 	defer func() {
 		if err := ctx.finish(); err != nil {
-			log.Error(err, "server %s finished connection %s failed", s.name, remoteAddr)
+			log.Error(err, "server %s finished %s failed", s.name, remoteAddr)
 		}
 	}()
 
-	log.Debug("server %s handles connection %s begin", s.name, remoteAddr)
-	defer log.Debug("server %s handles connection %s end", s.name, remoteAddr)
+	log.Debug("server %s handles %s begin", s.name, remoteAddr)
+	defer log.Debug("server %s handles %s end", s.name, remoteAddr)
 
 	s.beforeHandling(ctx)
 	defer s.afterHandling(ctx)

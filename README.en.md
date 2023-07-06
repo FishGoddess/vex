@@ -220,12 +220,16 @@ _All examples can be found in [_examples](./_examples)._
 ```bash
 $ make bench
 BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
+BenchmarkPackReadWrite-16          78781             15287 ns/op            2080 B/op          6 allocs/op
 ```
 
-> Packet size is 1KB.
+| Protocol | Connections | rps          |
+|----------|-------------|--------------|
+| -        | &nbsp; 1    | &nbsp; 76849 |
+| -        | 16          | 282590       |
+| Pack     | &nbsp; 1    | &nbsp; 50273 |
+| Pack     | 16          | 200484       |
+
+_Packet size is 1KB._
 
 _Environment: R7-5800X@3.8GHZ CPU, 32GB RAM, deepin linux._
-
-_Single connection: 10w requests spent 1.26s, result is **78958 rps**._
-
-_Pool (16connections): 10w requests spent 393.08ms, result is **254400 rps**._

@@ -45,7 +45,7 @@ func newBenchmarkPackServer(address string) vex.Server {
 }
 
 // go test ./_examples/pack_test.go -v -run=^$ -bench=^BenchmarkPackReadWrite$ -benchtime=1s
-// BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
+// BenchmarkPackReadWrite-16          78781             15287 ns/op            2080 B/op          6 allocs/op
 func BenchmarkPackReadWrite(b *testing.B) {
 	address := "127.0.0.1:6789"
 
@@ -83,11 +83,11 @@ func calculatePackRPS(loop int, cost time.Duration) float64 {
 }
 
 // go test ./_examples/pack_test.go -v -run=^TestPackRPS$
-// PoolSize is 1, took 1.266500745s, rps is 78958
-// PoolSize is 16, took 393.082456ms, rps is 254400
+// PoolSize is 1, took 1.989130937s, rps is 50273
+// PoolSize is 16, took 523.351651ms, rps is 191076
 func TestPackRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
-	addresses := []string{"127.0.0.1:6789"}
+	addresses := []string{"127.0.0.1:9876"}
 
 	servers := make([]vex.Server, 0, len(addresses))
 	for _, address := range addresses {

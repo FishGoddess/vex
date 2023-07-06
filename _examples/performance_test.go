@@ -104,11 +104,11 @@ func calculateRPS(loop int, cost time.Duration) float64 {
 }
 
 // go test ./_examples/performance_test.go -v -run=^TestRPS$
-// PoolSize is 1, took 1.266500745s, rps is 78958
-// PoolSize is 16, took 393.082456ms, rps is 254400
+// PoolSize is 1, took 1.30125864s, rps is 76849
+// PoolSize is 16, took 353.86987ms, rps is 282590
 func TestRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
-	addresses := []string{"127.0.0.1:6789"}
+	addresses := []string{"127.0.0.1:9876"}
 
 	servers := make([]vex.Server, 0, len(addresses))
 	for _, address := range addresses {

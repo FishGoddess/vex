@@ -48,7 +48,8 @@ magic     type    data_size    {data}
 $ go get -u github.com/FishGoddess/vex
 ```
 
-> 我们提供了原生和 pack 两种使用方式，其中原生可以自定义协议，随意读写操作数据，用于二次开发，而 pack 则是自带的数据包传输协议，用于简单的数据传输场景。
+> 我们提供了原生和 pack 两种使用方式，其中原生可以自定义协议，随意读写操作数据，用于二次开发，而 pack
+> 则是自带的数据包传输协议，用于简单的数据传输场景。
 
 原生客户端：
 
@@ -219,12 +220,16 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 ```bash
 $ make bench
 BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
+BenchmarkPackReadWrite-16          78781             15287 ns/op            2080 B/op          6 allocs/op
 ```
 
-> 数据包大小为 1KB。
+| 协议   | 连接数      | rps          |
+|------|----------|--------------|
+| -    | &nbsp; 1 | &nbsp; 76849 |
+| -    | 16       | 282590       |
+| Pack | &nbsp; 1 | &nbsp; 50273 |
+| Pack | 16       | 200484       |
+
+_数据包大小为 1KB。_
 
 _测试环境：R7-5800X@3.8GHZ CPU, 32GB RAM, deepin linux。_
-
-_单连接：10w 个请求的执行耗时为 1.26s，结果为 **78958 rps**。_
-
-_16个连接：10w 个请求的执行耗时为 393.08ms，结果为 **254400 rps**。_

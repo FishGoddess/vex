@@ -60,7 +60,7 @@ func runTestClient(t *testing.T, address string) {
 		t.Error(err)
 	}
 
-	var buf [64]byte
+	buf := make([]byte, 64)
 	n, err := conn.Read(buf[:])
 	if err != nil {
 		t.Error(err)
@@ -84,7 +84,7 @@ func runTestClient(t *testing.T, address string) {
 
 // go test -v -cover -run=^TestRouterHandle$
 func TestRouterHandle(t *testing.T) {
-	address := "127.0.0.1:6789"
+	address := "127.0.0.1:8899"
 
 	router := NewRouter()
 	router.Register(packetTypeTest, func(ctx context.Context, packetType PacketType, requestPacket []byte) (responsePacket []byte, err error) {

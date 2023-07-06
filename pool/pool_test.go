@@ -40,7 +40,9 @@ func handle(ctx *vex.Context) {
 
 // go test -v -cover -run=^TestPool$
 func TestPool(t *testing.T) {
-	server := vex.NewServer("127.0.0.1:6789", handle)
+	address := "127.0.0.1:10000"
+
+	server := vex.NewServer(address, handle)
 	defer server.Close()
 
 	go func() {
@@ -52,7 +54,7 @@ func TestPool(t *testing.T) {
 	runtime.Gosched()
 	time.Sleep(100 * time.Millisecond)
 
-	pool := New(Dial("127.0.0.1:6789"), WithMaxConnected(16), WithMaxIdle(64))
+	pool := New(Dial(address), WithMaxConnected(16), WithMaxIdle(64))
 	defer pool.Close()
 
 	data := []byte("test")
@@ -73,7 +75,7 @@ func TestPool(t *testing.T) {
 			t.Errorf("n %d != len(data) %d", n, len(data))
 		}
 
-		var buf [64]byte
+		buf := make([]byte, 64)
 
 		n, err = client.Read(buf[:])
 		if err != nil {

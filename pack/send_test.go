@@ -27,7 +27,7 @@ func runTestServer(t *testing.T, address string, str string) {
 
 	defer conn.Close()
 
-	var buf [64]byte
+	buf := make([]byte, 64)
 	n, err := conn.Read(buf[:])
 	if err != nil {
 		t.Error(err)
@@ -81,7 +81,7 @@ func runTestServer(t *testing.T, address string, str string) {
 
 // go test -v -cover -run=^TestSend$
 func TestSend(t *testing.T) {
-	address := "127.0.0.1:6789"
+	address := "127.0.0.1:9988"
 
 	str := "key value"
 	go runTestServer(t, address, str)

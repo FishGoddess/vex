@@ -7,6 +7,7 @@ package pack
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -18,13 +19,13 @@ var (
 	errTestRequestFailed = errors.New("vex: test request failed")
 )
 
-func checkTestBytes(t *testing.T, buffer []byte, expectedPacketType PacketType, expectedPacketData string) {
+func checkTestBytes(t *testing.T, buf []byte, expectedPacketType PacketType, expectedPacketData string) {
 	//t.Log(buffer)
-	if len(buffer) < headerSize {
-		t.Errorf("len(buffer) %d < headerSize %d", len(buffer), headerSize)
+	if len(buf) < headerSize {
+		t.Errorf("len(buf) %d < headerSize %d", len(buf), headerSize)
 	}
 
-	header := Endian.Uint64(buffer[:headerSize])
+	header := Endian.Uint64(buf[:headerSize])
 	magic := (header >> (typeBits + dataSizeBits)) & maxMagic
 	if magic != magicNumber {
 		t.Errorf("magic %d != magicNumber %d", magic, magicNumber)
@@ -40,9 +41,9 @@ func checkTestBytes(t *testing.T, buffer []byte, expectedPacketType PacketType, 
 		t.Errorf("dataSize %d != len([]byte(expectedPacketData)) %d ", dataSize, len([]byte(expectedPacketData)))
 	}
 
-	data := buffer[headerSize : headerSize+dataSize]
+	data := buf[headerSize : headerSize+dataSize]
 	if string(data) != expectedPacketData {
-		t.Errorf("data %s != expectedBody %s", data, expectedPacketData)
+		t.Errorf("data %s != expectedPacketData %s", data, expectedPacketData)
 	}
 }
 
@@ -60,13 +61,15 @@ func runTestClient(t *testing.T, address string) {
 		t.Error(err)
 	}
 
-	buf := make([]byte, 64)
-	n, err := conn.Read(buf[:])
+	msg := errTestRequestFailed.Error()
+	buf := make([]byte, headerSize+len(msg))
+
+	n, err := io.ReadFull(conn, buf)
 	if err != nil {
 		t.Error(err)
 	}
 
-	checkTestBytes(t, buf[:n], packetTypeError, errTestRequestFailed.Error())
+	checkTestBytes(t, buf[:n], packetTypeError, msg)
 
 	// OK test
 	_, err = conn.Write([]byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e'})
@@ -74,12 +77,15 @@ func runTestClient(t *testing.T, address string) {
 		t.Error(err)
 	}
 
+	msg = "key value"
+	buf = make([]byte, headerSize+len(msg))
+
 	n, err = conn.Read(buf[:])
 	if err != nil {
 		t.Error(err)
 	}
 
-	checkTestBytes(t, buf[:n], packetTypeStandard, "key value")
+	checkTestBytes(t, buf[:n], packetTypeStandard, msg)
 }
 
 // go test -v -cover -run=^TestRouterHandle$

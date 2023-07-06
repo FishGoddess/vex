@@ -41,8 +41,8 @@ func (r *Router) Register(packetType PacketType, handler PacketHandler) {
 	r.lock.Unlock()
 }
 
-func (r *Router) writeStandardPacket(writer io.Writer, body []byte) {
-	err := writePacket(writer, packetTypeStandard, body)
+func (r *Router) writeStandardPacket(writer io.Writer, data []byte) {
+	err := writePacket(writer, packetTypeStandard, data)
 	if err != nil {
 		log.Error(err, "write standard packet failed")
 	}
@@ -65,7 +65,7 @@ func (r *Router) Handle(ctx *vex.Context) {
 		default:
 		}
 
-		packetType, requestPacket, err := readPacket(ctx)
+		packetType, data, err := readPacket(ctx)
 		if err == io.EOF {
 			return
 		}
@@ -84,12 +84,12 @@ func (r *Router) Handle(ctx *vex.Context) {
 			continue
 		}
 
-		responsePacket, err := handle(ctx, packetType, requestPacket)
+		data, err = handle(ctx, packetType, data)
 		if err != nil {
 			r.writeErrorPacket(ctx, err)
 			continue
 		}
 
-		r.writeStandardPacket(ctx, responsePacket)
+		r.writeStandardPacket(ctx, data)
 	}
 }

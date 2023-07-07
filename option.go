@@ -33,6 +33,13 @@ func WithWriteTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithConnectTimeout sets connect timeout to config.
+func WithConnectTimeout(timeout time.Duration) Option {
+	return func(conf *Config) {
+		conf.connectTimeout = timeout
+	}
+}
+
 // WithCloseTimeout sets close timeout to config.
 func WithCloseTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {

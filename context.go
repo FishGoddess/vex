@@ -48,11 +48,15 @@ func (c *Context) setup(conn *net.TCPConn) {
 }
 
 func (c *Context) finish() (err error) {
+	c.cancel()
+
 	if err = c.conn.Close(); err != nil {
 		return err
 	}
 
-	c.cancel()
+	c.parent = nil
+	c.cancel = nil
+	c.conn = nil
 	return nil
 }
 

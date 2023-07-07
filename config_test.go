@@ -54,6 +54,10 @@ func TestNewServerConfig(t *testing.T) {
 		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
+	if conf.connectTimeout != 30*time.Second {
+		t.Errorf("conf.connectTimeout %d is wrong", conf.connectTimeout)
+	}
+
 	if conf.closeTimeout != time.Minute {
 		t.Errorf("conf.closeTimeout %d is wrong", conf.closeTimeout)
 	}

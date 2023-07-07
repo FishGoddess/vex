@@ -42,6 +42,16 @@ func TestWithWriteTimeout(t *testing.T) {
 	}
 }
 
+// go test -v -cover -run=^TestWithConnectTimeout$
+func TestWithConnectTimeout(t *testing.T) {
+	conf := &Config{connectTimeout: 0}
+	WithConnectTimeout(time.Hour)(conf)
+
+	if conf.connectTimeout != time.Hour {
+		t.Errorf("c.connectTimeout %d is wrong", conf.connectTimeout)
+	}
+}
+
 // go test -v -cover -run=^TestWithCloseTimeout$
 func TestWithCloseTimeout(t *testing.T) {
 	conf := &Config{closeTimeout: 0}

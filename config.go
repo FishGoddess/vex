@@ -20,6 +20,9 @@ type Config struct {
 	// See net.Conn's SetWriteDeadline.
 	writeTimeout time.Duration
 
+	// connectTimeout is the timeout of connecting to a server or waiting for connection connected.
+	connectTimeout time.Duration
+
 	// closeTimeout is the timeout of closing a server.
 	// Close may take a long time to wait all connections to be closed, so a timeout is necessary.
 	closeTimeout time.Duration
@@ -73,6 +76,7 @@ func newClientConfig(address string) *Config {
 		address:         address,
 		readTimeout:     10 * time.Minute,
 		writeTimeout:    10 * time.Minute,
+		connectTimeout:  time.Second,
 		readBufferSize:  16 * 1024, // 16KB
 		writeBufferSize: 16 * 1024, // 16KB
 	}
@@ -85,6 +89,7 @@ func newServerConfig(address string) *Config {
 		readTimeout:     10 * time.Minute,
 		writeTimeout:    10 * time.Minute,
 		closeTimeout:    time.Minute,
+		connectTimeout:  30 * time.Second,
 		readBufferSize:  4 * 1024, // 4KB
 		writeBufferSize: 4 * 1024, // 4KB
 		maxConnections:  4096,

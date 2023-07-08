@@ -48,13 +48,14 @@ type server struct {
 	listener net.Listener
 	handle   HandleFunc
 
-	conns    chan net.Conn
 	status   Status
 	contexts *sync.Pool
 
+	tokenCh chan struct{}
 	closeCh chan struct{}
-	wg      sync.WaitGroup
-	lock    sync.RWMutex
+
+	wg   sync.WaitGroup
+	lock sync.RWMutex
 }
 
 // NewServer creates a new server serving on address.
@@ -69,15 +70,35 @@ func NewServer(address string, handle HandleFunc, opts ...Option) Server {
 	server := &server{
 		Config:   *conf,
 		handle:   handle,
-		conns:    make(chan net.Conn, conf.maxConnections),
 		contexts: contexts,
+		tokenCh:  make(chan struct{}, conf.maxConnections),
 		closeCh:  make(chan struct{}),
 	}
 
-	go server.handleConns()
-	log.Debug("server %s using config %+v", server.name, server.Config)
-
 	return server
+}
+
+func (s *server) acquireToken() (shouldRetry bool, err error) {
+	timer := time.NewTimer(s.connectTimeout)
+	defer timer.Stop()
+
+	select {
+	case s.tokenCh <- struct{}{}:
+		return true, nil
+	case <-s.closeCh:
+		return false, nil
+	case <-timer.C:
+		return false, errAcceptConnTimeout
+	}
+}
+
+func (s *server) releaseToken() {
+	select {
+	case <-s.tokenCh:
+		return
+	case <-s.closeCh:
+		return
+	}
 }
 
 func (s *server) newContext(conn net.Conn) *Context {
@@ -93,6 +114,18 @@ func (s *server) freeContext(ctx *Context) {
 
 func (s *server) handleConn(conn net.Conn) {
 	remoteAddr := conn.RemoteAddr()
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling %s", s.name, remoteAddr)
+		}
+	}()
+
+	defer func() {
+		s.lock.Lock()
+		s.status.Connected--
+		s.lock.Unlock()
+	}()
 
 	ctx := s.newContext(conn)
 	defer s.freeContext(ctx)
@@ -112,49 +145,6 @@ func (s *server) handleConn(conn net.Conn) {
 	s.handle(ctx)
 }
 
-func (s *server) handleConns() {
-	for conn := range s.conns {
-		s.wg.Add(1)
-		go func(conn net.Conn) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling %s", s.name, conn.RemoteAddr())
-				}
-			}()
-
-			defer func() {
-				s.wg.Done()
-
-				s.lock.Lock()
-				s.status.Connected--
-				s.lock.Unlock()
-			}()
-
-			s.handleConn(conn)
-		}(conn)
-	}
-}
-
-func (s *server) enqueueConn(conn net.Conn) (err error) {
-	timer := time.NewTimer(s.connectTimeout)
-	defer timer.Stop()
-
-	select {
-	case s.conns <- conn:
-		break
-	case <-s.closeCh:
-		return net.ErrClosed
-	case <-timer.C:
-		return errAcceptConnTimeout
-	}
-
-	s.lock.Lock()
-	s.status.Connected++
-	s.lock.Unlock()
-
-	return nil
-}
-
 func (s *server) acceptConn(conn net.Conn) {
 	var err error
 
@@ -164,6 +154,7 @@ func (s *server) acceptConn(conn net.Conn) {
 		}
 
 		if err = conn.Close(); err != nil {
+			s.releaseToken()
 			log.Error(err, "server %s closes %s failed", s.name, conn.RemoteAddr())
 		}
 	}()
@@ -173,9 +164,17 @@ func (s *server) acceptConn(conn net.Conn) {
 		return
 	}
 
-	if err = s.enqueueConn(conn); err != nil {
-		log.Error(err, "server %s enqueues %s failed", s.name, conn.RemoteAddr())
-	}
+	s.lock.Lock()
+	s.status.Connected++
+	s.lock.Unlock()
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer s.releaseToken()
+
+		s.handleConn(conn)
+	}()
 }
 
 func (s *server) wait() error {
@@ -185,7 +184,7 @@ func (s *server) wait() error {
 		close(s.closeCh)
 	}()
 
-	close(s.conns)
+	close(s.tokenCh)
 	s.afterServing(s.address)
 
 	timer := time.NewTimer(s.closeTimeout)
@@ -204,6 +203,15 @@ func (s *server) wait() error {
 
 func (s *server) serve() error {
 	for {
+		shouldRetry, err := s.acquireToken()
+		if err != nil {
+			continue
+		}
+
+		if !shouldRetry {
+			break
+		}
+
 		conn, err := s.listener.Accept()
 		if err == nil {
 			s.acceptConn(conn)
@@ -215,6 +223,7 @@ func (s *server) serve() error {
 			break
 		}
 
+		s.releaseToken()
 		log.Error(err, "server %s accepts failed", s.name)
 	}
 

@@ -15,7 +15,7 @@
 * Simple API design, connection pool supports
 * Support client/server interceptors, easy to monitor and notify
 * Signal monitor supports, shutdown gracefully
-* Connection limit supports, provided several limit strategies
+* Connection limit supports, and fast-failed supports
 * Provided pack protocol, which is for simple data transmission protocol
 
 _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
@@ -121,7 +121,6 @@ func main() {
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	// Also, we can give it a name like "echo" so we can see it in logs.
 	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
 	// Press ctrl+c/command+c to close the server.
@@ -153,7 +152,7 @@ func main() {
 
 	// Use Send method to send a packet to server and receive a packet from server.
 	// Try to change 'hello' to 'error' and see what happens.
-	packet, err := pack.Send(client, 1, []byte("error"))
+	packet, err := pack.Send(client, 1, []byte("hello"))
 	if err != nil {
 		panic(err)
 	}
@@ -200,7 +199,6 @@ func main() {
 
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	server := vex.NewServer("127.0.0.1:6789", router.Handle, vex.WithName("pack"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
 	// Press ctrl+c/command+c to close the server.

@@ -15,7 +15,7 @@
 * 极简设计的 API，内置连接池，可以对性能进行调优
 * 支持客户端、服务器引入拦截器，方便接入监控和告警
 * 支持信号量监控机制和平滑下线
-* 支持连接数限制，并支持多种限制策略
+* 支持连接数限制，并支持超时中断
 * 自带 pack 数据传输协议，用于简单的数据传输场景
 
 _历史版本的特性请查看 [HISTORY.md](./HISTORY.md)。未来版本的新特性和计划请查看 [FUTURE.md](./FUTURE.md)。_
@@ -121,7 +121,6 @@ func main() {
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	// Also, we can give it a name like "echo" so we can see it in logs.
 	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
 	// Press ctrl+c/command+c to close the server.
@@ -153,7 +152,7 @@ func main() {
 
 	// Use Send method to send a packet to server and receive a packet from server.
 	// Try to change 'hello' to 'error' and see what happens.
-	packet, err := pack.Send(client, 1, []byte("error"))
+	packet, err := pack.Send(client, 1, []byte("hello"))
 	if err != nil {
 		panic(err)
 	}
@@ -200,7 +199,6 @@ func main() {
 
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	server := vex.NewServer("127.0.0.1:6789", router.Handle, vex.WithName("pack"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
 	// Press ctrl+c/command+c to close the server.

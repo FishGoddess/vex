@@ -48,8 +48,9 @@ type server struct {
 	listener net.Listener
 	handle   HandleFunc
 
-	conns  chan net.Conn
-	status Status
+	conns    chan net.Conn
+	status   Status
+	contexts *sync.Pool
 
 	closeCh chan struct{}
 	wg      sync.WaitGroup
@@ -61,22 +62,40 @@ type server struct {
 func NewServer(address string, handle HandleFunc, opts ...Option) Server {
 	conf := newServerConfig(address).ApplyOptions(opts)
 
+	contexts := &sync.Pool{New: func() any {
+		return new(Context)
+	}}
+
 	server := &server{
-		Config:  *conf,
-		handle:  handle,
-		conns:   make(chan net.Conn, conf.maxConnections),
-		closeCh: make(chan struct{}),
+		Config:   *conf,
+		handle:   handle,
+		conns:    make(chan net.Conn, conf.maxConnections),
+		contexts: contexts,
+		closeCh:  make(chan struct{}),
 	}
 
 	go server.handleConns()
+	log.Debug("server %s using config %+v", server.name, server.Config)
+
 	return server
+}
+
+func (s *server) newContext(conn net.Conn) *Context {
+	ctx := s.contexts.Get().(*Context)
+	ctx.setup(conn)
+
+	return ctx
+}
+
+func (s *server) freeContext(ctx *Context) {
+	s.contexts.Put(ctx)
 }
 
 func (s *server) handleConn(conn net.Conn) {
 	remoteAddr := conn.RemoteAddr()
 
-	ctx := new(Context)
-	ctx.setup(conn)
+	ctx := s.newContext(conn)
+	defer s.freeContext(ctx)
 
 	defer func() {
 		if err := ctx.finish(); err != nil {
@@ -97,17 +116,43 @@ func (s *server) handleConns() {
 	for conn := range s.conns {
 		s.wg.Add(1)
 		go func(conn net.Conn) {
-			defer s.wg.Done()
-
 			defer func() {
 				if r := recover(); r != nil {
 					log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling %s", s.name, conn.RemoteAddr())
 				}
 			}()
 
+			defer func() {
+				s.wg.Done()
+
+				s.lock.Lock()
+				s.status.Connected--
+				s.lock.Unlock()
+			}()
+
 			s.handleConn(conn)
 		}(conn)
 	}
+}
+
+func (s *server) enqueueConn(conn net.Conn) (err error) {
+	timer := time.NewTimer(s.connectTimeout)
+	defer timer.Stop()
+
+	select {
+	case s.conns <- conn:
+		break
+	case <-s.closeCh:
+		return net.ErrClosed
+	case <-timer.C:
+		return errAcceptConnTimeout
+	}
+
+	s.lock.Lock()
+	s.status.Connected++
+	s.lock.Unlock()
+
+	return nil
 }
 
 func (s *server) acceptConn(conn net.Conn) {
@@ -128,42 +173,28 @@ func (s *server) acceptConn(conn net.Conn) {
 		return
 	}
 
-	timer := time.NewTimer(s.connectTimeout)
-	defer timer.Stop()
-
-	select {
-	case s.conns <- conn:
-		break
-	case <-s.closeCh:
-		err = net.ErrClosed
-
-		log.Error(err, "server %s accepts %s after closing", s.name, conn.RemoteAddr())
-		return
-	case <-timer.C:
-		err = errAcceptConnTimeout
-
-		log.Error(err, "server %s accepts %s failed", s.name, conn.RemoteAddr())
-		return
+	if err = s.enqueueConn(conn); err != nil {
+		log.Error(err, "server %s enqueues %s failed", s.name, conn.RemoteAddr())
 	}
-
-	s.lock.Lock()
-	s.status.Connected++
-	s.lock.Unlock()
 }
 
 func (s *server) wait() error {
 	go func() {
 		s.wg.Wait()
 
-		close(s.conns)
 		close(s.closeCh)
 	}()
+
+	close(s.conns)
+	s.afterServing(s.address)
 
 	timer := time.NewTimer(s.closeTimeout)
 	defer timer.Stop()
 
 	select {
 	case <-s.closeCh:
+		s.afterClosing(s.address)
+
 		log.Info("server %s closed", s.name)
 		return nil
 	case <-timer.C:
@@ -202,10 +233,7 @@ func (s *server) monitorSignals() {
 	}
 }
 
-func (s *server) Serve() (err error) {
-	s.beforeServing(s.address)
-	defer s.afterServing(s.address, err)
-
+func (s *server) Serve() error {
 	listener, err := net.Listen(network, s.address)
 	if err != nil {
 		return err
@@ -222,6 +250,7 @@ func (s *server) Serve() (err error) {
 	go s.monitorSignals()
 	log.Info("server %s is serving on %s", s.name, s.address)
 
+	s.beforeServing(s.address)
 	return s.serve()
 }
 
@@ -233,9 +262,8 @@ func (s *server) Status() Status {
 	return s.status
 }
 
-func (s *server) Close() (err error) {
+func (s *server) Close() error {
 	s.beforeClosing(s.address)
-	defer s.afterClosing(s.address, err)
 
 	s.lock.Lock()
 	defer s.lock.Unlock()

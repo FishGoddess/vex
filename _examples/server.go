@@ -35,7 +35,6 @@ func main() {
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	// Also, we can give it a name like "echo" so we can see it in logs.
 	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
 	// Press ctrl+c/command+c to close the server.

@@ -90,7 +90,7 @@ func WithBeforeServing(beforeServing func(address string)) Option {
 }
 
 // WithAfterServing sets after serving function to config.
-func WithAfterServing(afterServing func(address string, err error)) Option {
+func WithAfterServing(afterServing func(address string)) Option {
 	return func(conf *Config) {
 		conf.afterServingFunc = afterServing
 	}
@@ -118,7 +118,7 @@ func WithBeforeClosing(beforeClosing func(address string)) Option {
 }
 
 // WithAfterClosing sets after closing function to config.
-func WithAfterClosing(afterClosing func(address string, err error)) Option {
+func WithAfterClosing(afterClosing func(address string)) Option {
 	return func(conf *Config) {
 		conf.afterClosingFunc = afterClosing
 	}

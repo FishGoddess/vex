@@ -54,7 +54,7 @@ type Config struct {
 
 	// afterServingFunc is a function called after serving a server.
 	// It receives the server address in the function.
-	afterServingFunc func(address string, err error)
+	afterServingFunc func(address string)
 
 	// beforeHandlingFunc is a function called before handling a server.
 	beforeHandlingFunc func(ctx *Context)
@@ -68,7 +68,7 @@ type Config struct {
 
 	// afterClosingFunc is a function called after closing a server.
 	// It receives the client/server address in the function.
-	afterClosingFunc func(address string, err error)
+	afterClosingFunc func(address string)
 }
 
 func newClientConfig(address string) *Config {
@@ -122,9 +122,9 @@ func (c *Config) beforeServing(address string) {
 	}
 }
 
-func (c *Config) afterServing(address string, err error) {
+func (c *Config) afterServing(address string) {
 	if c.afterServingFunc != nil {
-		c.afterServingFunc(address, err)
+		c.afterServingFunc(address)
 	}
 }
 
@@ -146,8 +146,8 @@ func (c *Config) beforeClosing(address string) {
 	}
 }
 
-func (c *Config) afterClosing(address string, err error) {
+func (c *Config) afterClosing(address string) {
 	if c.afterClosingFunc != nil {
-		c.afterClosingFunc(address, err)
+		c.afterClosingFunc(address)
 	}
 }

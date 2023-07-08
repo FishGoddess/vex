@@ -31,7 +31,7 @@ func statusHandle(ctx *vex.Context) {
 		}
 
 		// Do some expensive things.
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 }
 
@@ -47,7 +47,6 @@ func main() {
 	// By default, we set this value to 4096 which may be universal.
 	// Use WithMaxConnections to limit the connections connected from clients.
 	server := vex.NewServer("127.0.0.1:6789", statusHandle, vex.WithName("status"), vex.WithMaxConnections(1))
-	defer server.Close()
 
 	// Watching the status of server.
 	go watchStatus(server)

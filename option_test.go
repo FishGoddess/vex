@@ -62,8 +62,8 @@ func TestWithCloseTimeout(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithBufferSize$
-func TestWithBufferSize(t *testing.T) {
+// go test -v -cover -run=^TestWithReadBufferSize$
+func TestWithReadBufferSize(t *testing.T) {
 	conf := &Config{readBufferSize: 0}
 	WithReadBufferSize(64)(conf)
 
@@ -79,6 +79,16 @@ func TestWithWriteBufferSize(t *testing.T) {
 
 	if conf.writeBufferSize != 512 {
 		t.Errorf("c.writeBufferSize %d is wrong", conf.writeBufferSize)
+	}
+}
+
+// go test -v -cover -run=^TestWithMaxConnections$
+func TestWithMaxConnections(t *testing.T) {
+	conf := &Config{maxConnections: 0}
+	WithMaxConnections(512)(conf)
+
+	if conf.maxConnections != 512 {
+		t.Errorf("c.maxConnections %d is wrong", conf.maxConnections)
 	}
 }
 

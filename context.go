@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func setupConn(conf *Config, conn *net.TCPConn) error {
+func setupConn(conf *Config, conn net.Conn) error {
 	now := time.Now()
 	readDeadline := now.Add(conf.readTimeout)
 	writeDeadline := now.Add(conf.writeTimeout)
@@ -23,12 +23,14 @@ func setupConn(conf *Config, conn *net.TCPConn) error {
 		return err
 	}
 
-	if err := conn.SetReadBuffer(conf.readBufferSize); err != nil {
-		return err
-	}
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		if err := tcpConn.SetReadBuffer(conf.readBufferSize); err != nil {
+			return err
+		}
 
-	if err := conn.SetWriteBuffer(conf.writeBufferSize); err != nil {
-		return err
+		if err := tcpConn.SetWriteBuffer(conf.writeBufferSize); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -39,10 +41,10 @@ type Context struct {
 	parent context.Context
 	cancel context.CancelFunc
 
-	conn *net.TCPConn
+	conn net.Conn
 }
 
-func (c *Context) setup(conn *net.TCPConn) {
+func (c *Context) setup(conn net.Conn) {
 	c.parent, c.cancel = context.WithCancel(context.Background())
 	c.conn = conn
 }

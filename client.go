@@ -51,10 +51,8 @@ func (c *client) connect() (err error) {
 		return err
 	}
 
-	if tcpConn, ok := conn.(*net.TCPConn); ok {
-		if err = setupConn(&c.Config, tcpConn); err != nil {
-			return err
-		}
+	if err = setupConn(&c.Config, conn); err != nil {
+		return err
 	}
 
 	c.conn = conn

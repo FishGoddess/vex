@@ -69,6 +69,10 @@ func TestNewServerConfig(t *testing.T) {
 	if conf.writeBufferSize != 4*1024 {
 		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
+
+	if conf.maxConnections != 4096 {
+		t.Errorf("conf.maxConnections %d is wrong", conf.maxConnections)
+	}
 }
 
 // go test -v -cover -run=^TestConfigApplyOptions$

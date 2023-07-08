@@ -61,6 +61,13 @@ func WithWriteBufferSize(bufferSize uint32) Option {
 	}
 }
 
+// WithMaxConnections sets max connections to config.
+func WithMaxConnections(maxConnections uint32) Option {
+	return func(conf *Config) {
+		conf.maxConnections = int(maxConnections)
+	}
+}
+
 // WithOnConnected sets on connected function to config.
 func WithOnConnected(onConnected func(clientAddress string, serverAddress string)) Option {
 	return func(conf *Config) {

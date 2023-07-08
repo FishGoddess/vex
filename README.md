@@ -123,7 +123,7 @@ func main() {
 	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
 
 	// Use Serve() to begin serving.
-	// Press ctrl+c/command+c to close the server.
+	// Press ctrl+c/control+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}
@@ -201,7 +201,7 @@ func main() {
 	server := vex.NewServer("127.0.0.1:6789", router.Handle, vex.WithName("pack"))
 
 	// Use Serve() to begin serving.
-	// Press ctrl+c/command+c to close the server.
+	// Press ctrl+c/control+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}

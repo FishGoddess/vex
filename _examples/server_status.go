@@ -54,7 +54,7 @@ func main() {
 	go watchStatus(server)
 
 	// Use Serve() to begin serving.
-	// Press ctrl+c/command+c to close the server.
+	// Press ctrl+c/control+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}

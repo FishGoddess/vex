@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	errAcceptConnTimeout = errors.New("vex: accept conn timeout")
+	errAcquireTokenTimeout = errors.New("vex: acquire token timeout")
 )
 
 // HandleFunc is a function for handling connected context.
@@ -88,7 +88,7 @@ func (s *server) acquireToken() (shouldRetry bool, err error) {
 	case <-s.closeCh:
 		return false, nil
 	case <-timer.C:
-		return false, errAcceptConnTimeout
+		return false, errAcquireTokenTimeout
 	}
 }
 
@@ -109,6 +109,10 @@ func (s *server) newContext(conn net.Conn) *Context {
 }
 
 func (s *server) freeContext(ctx *Context) {
+	if err := ctx.finish(); err != nil {
+		log.Error(err, "server %s finished %s failed", s.name, ctx.RemoteAddr())
+	}
+
 	s.contexts.Put(ctx)
 }
 
@@ -130,12 +134,6 @@ func (s *server) handleConn(conn net.Conn) {
 	ctx := s.newContext(conn)
 	defer s.freeContext(ctx)
 
-	defer func() {
-		if err := ctx.finish(); err != nil {
-			log.Error(err, "server %s finished %s failed", s.name, remoteAddr)
-		}
-	}()
-
 	log.Debug("server %s handles %s begin", s.name, remoteAddr)
 	defer log.Debug("server %s handles %s end", s.name, remoteAddr)
 
@@ -153,8 +151,10 @@ func (s *server) acceptConn(conn net.Conn) {
 			return
 		}
 
+		s.releaseToken()
+		log.Error(err, "server %s accepts %s failed", s.name, conn.RemoteAddr())
+
 		if err = conn.Close(); err != nil {
-			s.releaseToken()
 			log.Error(err, "server %s closes %s failed", s.name, conn.RemoteAddr())
 		}
 	}()
@@ -205,6 +205,7 @@ func (s *server) serve() error {
 	for {
 		shouldRetry, err := s.acquireToken()
 		if err != nil {
+			log.Error(err, "server %s acquires token failed", s.name)
 			continue
 		}
 

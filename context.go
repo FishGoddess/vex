@@ -50,7 +50,7 @@ func (c *Context) setup(conn net.Conn) {
 }
 
 func (c *Context) finish() (err error) {
-	c.cancel()
+	c.Cancel()
 
 	if err = c.conn.Close(); err != nil {
 		return err
@@ -60,6 +60,11 @@ func (c *Context) finish() (err error) {
 	c.cancel = nil
 	c.conn = nil
 	return nil
+}
+
+// Cancel cancels the context.
+func (c *Context) Cancel() {
+	c.cancel()
 }
 
 // Deadline returns the time when context has done.

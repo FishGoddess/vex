@@ -140,7 +140,12 @@ func (s *server) handleConn(conn net.Conn) {
 	s.beforeHandling(ctx)
 	defer s.afterHandling(ctx)
 
-	s.handle(ctx)
+	select {
+	case <-ctx.Done():
+		return
+	default:
+		s.handle(ctx)
+	}
 }
 
 func (s *server) acceptConn(conn net.Conn) {

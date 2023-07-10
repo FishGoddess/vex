@@ -45,7 +45,7 @@ func newBenchmarkPackServer(address string) vex.Server {
 }
 
 // go test ./_examples/pack_test.go -v -run=^$ -bench=^BenchmarkPackReadWrite$ -benchtime=1s
-// BenchmarkPackReadWrite-16          78781             15287 ns/op            2080 B/op          6 allocs/op
+// BenchmarkPackReadWrite-16          76129             16057 ns/op            2080 B/op          6 allocs/op
 func BenchmarkPackReadWrite(b *testing.B) {
 	address := "127.0.0.1:6789"
 
@@ -83,8 +83,8 @@ func calculatePackRPS(loop int, cost time.Duration) float64 {
 }
 
 // go test ./_examples/pack_test.go -v -run=^TestPackRPS$
-// PoolSize is 1, took 1.989130937s, rps is 50273
-// PoolSize is 16, took 523.351651ms, rps is 191076
+// PoolSize is 1, took 2.00820861s, rps is 49796
+// PoolSize is 16, took 498.778733ms, rps is 200490
 func TestPackRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
 	addresses := []string{"127.0.0.1:9876"}
@@ -109,7 +109,7 @@ func TestPackRPS(t *testing.T) {
 		return vex.NewClient(addresses[i])
 	}
 
-	poolSize := uint64(16)
+	poolSize := uint64(1)
 	clientPool := pool.New(dial, pool.WithConnections(poolSize))
 	defer clientPool.Close()
 

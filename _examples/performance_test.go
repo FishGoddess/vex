@@ -60,7 +60,7 @@ func newBenchmarkServer(address string) vex.Server {
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkReadWrite$ -benchtime=1s
-// BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
+// BenchmarkReadWrite-16             172698              6795 ns/op               0 B/op          0 allocs/op
 func BenchmarkReadWrite(b *testing.B) {
 	address := "127.0.0.1:6789"
 
@@ -104,8 +104,8 @@ func calculateRPS(loop int, cost time.Duration) float64 {
 }
 
 // go test ./_examples/performance_test.go -v -run=^TestRPS$
-// PoolSize is 1, took 1.30125864s, rps is 76849
-// PoolSize is 16, took 353.86987ms, rps is 282590
+// PoolSize is 1, took 1.296547736s, rps is 77128
+// PoolSize is 16, took 390.491304ms, rps is 256088
 func TestRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
 	addresses := []string{"127.0.0.1:9876"}

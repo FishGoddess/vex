@@ -18,7 +18,7 @@ type Client interface {
 type client struct {
 	Config
 
-	conn        *net.TCPConn
+	conn        net.Conn
 	connAddress string
 }
 
@@ -46,12 +46,7 @@ func (c *client) connect() (err error) {
 		}
 	}()
 
-	resolved, err := net.ResolveTCPAddr(network, c.address)
-	if err != nil {
-		return err
-	}
-
-	conn, err := net.DialTCP(network, nil, resolved)
+	conn, err := net.DialTimeout(network, c.address, c.connectTimeout)
 	if err != nil {
 		return err
 	}

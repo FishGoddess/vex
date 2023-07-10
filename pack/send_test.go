@@ -5,6 +5,7 @@
 package pack
 
 import (
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -27,8 +28,9 @@ func runTestServer(t *testing.T, address string, str string) {
 
 	defer conn.Close()
 
-	buf := make([]byte, 64)
-	n, err := conn.Read(buf[:])
+	buf := make([]byte, headerSize+len(str))
+
+	n, err := io.ReadFull(conn, buf[:])
 	if err != nil {
 		t.Error(err)
 	}

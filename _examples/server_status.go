@@ -7,11 +7,13 @@ package main
 import (
 	"fmt"
 	"io"
+	"math/rand"
+	"time"
 
 	"github.com/FishGoddess/vex"
 )
 
-func handle(ctx *vex.Context) {
+func statusHandle(ctx *vex.Context) {
 	var buf [1024]byte
 	for {
 		n, err := ctx.Read(buf[:])
@@ -28,13 +30,28 @@ func handle(ctx *vex.Context) {
 		if _, err = ctx.Write(buf[:n]); err != nil {
 			panic(err)
 		}
+
+		// Do some expensive things.
+		cost := time.Duration(3000 + rand.Intn(5000))
+		time.Sleep(cost * time.Millisecond)
+	}
+}
+
+func watchStatus(server vex.Server) {
+	for {
+		fmt.Printf("%+v\n", server.Status())
+		time.Sleep(time.Second)
 	}
 }
 
 func main() {
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
-	// Also, we can give it a name like "echo" so we can see it in logs.
-	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
+	// By default, we set this value to 4096 which may be universal.
+	// Use WithMaxConnections to limit the connections connected from clients.
+	server := vex.NewServer("127.0.0.1:6789", statusHandle, vex.WithName("status"), vex.WithMaxConnections(4))
+
+	// Watching the status of server.
+	go watchStatus(server)
 
 	// Use Serve() to begin serving.
 	// Press ctrl+c/control+c to close the server.

@@ -42,6 +42,16 @@ func TestWithWriteTimeout(t *testing.T) {
 	}
 }
 
+// go test -v -cover -run=^TestWithConnectTimeout$
+func TestWithConnectTimeout(t *testing.T) {
+	conf := &Config{connectTimeout: 0}
+	WithConnectTimeout(time.Hour)(conf)
+
+	if conf.connectTimeout != time.Hour {
+		t.Errorf("c.connectTimeout %d is wrong", conf.connectTimeout)
+	}
+}
+
 // go test -v -cover -run=^TestWithCloseTimeout$
 func TestWithCloseTimeout(t *testing.T) {
 	conf := &Config{closeTimeout: 0}
@@ -52,8 +62,8 @@ func TestWithCloseTimeout(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithBufferSize$
-func TestWithBufferSize(t *testing.T) {
+// go test -v -cover -run=^TestWithReadBufferSize$
+func TestWithReadBufferSize(t *testing.T) {
 	conf := &Config{readBufferSize: 0}
 	WithReadBufferSize(64)(conf)
 
@@ -69,6 +79,16 @@ func TestWithWriteBufferSize(t *testing.T) {
 
 	if conf.writeBufferSize != 512 {
 		t.Errorf("c.writeBufferSize %d is wrong", conf.writeBufferSize)
+	}
+}
+
+// go test -v -cover -run=^TestWithMaxConnections$
+func TestWithMaxConnections(t *testing.T) {
+	conf := &Config{maxConnections: 0}
+	WithMaxConnections(512)(conf)
+
+	if conf.maxConnections != 512 {
+		t.Errorf("c.maxConnections %d is wrong", conf.maxConnections)
 	}
 }
 
@@ -110,7 +130,7 @@ func TestWithBeforeServing(t *testing.T) {
 
 // go test -v -cover -run=^TestWithAfterServing$
 func TestWithAfterServing(t *testing.T) {
-	afterServingFunc := func(address string, err error) {}
+	afterServingFunc := func(address string) {}
 
 	conf := &Config{afterServingFunc: nil}
 	WithAfterServing(afterServingFunc)(conf)
@@ -158,7 +178,7 @@ func TestWithBeforeClosing(t *testing.T) {
 
 // go test -v -cover -run=^TestWithAfterClosing$
 func TestWithAfterClosing(t *testing.T) {
-	afterClosingFunc := func(address string, err error) {}
+	afterClosingFunc := func(address string) {}
 
 	conf := &Config{afterClosingFunc: nil}
 	WithAfterClosing(afterClosingFunc)(conf)

@@ -6,11 +6,13 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"sync"
 
 	"github.com/FishGoddess/vex"
 )
 
-func main() {
+func runClient(msg string) {
 	client, err := vex.NewClient("127.0.0.1:6789")
 	if err != nil {
 		panic(err)
@@ -18,8 +20,7 @@ func main() {
 
 	defer client.Close()
 
-	msg := []byte("hello")
-	if _, err := client.Write(msg); err != nil {
+	if _, err := client.Write([]byte(msg)); err != nil {
 		panic(err)
 	}
 
@@ -30,4 +31,21 @@ func main() {
 	}
 
 	fmt.Println("Received:", string(buf[:n]))
+}
+
+func main() {
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		msg := strconv.Itoa(i)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			runClient(msg)
+		}()
+	}
+
+	wg.Wait()
+	fmt.Println("run clients done.")
 }

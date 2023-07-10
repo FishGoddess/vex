@@ -15,7 +15,7 @@
 * Simple API design, connection pool supports
 * Support client/server interceptors, easy to monitor and notify
 * Signal monitor supports, shutdown gracefully
-* Connection limit supports, provided several limit strategies
+* Connection limit supports, and fast-failed supports
 * Provided pack protocol, which is for simple data transmission protocol
 
 _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about more information._
@@ -58,7 +58,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/FishGoddess/vex"
 )
@@ -71,20 +70,18 @@ func main() {
 
 	defer client.Close()
 
-	var buf [1024]byte
-	for i := 0; i < 10; i++ {
-		msg := strconv.Itoa(i)
-		if _, err := client.Write([]byte(msg)); err != nil {
-			panic(err)
-		}
-
-		n, err := client.Read(buf[:])
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("Received:", string(buf[:n]))
+	msg := []byte("hello")
+	if _, err := client.Write(msg); err != nil {
+		panic(err)
 	}
+
+	var buf [1024]byte
+	n, err := client.Read(buf[:])
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Received:", string(buf[:n]))
 }
 ```
 
@@ -124,10 +121,9 @@ func main() {
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	// Also, we can give it a name like "echo" so we can see it in logs.
 	server := vex.NewServer("127.0.0.1:6789", handle, vex.WithName("echo"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
-	// Press ctrl+c/command+c to close the server.
+	// Press ctrl+c/control+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}
@@ -156,7 +152,7 @@ func main() {
 
 	// Use Send method to send a packet to server and receive a packet from server.
 	// Try to change 'hello' to 'error' and see what happens.
-	packet, err := pack.Send(client, 1, []byte("error"))
+	packet, err := pack.Send(client, 1, []byte("hello"))
 	if err != nil {
 		panic(err)
 	}
@@ -203,10 +199,9 @@ func main() {
 
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	server := vex.NewServer("127.0.0.1:6789", router.Handle, vex.WithName("pack"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
-	// Press ctrl+c/command+c to close the server.
+	// Press ctrl+c/control+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}
@@ -219,16 +214,16 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ make bench
-BenchmarkReadWrite-16             183592              6603 ns/op               0 B/op          0 allocs/op
-BenchmarkPackReadWrite-16          78781             15287 ns/op            2080 B/op          6 allocs/op
+BenchmarkReadWrite-16             172698              6795 ns/op               0 B/op          0 allocs/op
+BenchmarkPackReadWrite-16          76129             16057 ns/op            2080 B/op          6 allocs/op
 ```
 
 | Protocol | Connections | rps          |
 |----------|-------------|--------------|
-| -        | &nbsp; 1    | &nbsp; 76849 |
-| -        | 16          | 282590       |
-| Pack     | &nbsp; 1    | &nbsp; 50273 |
-| Pack     | 16          | 200484       |
+| -        | &nbsp; 1    | &nbsp; 77128 |
+| -        | 16          | 256088       |
+| Pack     | &nbsp; 1    | &nbsp; 49796 |
+| Pack     | 16          | 200490       |
 
 _Packet size is 1KB._
 

@@ -35,8 +35,8 @@ func beforeServing(address string) {
 	fmt.Println("before serving", address)
 }
 
-func afterServing(address string, err error) {
-	fmt.Println("after serving", address, err)
+func afterServing(address string) {
+	fmt.Println("after serving", address)
 }
 
 func beforeHandling(ctx *vex.Context) {
@@ -65,8 +65,8 @@ func beforeClosing(address string) {
 	fmt.Println("before closing", address)
 }
 
-func afterClosing(address string, err error) {
-	fmt.Println("after closing", address, err)
+func afterClosing(address string) {
+	fmt.Println("after closing", address)
 }
 
 func main() {
@@ -86,10 +86,9 @@ func main() {
 
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	server := vex.NewServer("127.0.0.1:6789", hookHandle, opts...)
-	defer server.Close()
 
 	// Use Serve() to begin serving.
-	// Press ctrl+c/command+c to close the server.
+	// Press ctrl+c/control+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}

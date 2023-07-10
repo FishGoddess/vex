@@ -20,6 +20,9 @@ type Config struct {
 	// See net.Conn's SetWriteDeadline.
 	writeTimeout time.Duration
 
+	// connectTimeout is the timeout of connecting to a server or waiting for connection connected.
+	connectTimeout time.Duration
+
 	// closeTimeout is the timeout of closing a server.
 	// Close may take a long time to wait all connections to be closed, so a timeout is necessary.
 	closeTimeout time.Duration
@@ -51,7 +54,7 @@ type Config struct {
 
 	// afterServingFunc is a function called after serving a server.
 	// It receives the server address in the function.
-	afterServingFunc func(address string, err error)
+	afterServingFunc func(address string)
 
 	// beforeHandlingFunc is a function called before handling a server.
 	beforeHandlingFunc func(ctx *Context)
@@ -65,7 +68,7 @@ type Config struct {
 
 	// afterClosingFunc is a function called after closing a server.
 	// It receives the client/server address in the function.
-	afterClosingFunc func(address string, err error)
+	afterClosingFunc func(address string)
 }
 
 func newClientConfig(address string) *Config {
@@ -73,6 +76,7 @@ func newClientConfig(address string) *Config {
 		address:         address,
 		readTimeout:     10 * time.Minute,
 		writeTimeout:    10 * time.Minute,
+		connectTimeout:  time.Second,
 		readBufferSize:  16 * 1024, // 16KB
 		writeBufferSize: 16 * 1024, // 16KB
 	}
@@ -85,6 +89,7 @@ func newServerConfig(address string) *Config {
 		readTimeout:     10 * time.Minute,
 		writeTimeout:    10 * time.Minute,
 		closeTimeout:    time.Minute,
+		connectTimeout:  30 * time.Second,
 		readBufferSize:  4 * 1024, // 4KB
 		writeBufferSize: 4 * 1024, // 4KB
 		maxConnections:  4096,
@@ -117,9 +122,9 @@ func (c *Config) beforeServing(address string) {
 	}
 }
 
-func (c *Config) afterServing(address string, err error) {
+func (c *Config) afterServing(address string) {
 	if c.afterServingFunc != nil {
-		c.afterServingFunc(address, err)
+		c.afterServingFunc(address)
 	}
 }
 
@@ -141,8 +146,8 @@ func (c *Config) beforeClosing(address string) {
 	}
 }
 
-func (c *Config) afterClosing(address string, err error) {
+func (c *Config) afterClosing(address string) {
 	if c.afterClosingFunc != nil {
-		c.afterClosingFunc(address, err)
+		c.afterClosingFunc(address)
 	}
 }

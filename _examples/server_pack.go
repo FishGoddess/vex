@@ -37,10 +37,9 @@ func main() {
 
 	// Create a server listening on 127.0.0.1:6789 and set a handle function to it.
 	server := vex.NewServer("127.0.0.1:6789", router.Handle, vex.WithName("pack"))
-	defer server.Close()
 
 	// Use Serve() to begin serving.
-	// Press ctrl+c/command+c to close the server.
+	// Press ctrl+c/control+c to close the server.
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}

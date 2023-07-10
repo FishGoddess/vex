@@ -21,6 +21,7 @@ var (
 type DialFunc func() (vex.Client, error)
 
 // Dial returns a function which dials to address with opts.
+// It's a convenient way used in creating a pool.
 func Dial(address string, opts ...vex.Option) DialFunc {
 	return func() (vex.Client, error) {
 		return vex.NewClient(address, opts...)
@@ -42,6 +43,7 @@ type Pool struct {
 	Config
 
 	// dial is for creating a new Client.
+	// You can customize the creation of new clients in DialFunc.
 	dial DialFunc
 
 	clients chan *poolClient

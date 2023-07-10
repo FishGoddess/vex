@@ -21,7 +21,7 @@ func main() {
 
 	// Use Send method to send a packet to server and receive a packet from server.
 	// Try to change 'hello' to 'error' and see what happens.
-	packet, err := pack.Send(client, 1, []byte("error"))
+	packet, err := pack.Send(client, 1, []byte("hello"))
 	if err != nil {
 		panic(err)
 	}

@@ -54,6 +54,10 @@ func TestNewServerConfig(t *testing.T) {
 		t.Errorf("conf.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 
+	if conf.connectTimeout != 30*time.Second {
+		t.Errorf("conf.connectTimeout %d is wrong", conf.connectTimeout)
+	}
+
 	if conf.closeTimeout != time.Minute {
 		t.Errorf("conf.closeTimeout %d is wrong", conf.closeTimeout)
 	}
@@ -64,6 +68,10 @@ func TestNewServerConfig(t *testing.T) {
 
 	if conf.writeBufferSize != 4*1024 {
 		t.Errorf("conf.writeBufferSize %d is wrong", conf.writeBufferSize)
+	}
+
+	if conf.maxConnections != 4096 {
+		t.Errorf("conf.maxConnections %d is wrong", conf.maxConnections)
 	}
 }
 

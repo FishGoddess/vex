@@ -33,6 +33,13 @@ func WithWriteTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithConnectTimeout sets connect timeout to config.
+func WithConnectTimeout(timeout time.Duration) Option {
+	return func(conf *Config) {
+		conf.connectTimeout = timeout
+	}
+}
+
 // WithCloseTimeout sets close timeout to config.
 func WithCloseTimeout(timeout time.Duration) Option {
 	return func(conf *Config) {
@@ -51,6 +58,13 @@ func WithReadBufferSize(bufferSize uint32) Option {
 func WithWriteBufferSize(bufferSize uint32) Option {
 	return func(conf *Config) {
 		conf.writeBufferSize = int(bufferSize)
+	}
+}
+
+// WithMaxConnections sets max connections to config.
+func WithMaxConnections(maxConnections uint32) Option {
+	return func(conf *Config) {
+		conf.maxConnections = int(maxConnections)
 	}
 }
 
@@ -76,7 +90,7 @@ func WithBeforeServing(beforeServing func(address string)) Option {
 }
 
 // WithAfterServing sets after serving function to config.
-func WithAfterServing(afterServing func(address string, err error)) Option {
+func WithAfterServing(afterServing func(address string)) Option {
 	return func(conf *Config) {
 		conf.afterServingFunc = afterServing
 	}
@@ -104,7 +118,7 @@ func WithBeforeClosing(beforeClosing func(address string)) Option {
 }
 
 // WithAfterClosing sets after closing function to config.
-func WithAfterClosing(afterClosing func(address string, err error)) Option {
+func WithAfterClosing(afterClosing func(address string)) Option {
 	return func(conf *Config) {
 		conf.afterClosingFunc = afterClosing
 	}

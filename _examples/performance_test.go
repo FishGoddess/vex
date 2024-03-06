@@ -127,7 +127,7 @@ func TestRPS(t *testing.T) {
 		return vex.NewClient(addresses[i])
 	}
 
-	poolSize := uint64(16)
+	poolSize := uint64(2)
 	clientPool := pool.New(dial, pool.WithLimit(poolSize))
 	defer clientPool.Close()
 

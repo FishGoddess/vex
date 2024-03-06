@@ -214,18 +214,18 @@ _All examples can be found in [_examples](./_examples)._
 
 ```bash
 $ make bench
-BenchmarkReadWrite-2          145938              8281 ns/op               0 B/op          0 allocs/op
+BenchmarkReadWrite-2      140317              8356 ns/op               0 B/op          0 allocs/op
 
 $ make benchpack
-BenchmarkPackReadWrite-2       60265             20799 ns/op            2080 B/op          6 allocs/op
+BenchmarkPackReadWrite-2   61564             19650 ns/op            2080 B/op          6 allocs/op
 ```
 
 | Protocol | Connections | rps          |
 |----------|-------------|--------------|
-| -        | &nbsp; 1    | &nbsp; 50231 |
-| -        | 16          | 119406       |
-| Pack     | &nbsp; 1    | &nbsp; 30852 |
-| Pack     | 16          | &nbsp; 65721 |
+| -        | 1           | &nbsp; 50231 |
+| -        | 2           | 116790       |
+| Pack     | 1           | &nbsp; 30852 |
+| Pack     | 2           | &nbsp; 67453 |
 
 _Packet size is 1KB._
 

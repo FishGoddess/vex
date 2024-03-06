@@ -4,37 +4,34 @@
 
 package pool
 
-type Option func(conf *Config)
+type config struct {
+	limit      uint64
+	fastFailed bool
+}
 
-func (o Option) ApplyTo(conf *Config) {
+func newConfig() config {
+	return config{
+		limit:      128,
+		fastFailed: false,
+	}
+}
+
+type Option func(conf *config)
+
+func (o Option) ApplyTo(conf *config) {
 	o(conf)
 }
 
-// WithMaxConnected sets maxConnected to config.
-func WithMaxConnected(maxConnected uint64) Option {
-	return func(conf *Config) {
-		conf.maxConnected = maxConnected
+// WithLimit sets limit to config.
+func WithLimit(limit uint64) Option {
+	return func(conf *config) {
+		conf.limit = limit
 	}
 }
 
-// WithMaxIdle sets maxIdle to config.
-func WithMaxIdle(maxIdle uint64) Option {
-	return func(conf *Config) {
-		conf.maxIdle = maxIdle
-	}
-}
-
-// WithConnections sets maxConnected and maxIdle to config.
-func WithConnections(connections uint64) Option {
-	return func(conf *Config) {
-		conf.maxConnected = connections
-		conf.maxIdle = connections
-	}
-}
-
-// WithNonBlockOnFull sets non-block on full to config.
-func WithNonBlockOnFull() Option {
-	return func(conf *Config) {
-		conf.blockOnFull = false
+// WithFastFailed sets fastFailed to config.
+func WithFastFailed() Option {
+	return func(conf *config) {
+		conf.fastFailed = true
 	}
 }

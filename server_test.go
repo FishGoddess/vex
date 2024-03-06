@@ -71,7 +71,7 @@ func runTestClient(t *testing.T, address string, ch chan struct{}, closeCh chan 
 	close(closeCh)
 }
 
-// go test -v -cover -run=^TestServer$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestServer$
 func TestServer(t *testing.T) {
 	address := "127.0.0.1:54321"
 

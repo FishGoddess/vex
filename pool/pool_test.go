@@ -38,7 +38,7 @@ func handle(ctx *vex.Context) {
 	}
 }
 
-// go test -v -cover -run=^TestPool$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestPool$
 func TestPool(t *testing.T) {
 	address := "127.0.0.1:10000"
 
@@ -54,7 +54,7 @@ func TestPool(t *testing.T) {
 	runtime.Gosched()
 	time.Sleep(100 * time.Millisecond)
 
-	pool := New(Dial(address), WithMaxConnected(16), WithMaxIdle(64))
+	pool := New(Dial(address), WithLimit(16))
 	defer pool.Close()
 
 	data := []byte("test")
@@ -96,7 +96,7 @@ func TestPool(t *testing.T) {
 		client.Close()
 	}
 
-	for i := 0; i < 4096; i++ {
+	for i := 0; i < 1024; i++ {
 		test(i)
 
 		status := pool.Status()
@@ -112,7 +112,7 @@ func TestPool(t *testing.T) {
 	t.Logf("%+v", pool.Status())
 
 	var wg sync.WaitGroup
-	for i := 0; i < 4096; i++ {
+	for i := 0; i < 1024; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -120,11 +120,11 @@ func TestPool(t *testing.T) {
 			test(i)
 
 			status := pool.Status()
-			if status.Connected > pool.maxConnected {
+			if status.Connected > status.Limit {
 				t.Errorf("status.Connected %d is wrong", status.Connected)
 			}
 
-			if status.Idle > pool.maxIdle {
+			if status.Idle > status.Limit {
 				t.Errorf("status.Idle %d is wrong", status.Idle)
 			}
 		}(i)

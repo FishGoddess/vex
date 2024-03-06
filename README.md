@@ -214,17 +214,19 @@ _所有的使用案例都在 [_examples](./_examples) 目录。_
 
 ```bash
 $ make bench
-BenchmarkReadWrite-16             172698              6795 ns/op               0 B/op          0 allocs/op
-BenchmarkPackReadWrite-16          76129             16057 ns/op            2080 B/op          6 allocs/op
+BenchmarkReadWrite-2          145938              8281 ns/op               0 B/op          0 allocs/op
+
+$ make benchpack
+BenchmarkPackReadWrite-2       60265             20799 ns/op            2080 B/op          6 allocs/op
 ```
 
-| 协议   | 连接数      | rps          |
+| 协议  | 连接数    | rps          |
 |------|----------|--------------|
-| -    | &nbsp; 1 | &nbsp; 77128 |
-| -    | 16       | 256088       |
-| Pack | &nbsp; 1 | &nbsp; 49796 |
-| Pack | 16       | 200490       |
+| -    | &nbsp; 1 | &nbsp; 50231 |
+| -    | 16       | 119406       |
+| Pack | &nbsp; 1 | &nbsp; 30852 |
+| Pack | 16       | &nbsp; 65721 |
 
 _数据包大小为 1KB。_
 
-_测试环境：R7-5800X@3.8GHZ CPU, 32GB RAM, deepin linux。_
+_测试环境：AMD EPYC 7K62, 2 Cores, 8GB RAM, linux。_

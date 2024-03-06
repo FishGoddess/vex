@@ -6,7 +6,7 @@ package pool
 
 import "testing"
 
-// go test -v -cover -run=^TestNewPoolClient$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestNewPoolClient$
 func TestNewPoolClient(t *testing.T) {
 	pool := &Pool{}
 	client := newPoolClient(pool, nil)

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// go test -v -cover -run=^TestNewClientConfig$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestNewClientConfig$
 func TestNewClientConfig(t *testing.T) {
 	conf := newClientConfig("127.0.0.1:5837")
 
@@ -34,7 +34,7 @@ func TestNewClientConfig(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestNewServerConfig$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestNewServerConfig$
 func TestNewServerConfig(t *testing.T) {
 	conf := newServerConfig("127.0.0.1:5837")
 
@@ -75,7 +75,7 @@ func TestNewServerConfig(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestConfigApplyOptions$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestConfigApplyOptions$
 func TestConfigApplyOptions(t *testing.T) {
 	conf := &Config{address: "127.0.0.1:5837"}
 

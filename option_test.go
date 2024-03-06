@@ -10,7 +10,7 @@ import (
 	"unsafe"
 )
 
-// go test -v -cover -run=^TestWithName$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithName$
 func TestWithName(t *testing.T) {
 	name := "test-name"
 
@@ -22,7 +22,7 @@ func TestWithName(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithReadTimeout$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithReadTimeout$
 func TestWithReadTimeout(t *testing.T) {
 	conf := &Config{readTimeout: 0}
 	WithReadTimeout(time.Hour)(conf)
@@ -32,7 +32,7 @@ func TestWithReadTimeout(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithWriteTimeout$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithWriteTimeout$
 func TestWithWriteTimeout(t *testing.T) {
 	conf := &Config{writeTimeout: 0}
 	WithWriteTimeout(time.Minute)(conf)
@@ -42,7 +42,7 @@ func TestWithWriteTimeout(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithConnectTimeout$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithConnectTimeout$
 func TestWithConnectTimeout(t *testing.T) {
 	conf := &Config{connectTimeout: 0}
 	WithConnectTimeout(time.Hour)(conf)
@@ -52,7 +52,7 @@ func TestWithConnectTimeout(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithCloseTimeout$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithCloseTimeout$
 func TestWithCloseTimeout(t *testing.T) {
 	conf := &Config{closeTimeout: 0}
 	WithCloseTimeout(time.Hour)(conf)
@@ -62,7 +62,7 @@ func TestWithCloseTimeout(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithReadBufferSize$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithReadBufferSize$
 func TestWithReadBufferSize(t *testing.T) {
 	conf := &Config{readBufferSize: 0}
 	WithReadBufferSize(64)(conf)
@@ -72,7 +72,7 @@ func TestWithReadBufferSize(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithWriteBufferSize$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithWriteBufferSize$
 func TestWithWriteBufferSize(t *testing.T) {
 	conf := &Config{writeBufferSize: 0}
 	WithWriteBufferSize(512)(conf)
@@ -82,7 +82,7 @@ func TestWithWriteBufferSize(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithMaxConnections$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithMaxConnections$
 func TestWithMaxConnections(t *testing.T) {
 	conf := &Config{maxConnections: 0}
 	WithMaxConnections(512)(conf)
@@ -92,7 +92,7 @@ func TestWithMaxConnections(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithOnConnected$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithOnConnected$
 func TestWithOnConnected(t *testing.T) {
 	onConnectedFunc := func(clientAddress string, serverAddress string) {}
 
@@ -104,7 +104,7 @@ func TestWithOnConnected(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithOnDisconnected$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithOnDisconnected$
 func TestWithOnDisconnected(t *testing.T) {
 	onDisconnectedFunc := func(clientAddress string, serverAddress string) {}
 
@@ -116,7 +116,7 @@ func TestWithOnDisconnected(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithBeforeServing$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithBeforeServing$
 func TestWithBeforeServing(t *testing.T) {
 	beforeServingFunc := func(address string) {}
 
@@ -128,7 +128,7 @@ func TestWithBeforeServing(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithAfterServing$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithAfterServing$
 func TestWithAfterServing(t *testing.T) {
 	afterServingFunc := func(address string) {}
 
@@ -140,7 +140,7 @@ func TestWithAfterServing(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithBeforeHandling$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithBeforeHandling$
 func TestWithBeforeHandling(t *testing.T) {
 	beforeHandlingFunc := func(ctx *Context) {}
 
@@ -152,7 +152,7 @@ func TestWithBeforeHandling(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithAfterHandling$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithAfterHandling$
 func TestWithAfterHandling(t *testing.T) {
 	afterHandlingFunc := func(ctx *Context) {}
 
@@ -164,7 +164,7 @@ func TestWithAfterHandling(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithBeforeClosing$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithBeforeClosing$
 func TestWithBeforeClosing(t *testing.T) {
 	beforeClosingFunc := func(address string) {}
 
@@ -176,7 +176,7 @@ func TestWithBeforeClosing(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWithAfterClosing$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithAfterClosing$
 func TestWithAfterClosing(t *testing.T) {
 	afterClosingFunc := func(address string) {}
 

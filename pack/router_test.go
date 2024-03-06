@@ -88,7 +88,7 @@ func runTestClient(t *testing.T, address string) {
 	checkTestBytes(t, buf[:n], packetTypeStandard, msg)
 }
 
-// go test -v -cover -run=^TestRouterHandle$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestRouterHandle$
 func TestRouterHandle(t *testing.T) {
 	address := "127.0.0.1:8899"
 

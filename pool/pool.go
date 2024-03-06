@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	errClientPoolFull   = errors.New("vex: client pool is full")
-	errClientPoolClosed = errors.New("vex: client pool is closed")
+	ErrPoolIsFull   = errors.New("vex: pool is full")
+	ErrPoolIsClosed = errors.New("vex: pool is closed")
 )
 
 // DialFunc is a function dials to somewhere and returns a client and error if failed.
@@ -86,6 +86,14 @@ func newRegoOptions(opts []Option) []rego.Option {
 	if conf.fastFailed {
 		result = append(result, rego.WithFastFailed())
 	}
+
+	result = append(result, rego.WithPoolFullErr(func(ctx context.Context) error {
+		return ErrPoolIsFull
+	}))
+
+	result = append(result, rego.WithPoolClosedErr(func(ctx context.Context) error {
+		return ErrPoolIsClosed
+	}))
 
 	return result
 }

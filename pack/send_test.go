@@ -81,7 +81,7 @@ func runTestServer(t *testing.T, address string, str string) {
 	}
 }
 
-// go test -v -cover -run=^TestSend$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestSend$
 func TestSend(t *testing.T) {
 	address := "127.0.0.1:9988"
 

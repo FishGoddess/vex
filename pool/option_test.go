@@ -8,46 +8,22 @@ import (
 	"testing"
 )
 
-// go test -v -cover -run=^TestWithMaxConnected$
-func TestWithMaxConnected(t *testing.T) {
-	conf := &Config{maxConnected: 0}
-	WithMaxConnected(64)(conf)
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithLimit$
+func TestWithLimit(t *testing.T) {
+	conf := &config{limit: 0}
+	WithLimit(64)(conf)
 
-	if conf.maxConnected != 64 {
-		t.Errorf("conf.maxConnected %d is wrong", conf.maxConnected)
+	if conf.limit != 64 {
+		t.Errorf("conf.limit %d is wrong", conf.limit)
 	}
 }
 
-// go test -v -cover -run=^TestWithMaxIdle$
-func TestWithMaxIdle(t *testing.T) {
-	conf := &Config{maxIdle: 0}
-	WithMaxIdle(16)(conf)
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWithFastFailed$
+func TestWithFastFailed(t *testing.T) {
+	conf := &config{fastFailed: false}
+	WithFastFailed()(conf)
 
-	if conf.maxIdle != 16 {
-		t.Errorf("conf.maxIdle %d is wrong", conf.maxIdle)
-	}
-}
-
-// go test -v -cover -run=^TestWithConnections$
-func TestWithConnections(t *testing.T) {
-	conf := &Config{maxConnected: 0, maxIdle: 0}
-	WithConnections(64)(conf)
-
-	if conf.maxConnected != 64 {
-		t.Errorf("conf.maxConnected %d is wrong", conf.maxConnected)
-	}
-
-	if conf.maxIdle != 64 {
-		t.Errorf("conf.maxIdle %d is wrong", conf.maxIdle)
-	}
-}
-
-// go test -v -cover -run=^TestWithNonBlockOnFull$
-func TestWithNonBlockOnFull(t *testing.T) {
-	conf := &Config{blockOnFull: true}
-	WithNonBlockOnFull()(conf)
-
-	if conf.blockOnFull {
-		t.Errorf("conf.blockOnFull %+v is wrong", conf.blockOnFull)
+	if !conf.fastFailed {
+		t.Errorf("conf.fastFailed %+v is wrong", conf.fastFailed)
 	}
 }

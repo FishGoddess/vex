@@ -60,7 +60,6 @@ func newBenchmarkServer(address string) vex.Server {
 }
 
 // go test ./_examples/performance_test.go -v -run=^$ -bench=^BenchmarkReadWrite$ -benchtime=1s
-// BenchmarkReadWrite-16             172698              6795 ns/op               0 B/op          0 allocs/op
 func BenchmarkReadWrite(b *testing.B) {
 	address := "127.0.0.1:6789"
 
@@ -70,7 +69,7 @@ func BenchmarkReadWrite(b *testing.B) {
 	//client := newBenchmarkClient(address)
 	//defer client.Close()
 
-	clientPool := pool.New(pool.Dial(address), pool.WithConnections(1))
+	clientPool := pool.New(pool.Dial(address), pool.WithLimit(1))
 	defer clientPool.Close()
 
 	b.ReportAllocs()
@@ -104,8 +103,6 @@ func calculateRPS(loop int, cost time.Duration) float64 {
 }
 
 // go test ./_examples/performance_test.go -v -run=^TestRPS$
-// PoolSize is 1, took 1.296547736s, rps is 77128
-// PoolSize is 16, took 390.491304ms, rps is 256088
 func TestRPS(t *testing.T) {
 	//addresses := []string{"127.0.0.1:6789", "127.0.0.1:7890", "127.0.0.1:8901", "127.0.0.1:9012"}
 	addresses := []string{"127.0.0.1:9876"}
@@ -130,8 +127,8 @@ func TestRPS(t *testing.T) {
 		return vex.NewClient(addresses[i])
 	}
 
-	poolSize := uint64(16)
-	clientPool := pool.New(dial, pool.WithConnections(poolSize))
+	poolSize := uint64(2)
+	clientPool := pool.New(dial, pool.WithLimit(poolSize))
 	defer clientPool.Close()
 
 	doneCh := make(chan struct{}, 1)

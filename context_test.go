@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// go test -v -cover -run=^TestSetupConn$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestSetupConn$
 func TestSetupConn(t *testing.T) {
 	conf := newServerConfig("127.0.0.1:6789")
 

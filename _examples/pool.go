@@ -34,7 +34,7 @@ func main() {
 
 	pool.New(dial)
 
-	// The pool has some default configurations like max connections.
-	// If you want to change it, check pool.Option in New parameters.
-	pool.New(dial, pool.WithConnections(16), pool.WithMaxIdle(8))
+	// The pool has some default configurations.
+	// If you want to change them, see pool.Option.
+	pool.New(dial, pool.WithLimit(16))
 }

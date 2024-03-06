@@ -64,6 +64,7 @@ func readPacketHeader(reader io.Reader) (PacketType, int32, error) {
 
 	packetType := PacketType((header >> dataSizeBits) & maxType)
 	dataSize := int32(header & maxDataSize)
+
 	return packetType, dataSize, nil
 }
 

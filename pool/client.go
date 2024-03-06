@@ -18,7 +18,7 @@ func newPoolClient(pool *Pool, client vex.Client) vex.Client {
 	}
 }
 
-func (pc *poolClient) closeUnderlying() error {
+func (pc *poolClient) close() error {
 	return pc.client.Close()
 }
 

@@ -13,7 +13,7 @@ const (
 	packetTypeTest PacketType = 1
 )
 
-// go test -v -cover -run=^TestReadPacket$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestReadPacket$
 func TestReadPacket(t *testing.T) {
 	type expect struct {
 		packetType PacketType
@@ -80,7 +80,7 @@ func TestReadPacket(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestWritePacket$
+// go test -v -cover -count=1 -test.cpu=1 -run=^TestWritePacket$
 func TestWritePacket(t *testing.T) {
 	type input struct {
 		packetType PacketType

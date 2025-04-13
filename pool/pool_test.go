@@ -1,4 +1,4 @@
-// Copyright 2023 FishGoddess. All rights reserved.
+// Copyright 2025 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -38,7 +38,7 @@ func handle(ctx *vex.Context) {
 	}
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestPool$
+// go test -v -cover -run=^TestPool$
 func TestPool(t *testing.T) {
 	address := "127.0.0.1:10000"
 
@@ -54,12 +54,16 @@ func TestPool(t *testing.T) {
 	runtime.Gosched()
 	time.Sleep(100 * time.Millisecond)
 
-	pool := New(Dial(address), WithLimit(16))
+	dial := func() (vex.Client, error) {
+		return vex.NewClient(address)
+	}
+
+	pool := New(16, dial)
 	defer pool.Close()
 
 	data := []byte("test")
 	test := func(i int) {
-		client, err := pool.Get(context.Background())
+		client, err := pool.Take(context.Background())
 		if err != nil {
 			t.Error(err)
 		}
@@ -93,7 +97,7 @@ func TestPool(t *testing.T) {
 			t.Errorf("buf %s != data %s", buf[:n], data)
 		}
 
-		client.Close()
+		pool.Put(client)
 	}
 
 	for i := 0; i < 1024; i++ {

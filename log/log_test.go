@@ -1,4 +1,4 @@
-// Copyright 2023 FishGoddess. All rights reserved.
+// Copyright 2025 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestDisableDebug$
+// go test -v -cover -run=^TestDisableDebug$
 func TestDisableDebug(t *testing.T) {
 	old := DebugFunc
 	defer func() {
@@ -22,7 +22,7 @@ func TestDisableDebug(t *testing.T) {
 	}
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestDisableInfo$
+// go test -v -cover -run=^TestDisableInfo$
 func TestDisableInfo(t *testing.T) {
 	old := InfoFunc
 	defer func() {
@@ -35,7 +35,7 @@ func TestDisableInfo(t *testing.T) {
 	}
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestDisableError$
+// go test -v -cover -run=^TestDisableError$
 func TestDisableError(t *testing.T) {
 	old := ErrorFunc
 	defer func() {
@@ -48,7 +48,7 @@ func TestDisableError(t *testing.T) {
 	}
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestDebug$
+// go test -v -cover -run=^TestDebug$
 func TestDebug(t *testing.T) {
 	if DebugFunc == nil {
 		t.Error("DebugFunc == nil")
@@ -67,7 +67,7 @@ func TestDebug(t *testing.T) {
 	Debug("...%d...", 1)
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestInfo$
+// go test -v -cover -run=^TestInfo$
 func TestInfo(t *testing.T) {
 	if InfoFunc == nil {
 		t.Error("InfoFunc == nil")
@@ -86,7 +86,7 @@ func TestInfo(t *testing.T) {
 	Info("...%d...", 1)
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestError$
+// go test -v -cover -run=^TestError$
 func TestError(t *testing.T) {
 	if ErrorFunc == nil {
 		t.Error("ErrorFunc == nil")

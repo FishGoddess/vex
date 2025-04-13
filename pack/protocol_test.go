@@ -1,4 +1,4 @@
-// Copyright 2023 FishGoddess. All rights reserved.
+// Copyright 2025 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -13,7 +13,7 @@ const (
 	packetTypeTest PacketType = 1
 )
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestReadPacket$
+// go test -v -cover -run=^TestReadPacket$
 func TestReadPacket(t *testing.T) {
 	type expect struct {
 		packetType PacketType
@@ -80,7 +80,7 @@ func TestReadPacket(t *testing.T) {
 	}
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestWritePacket$
+// go test -v -cover -run=^TestWritePacket$
 func TestWritePacket(t *testing.T) {
 	type input struct {
 		packetType PacketType

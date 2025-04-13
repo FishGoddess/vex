@@ -1,4 +1,4 @@
-// Copyright 2023 FishGoddess. All rights reserved.
+// Copyright 2025 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -88,7 +88,7 @@ func runTestClient(t *testing.T, address string) {
 	checkTestBytes(t, buf[:n], packetTypeStandard, msg)
 }
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestRouterHandle$
+// go test -v -cover -run=^TestRouterHandle$
 func TestRouterHandle(t *testing.T) {
 	address := "127.0.0.1:8899"
 

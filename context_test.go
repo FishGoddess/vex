@@ -1,4 +1,4 @@
-// Copyright 2023 FishGoddess. All rights reserved.
+// Copyright 2025 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// go test -v -cover -count=1 -test.cpu=1 -run=^TestSetupConn$
+// go test -v -cover -run=^TestSetupConn$
 func TestSetupConn(t *testing.T) {
 	conf := newServerConfig("127.0.0.1:6789")
 

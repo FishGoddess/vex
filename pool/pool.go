@@ -1,4 +1,4 @@
-// Copyright 2023 FishGoddess. All rights reserved.
+// Copyright 2025 FishGoddess. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -17,16 +17,9 @@ var (
 	ErrPoolIsClosed = errors.New("vex: pool is closed")
 )
 
-// DialFunc is a function dials to somewhere and returns a client and error if failed.
+// DialFunc is a function dials to somewhere and returns a client.
+// Returns an error if failed.
 type DialFunc func() (vex.Client, error)
-
-// Dial returns a function which dials to address with opts.
-// It's a convenient way used in creating a pool.
-func Dial(address string, opts ...vex.Option) DialFunc {
-	return func() (vex.Client, error) {
-		return vex.NewClient(address, opts...)
-	}
-}
 
 type Status struct {
 	// Limit is the limit of connected clients.
@@ -46,63 +39,51 @@ type Pool struct {
 	clients *rego.Pool[vex.Client]
 }
 
-func New(dial DialFunc, opts ...Option) *Pool {
-	pool := new(Pool)
+func New(limit uint64, dial DialFunc, opts ...Option) *Pool {
+	regoOpts := newRegoOptions(opts)
 
 	acquire := func() (vex.Client, error) {
-		client, err := dial()
-		if err != nil {
-			return nil, err
-		}
-
-		return newPoolClient(pool, client), nil
+		return dial()
 	}
 
 	release := func(client vex.Client) error {
-		if pclient, ok := client.(*poolClient); ok {
-			return pclient.close()
-		}
-
 		return client.Close()
 	}
 
-	pool.clients = rego.New(acquire, release, newRegoOptions(opts)...)
+	pool := &Pool{
+		clients: rego.New(limit, acquire, release, regoOpts...),
+	}
 
 	return pool
 }
 
 func newRegoOptions(opts []Option) []rego.Option {
-	conf := newConfig()
-
+	conf := newDefaultConfig()
 	for _, opt := range opts {
 		opt.ApplyTo(&conf)
 	}
 
-	var result []rego.Option
-	if conf.limit > 0 {
-		result = append(result, rego.WithLimit(conf.limit))
-	}
-
+	var regoOpts []rego.Option
 	if conf.fastFailed {
-		result = append(result, rego.WithFastFailed())
+		regoOpts = append(regoOpts, rego.WithFastFailed())
 	}
 
-	result = append(result, rego.WithPoolFullErr(func(ctx context.Context) error {
+	regoOpts = append(regoOpts, rego.WithPoolFullErr(func(ctx context.Context) error {
 		return ErrPoolIsFull
 	}))
 
-	result = append(result, rego.WithPoolClosedErr(func(ctx context.Context) error {
+	regoOpts = append(regoOpts, rego.WithPoolClosedErr(func(ctx context.Context) error {
 		return ErrPoolIsClosed
 	}))
 
-	return result
+	return regoOpts
 }
 
-func (p *Pool) put(client vex.Client) error {
+func (p *Pool) Put(client vex.Client) error {
 	return p.clients.Put(client)
 }
 
-func (p *Pool) Get(ctx context.Context) (vex.Client, error) {
+func (p *Pool) Take(ctx context.Context) (vex.Client, error) {
 	return p.clients.Take(ctx)
 }
 
@@ -118,7 +99,7 @@ func (p *Pool) Status() Status {
 	}
 }
 
-// Close closes pool and releases all resources.
+// Close closes the pool.
 func (p *Pool) Close() error {
 	return p.clients.Close()
 }

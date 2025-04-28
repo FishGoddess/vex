@@ -4,4 +4,4 @@ go 1.23
 
 toolchain go1.23.7
 
-require github.com/FishGoddess/rego v0.2.1
+require github.com/FishGoddess/rego v0.2.2

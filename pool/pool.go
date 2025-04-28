@@ -13,45 +13,45 @@ import (
 )
 
 var (
-	ErrPoolIsFull   = errors.New("vex: pool is full")
-	ErrPoolIsClosed = errors.New("vex: pool is closed")
+	ErrPoolExhausted = errors.New("vex: pool is exhausted")
+	ErrPoolClosed    = errors.New("vex: pool is closed")
 )
 
 // DialFunc is a function dials to somewhere and returns a client.
 // Returns an error if failed.
-type DialFunc func() (vex.Client, error)
+type DialFunc func(ctx context.Context) (vex.Client, error)
 
 type Status struct {
 	// Limit is the limit of connected clients.
 	Limit uint64 `json:"limit"`
 
-	// Connected is the count of connected clients.
+	// Connected is the quantity of connected clients.
 	Connected uint64 `json:"connected"`
 
-	// Idle is the count of idle clients.
+	// Idle is the quantity of idle clients.
 	Idle uint64 `json:"idle"`
 
-	// Waiting is the count of waiting for a client.
+	// Waiting is the quantity of waiting for a client.
 	Waiting uint64 `json:"waiting"`
 }
 
 type Pool struct {
-	clients *rego.Pool[vex.Client]
+	clientPool *rego.Pool[vex.Client]
 }
 
 func New(limit uint64, dial DialFunc, opts ...Option) *Pool {
 	regoOpts := newRegoOptions(opts)
 
-	acquire := func() (vex.Client, error) {
-		return dial()
+	acquire := func(ctx context.Context) (vex.Client, error) {
+		return dial(ctx)
 	}
 
-	release := func(client vex.Client) error {
+	release := func(ctx context.Context, client vex.Client) error {
 		return client.Close()
 	}
 
 	pool := &Pool{
-		clients: rego.New(limit, acquire, release, regoOpts...),
+		clientPool: rego.New(limit, acquire, release, regoOpts...),
 	}
 
 	return pool
@@ -68,28 +68,28 @@ func newRegoOptions(opts []Option) []rego.Option {
 		regoOpts = append(regoOpts, rego.WithFastFailed())
 	}
 
-	regoOpts = append(regoOpts, rego.WithPoolFullErr(func(ctx context.Context) error {
-		return ErrPoolIsFull
+	regoOpts = append(regoOpts, rego.WithPoolExhaustedErr(func(ctx context.Context) error {
+		return ErrPoolExhausted
 	}))
 
 	regoOpts = append(regoOpts, rego.WithPoolClosedErr(func(ctx context.Context) error {
-		return ErrPoolIsClosed
+		return ErrPoolClosed
 	}))
 
 	return regoOpts
 }
 
-func (p *Pool) Put(client vex.Client) error {
-	return p.clients.Put(client)
+func (p *Pool) Put(ctx context.Context, client vex.Client) error {
+	return p.clientPool.Put(ctx, client)
 }
 
 func (p *Pool) Take(ctx context.Context) (vex.Client, error) {
-	return p.clients.Take(ctx)
+	return p.clientPool.Take(ctx)
 }
 
 // Status returns the status of the pool.
 func (p *Pool) Status() Status {
-	status := p.clients.Status()
+	status := p.clientPool.Status()
 
 	return Status{
 		Limit:     status.Limit,
@@ -100,6 +100,6 @@ func (p *Pool) Status() Status {
 }
 
 // Close closes the pool.
-func (p *Pool) Close() error {
-	return p.clients.Close()
+func (p *Pool) Close(ctx context.Context) error {
+	return p.clientPool.Close(ctx)
 }

@@ -31,7 +31,7 @@ var (
 type HandleFunc func(ctx *Context)
 
 type Status struct {
-	// Connected is the count of connected connections.
+	// Connected is the quantity of connected connections.
 	Connected uint64 `json:"connected"`
 }
 
@@ -237,7 +237,7 @@ func (s *server) serve() error {
 }
 
 func (s *server) monitorSignals() {
-	signalCh := make(chan os.Signal)
+	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
 	sig := <-signalCh

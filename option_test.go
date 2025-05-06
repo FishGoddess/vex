@@ -18,7 +18,7 @@ func TestWithName(t *testing.T) {
 	WithName(name)(conf)
 
 	if conf.name != name {
-		t.Errorf("c.name %s is wrong", conf.name)
+		t.Fatalf("c.name %s is wrong", conf.name)
 	}
 }
 
@@ -28,7 +28,7 @@ func TestWithReadTimeout(t *testing.T) {
 	WithReadTimeout(time.Hour)(conf)
 
 	if conf.readTimeout != time.Hour {
-		t.Errorf("c.readTimeout %d is wrong", conf.readTimeout)
+		t.Fatalf("c.readTimeout %d is wrong", conf.readTimeout)
 	}
 }
 
@@ -38,7 +38,7 @@ func TestWithWriteTimeout(t *testing.T) {
 	WithWriteTimeout(time.Minute)(conf)
 
 	if conf.writeTimeout != time.Minute {
-		t.Errorf("c.writeTimeout %d is wrong", conf.writeTimeout)
+		t.Fatalf("c.writeTimeout %d is wrong", conf.writeTimeout)
 	}
 }
 
@@ -48,7 +48,7 @@ func TestWithConnectTimeout(t *testing.T) {
 	WithConnectTimeout(time.Hour)(conf)
 
 	if conf.connectTimeout != time.Hour {
-		t.Errorf("c.connectTimeout %d is wrong", conf.connectTimeout)
+		t.Fatalf("c.connectTimeout %d is wrong", conf.connectTimeout)
 	}
 }
 
@@ -58,7 +58,7 @@ func TestWithCloseTimeout(t *testing.T) {
 	WithCloseTimeout(time.Hour)(conf)
 
 	if conf.closeTimeout != time.Hour {
-		t.Errorf("c.closeTimeout %d is wrong", conf.closeTimeout)
+		t.Fatalf("c.closeTimeout %d is wrong", conf.closeTimeout)
 	}
 }
 
@@ -68,7 +68,7 @@ func TestWithReadBufferSize(t *testing.T) {
 	WithReadBufferSize(64)(conf)
 
 	if conf.readBufferSize != 64 {
-		t.Errorf("c.readBufferSize %d is wrong", conf.readBufferSize)
+		t.Fatalf("c.readBufferSize %d is wrong", conf.readBufferSize)
 	}
 }
 
@@ -78,7 +78,7 @@ func TestWithWriteBufferSize(t *testing.T) {
 	WithWriteBufferSize(512)(conf)
 
 	if conf.writeBufferSize != 512 {
-		t.Errorf("c.writeBufferSize %d is wrong", conf.writeBufferSize)
+		t.Fatalf("c.writeBufferSize %d is wrong", conf.writeBufferSize)
 	}
 }
 
@@ -88,7 +88,7 @@ func TestWithMaxConnections(t *testing.T) {
 	WithMaxConnections(512)(conf)
 
 	if conf.maxConnections != 512 {
-		t.Errorf("c.maxConnections %d is wrong", conf.maxConnections)
+		t.Fatalf("c.maxConnections %d is wrong", conf.maxConnections)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestWithOnConnected(t *testing.T) {
 	WithOnConnected(onConnectedFunc)(conf)
 
 	if unsafe.Sizeof(conf.onConnectedFunc) != unsafe.Sizeof(onConnectedFunc) {
-		t.Errorf("c.onConnectedFunc %d is wrong", unsafe.Sizeof(conf.onConnectedFunc))
+		t.Fatalf("c.onConnectedFunc %d is wrong", unsafe.Sizeof(conf.onConnectedFunc))
 	}
 }
 
@@ -112,7 +112,7 @@ func TestWithOnDisconnected(t *testing.T) {
 	WithOnDisconnected(onDisconnectedFunc)(conf)
 
 	if unsafe.Sizeof(conf.onDisconnectedFunc) != unsafe.Sizeof(onDisconnectedFunc) {
-		t.Errorf("c.onDisconnectedFunc %d is wrong", unsafe.Sizeof(conf.onDisconnectedFunc))
+		t.Fatalf("c.onDisconnectedFunc %d is wrong", unsafe.Sizeof(conf.onDisconnectedFunc))
 	}
 }
 
@@ -124,7 +124,7 @@ func TestWithBeforeServing(t *testing.T) {
 	WithBeforeServing(beforeServingFunc)(conf)
 
 	if unsafe.Sizeof(conf.beforeServingFunc) != unsafe.Sizeof(beforeServingFunc) {
-		t.Errorf("c.beforeServingFunc %d is wrong", unsafe.Sizeof(conf.beforeServingFunc))
+		t.Fatalf("c.beforeServingFunc %d is wrong", unsafe.Sizeof(conf.beforeServingFunc))
 	}
 }
 
@@ -136,7 +136,7 @@ func TestWithAfterServing(t *testing.T) {
 	WithAfterServing(afterServingFunc)(conf)
 
 	if unsafe.Sizeof(conf.afterServingFunc) != unsafe.Sizeof(afterServingFunc) {
-		t.Errorf("c.afterServingFunc %d is wrong", unsafe.Sizeof(conf.afterServingFunc))
+		t.Fatalf("c.afterServingFunc %d is wrong", unsafe.Sizeof(conf.afterServingFunc))
 	}
 }
 
@@ -148,7 +148,7 @@ func TestWithBeforeHandling(t *testing.T) {
 	WithBeforeHandling(beforeHandlingFunc)(conf)
 
 	if unsafe.Sizeof(conf.beforeHandlingFunc) != unsafe.Sizeof(beforeHandlingFunc) {
-		t.Errorf("c.beforeHandlingFunc %d is wrong", unsafe.Sizeof(conf.beforeHandlingFunc))
+		t.Fatalf("c.beforeHandlingFunc %d is wrong", unsafe.Sizeof(conf.beforeHandlingFunc))
 	}
 }
 
@@ -160,7 +160,7 @@ func TestWithAfterHandling(t *testing.T) {
 	WithAfterHandling(afterHandlingFunc)(conf)
 
 	if unsafe.Sizeof(conf.afterHandlingFunc) != unsafe.Sizeof(afterHandlingFunc) {
-		t.Errorf("c.afterHandlingFunc %d is wrong", unsafe.Sizeof(conf.afterHandlingFunc))
+		t.Fatalf("c.afterHandlingFunc %d is wrong", unsafe.Sizeof(conf.afterHandlingFunc))
 	}
 }
 
@@ -172,7 +172,7 @@ func TestWithBeforeClosing(t *testing.T) {
 	WithBeforeClosing(beforeClosingFunc)(conf)
 
 	if unsafe.Sizeof(conf.beforeClosingFunc) != unsafe.Sizeof(beforeClosingFunc) {
-		t.Errorf("c.beforeClosingFunc %d is wrong", unsafe.Sizeof(conf.beforeClosingFunc))
+		t.Fatalf("c.beforeClosingFunc %d is wrong", unsafe.Sizeof(conf.beforeClosingFunc))
 	}
 }
 
@@ -184,6 +184,6 @@ func TestWithAfterClosing(t *testing.T) {
 	WithAfterClosing(afterClosingFunc)(conf)
 
 	if unsafe.Sizeof(conf.afterClosingFunc) != unsafe.Sizeof(afterClosingFunc) {
-		t.Errorf("c.afterClosingFunc %d is wrong", unsafe.Sizeof(conf.afterClosingFunc))
+		t.Fatalf("c.afterClosingFunc %d is wrong", unsafe.Sizeof(conf.afterClosingFunc))
 	}
 }

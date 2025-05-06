@@ -7,6 +7,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/FishGoddess/rego"
 	"github.com/FishGoddess/vex"
@@ -22,17 +23,20 @@ var (
 type DialFunc func(ctx context.Context) (vex.Client, error)
 
 type Status struct {
-	// Limit is the limit of connected clients.
+	// Limit is the maximum quantity of clients in pool.
 	Limit uint64 `json:"limit"`
 
-	// Connected is the quantity of connected clients.
-	Connected uint64 `json:"connected"`
+	// Active is the quantity of clients in pool including idle and using.
+	Active uint64 `json:"active"`
 
-	// Idle is the quantity of idle clients.
+	// Idle is the quantity of idle clients in pool.
 	Idle uint64 `json:"idle"`
 
 	// Waiting is the quantity of waiting for a client.
 	Waiting uint64 `json:"waiting"`
+
+	// AverageWaitDuration is the average wait duration waiting for a client.
+	AverageWaitDuration time.Duration `json:"average_wait_duration"`
 }
 
 type Pool struct {
@@ -65,7 +69,7 @@ func newRegoOptions(opts []Option) []rego.Option {
 
 	var regoOpts []rego.Option
 	if conf.fastFailed {
-		regoOpts = append(regoOpts, rego.WithFastFailed())
+		regoOpts = append(regoOpts, rego.WithDisableToken())
 	}
 
 	regoOpts = append(regoOpts, rego.WithPoolExhaustedErr(func(ctx context.Context) error {
@@ -92,14 +96,16 @@ func (p *Pool) Status() Status {
 	status := p.clientPool.Status()
 
 	return Status{
-		Limit:     status.Limit,
-		Connected: status.Acquired,
-		Idle:      status.Idle,
-		Waiting:   status.Waiting,
+		Limit:               status.Limit,
+		Active:              status.Active,
+		Idle:                status.Idle,
+		Waiting:             status.Waiting,
+		AverageWaitDuration: status.AverageWaitDuration,
 	}
 }
 
 // Close closes the pool.
-func (p *Pool) Close(ctx context.Context) error {
+func (p *Pool) Close() error {
+	ctx := context.Background()
 	return p.clientPool.Close(ctx)
 }

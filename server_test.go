@@ -88,6 +88,6 @@ func TestServer(t *testing.T) {
 	}()
 
 	if err := server.Serve(); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }

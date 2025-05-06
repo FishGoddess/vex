@@ -15,7 +15,7 @@ func TestSetupConn(t *testing.T) {
 
 	listener, err := net.Listen(network, conf.address)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	defer listener.Close()
@@ -26,15 +26,15 @@ func TestSetupConn(t *testing.T) {
 
 	resolved, err := net.ResolveTCPAddr(network, conf.address)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	conn, err := net.DialTCP(network, nil, resolved)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if err = setupConn(conf, conn); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }

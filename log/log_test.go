@@ -18,7 +18,7 @@ func TestDisableDebug(t *testing.T) {
 
 	DisableDebug()
 	if DebugFunc != nil {
-		t.Error("disable debug failed")
+		t.Fatal("disable debug failed")
 	}
 }
 
@@ -31,7 +31,7 @@ func TestDisableInfo(t *testing.T) {
 
 	DisableInfo()
 	if InfoFunc != nil {
-		t.Error("disable info failed")
+		t.Fatal("disable info failed")
 	}
 }
 
@@ -44,14 +44,14 @@ func TestDisableError(t *testing.T) {
 
 	DisableError()
 	if ErrorFunc != nil {
-		t.Error("disable error failed")
+		t.Fatal("disable error failed")
 	}
 }
 
 // go test -v -cover -run=^TestDebug$
 func TestDebug(t *testing.T) {
 	if DebugFunc == nil {
-		t.Error("DebugFunc == nil")
+		t.Fatal("DebugFunc == nil")
 	}
 
 	Debug("...%d...", 1)
@@ -59,7 +59,7 @@ func TestDebug(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			t.Error(t)
+			t.Fatal(t)
 		}
 	}()
 
@@ -70,7 +70,7 @@ func TestDebug(t *testing.T) {
 // go test -v -cover -run=^TestInfo$
 func TestInfo(t *testing.T) {
 	if InfoFunc == nil {
-		t.Error("InfoFunc == nil")
+		t.Fatal("InfoFunc == nil")
 	}
 
 	Info("...%d...", 1)
@@ -78,7 +78,7 @@ func TestInfo(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			t.Error(t)
+			t.Fatal(t)
 		}
 	}()
 
@@ -89,7 +89,7 @@ func TestInfo(t *testing.T) {
 // go test -v -cover -run=^TestError$
 func TestError(t *testing.T) {
 	if ErrorFunc == nil {
-		t.Error("ErrorFunc == nil")
+		t.Fatal("ErrorFunc == nil")
 	}
 
 	Error(io.EOF, "...%d...", 1)
@@ -97,7 +97,7 @@ func TestError(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			t.Error(t)
+			t.Fatal(t)
 		}
 	}()
 

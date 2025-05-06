@@ -14,6 +14,6 @@ func TestWithFastFailed(t *testing.T) {
 	WithFastFailed()(conf)
 
 	if !conf.fastFailed {
-		t.Errorf("conf.fastFailed %+v is wrong", conf.fastFailed)
+		t.Fatalf("conf.fastFailed %+v is wrong", conf.fastFailed)
 	}
 }

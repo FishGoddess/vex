@@ -60,24 +60,24 @@ func TestPool(t *testing.T) {
 	}
 
 	pool := New(16, dial)
-	defer pool.Close(ctx)
+	defer pool.Close()
 
 	data := []byte("test")
 	test := func(i int) {
 		client, err := pool.Take(ctx)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		n, err := client.Write(data)
 		if err != nil {
 			client.Close()
-			t.Error(i, err)
+			t.Fatal(i, err)
 		}
 
 		if n != len(data) {
 			client.Close()
-			t.Errorf("n %d != len(data) %d", n, len(data))
+			t.Fatalf("n %d != len(data) %d", n, len(data))
 		}
 
 		buf := make([]byte, 64)
@@ -85,17 +85,17 @@ func TestPool(t *testing.T) {
 		n, err = client.Read(buf[:])
 		if err != nil {
 			client.Close()
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		if n != len(data) {
 			client.Close()
-			t.Errorf("n %d != len(data) %d", n, len(data))
+			t.Fatalf("n %d != len(data) %d", n, len(data))
 		}
 
 		if string(buf[:n]) != string(data) {
 			client.Close()
-			t.Errorf("buf %s != data %s", buf[:n], data)
+			t.Fatalf("buf %s != data %s", buf[:n], data)
 		}
 
 		pool.Put(ctx, client)
@@ -105,12 +105,12 @@ func TestPool(t *testing.T) {
 		test(i)
 
 		status := pool.Status()
-		if status.Connected != 1 {
-			t.Errorf("status.Connected %d is wrong", status.Connected)
+		if status.Active != 1 {
+			t.Fatalf("status.Active %d is wrong", status.Active)
 		}
 
 		if status.Idle != 1 {
-			t.Errorf("status.Idle %d is wrong", status.Idle)
+			t.Fatalf("status.Idle %d is wrong", status.Idle)
 		}
 	}
 
@@ -125,8 +125,8 @@ func TestPool(t *testing.T) {
 			test(i)
 
 			status := pool.Status()
-			if status.Connected > status.Limit {
-				t.Errorf("status.Connected %d is wrong", status.Connected)
+			if status.Active > status.Limit {
+				t.Errorf("status.Active %d is wrong", status.Active)
 			}
 
 			if status.Idle > status.Limit {

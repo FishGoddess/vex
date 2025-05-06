@@ -63,16 +63,16 @@ func BenchmarkPackReadWrite(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		client, err := clientPool.Get(context.Background())
 		if err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
 
 		_, err = pack.Send(client, benchmarkPacketType, benchmarkPacket)
 		if err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
 
 		if err = client.Close(); err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
 	}
 }
@@ -94,7 +94,7 @@ func TestPackRPS(t *testing.T) {
 	defer func() {
 		for _, server := range servers {
 			if err := server.Close(); err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 		}
 	}()
@@ -138,7 +138,7 @@ func TestPackRPS(t *testing.T) {
 
 			client, err := clientPool.Get(context.Background())
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 				return
 			}
 
@@ -146,7 +146,7 @@ func TestPackRPS(t *testing.T) {
 
 			_, err = pack.Send(client, benchmarkPacketType, benchmarkPacket)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 		}()
 	}

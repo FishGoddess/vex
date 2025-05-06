@@ -64,17 +64,17 @@ func TestReadPacket(t *testing.T) {
 
 		packetType, body, err := readPacket(reader)
 		if err != oneCase.expect.err {
-			t.Errorf("i %d, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
+			t.Fatalf("i %d, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
 			break
 		}
 
 		if packetType != oneCase.expect.packetType {
-			t.Errorf("i %d, packetType %+v != oneCase.expect.packetType %+v", i, packetType, oneCase.expect.packetType)
+			t.Fatalf("i %d, packetType %+v != oneCase.expect.packetType %+v", i, packetType, oneCase.expect.packetType)
 			break
 		}
 
 		if bytes.Compare(body, oneCase.expect.body) != 0 {
-			t.Errorf("i %d, body %+v != oneCase.expect.body %+v", i, body, oneCase.expect.body)
+			t.Fatalf("i %d, body %+v != oneCase.expect.body %+v", i, body, oneCase.expect.body)
 			break
 		}
 	}
@@ -124,12 +124,12 @@ func TestWritePacket(t *testing.T) {
 
 		err := writePacket(buffer, oneCase.input.packetType, oneCase.input.body)
 		if err != oneCase.expect.err {
-			t.Errorf("i %d, err == nil, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
+			t.Fatalf("i %d, err == nil, err %+v != oneCase.expect.err %+v", i, err, oneCase.expect.err)
 			break
 		}
 
 		if bytes.Compare(buffer.Bytes(), oneCase.expect.packet) != 0 {
-			t.Errorf("i %d, buffer %+v != oneCase.expect.packet %+v", i, buffer.Bytes(), oneCase.expect.packet)
+			t.Fatalf("i %d, buffer %+v != oneCase.expect.packet %+v", i, buffer.Bytes(), oneCase.expect.packet)
 			break
 		}
 	}

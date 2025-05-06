@@ -66,34 +66,36 @@ func BenchmarkReadWrite(b *testing.B) {
 	server := newBenchmarkServer(address)
 	defer server.Close()
 
-	//client := newBenchmarkClient(address)
-	//defer client.Close()
+	dial := func(ctx context.Context) (vex.Client, error) {
+		return vex.NewClient(address)
+	}
 
-	clientPool := pool.New(pool.Dial(address), pool.WithLimit(1))
+	clientPool := pool.New(1, dial)
 	defer clientPool.Close()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	ctx := context.Background()
 	buf := make([]byte, len(benchmarkData))
 	for i := 0; i < b.N; i++ {
-		client, err := clientPool.Get(context.Background())
+		client, err := clientPool.Take(ctx)
 		if err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
 
 		_, err = client.Write(benchmarkData)
 		if err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
 
 		_, err = client.Read(buf)
 		if err != nil {
-			b.Error(err)
+			b.Fatal(err)
 		}
 
-		if err = client.Close(); err != nil {
-			b.Error(err)
+		if err = clientPool.Put(ctx, client); err != nil {
+			b.Fatal(err)
 		}
 	}
 }
@@ -115,20 +117,20 @@ func TestRPS(t *testing.T) {
 	defer func() {
 		for _, server := range servers {
 			if err := server.Close(); err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 		}
 	}()
 
 	index := uint64(0)
-	dial := func() (vex.Client, error) {
+	dial := func(ctx context.Context) (vex.Client, error) {
 		next := atomic.AddUint64(&index, 1)
 		i := int(next) % len(addresses)
 		return vex.NewClient(addresses[i])
 	}
 
 	poolSize := uint64(2)
-	clientPool := pool.New(dial, pool.WithLimit(poolSize))
+	clientPool := pool.New(poolSize, dial)
 	defer clientPool.Close()
 
 	doneCh := make(chan struct{}, 1)
@@ -150,6 +152,7 @@ func TestRPS(t *testing.T) {
 
 	loop := 100000
 	beginTime := time.Now()
+	ctx := context.Background()
 
 	var wg sync.WaitGroup
 	for i := 0; i < loop; i++ {
@@ -157,23 +160,23 @@ func TestRPS(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			client, err := clientPool.Get(context.Background())
+			client, err := clientPool.Take(ctx)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 				return
 			}
 
-			defer client.Close()
+			defer clientPool.Put(ctx, client)
 
 			_, err = client.Write(benchmarkData)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			buf := make([]byte, len(benchmarkData))
 			_, err = client.Read(buf)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 		}()
 	}

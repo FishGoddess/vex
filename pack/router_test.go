@@ -22,35 +22,35 @@ var (
 func checkTestBytes(t *testing.T, buf []byte, expectedPacketType PacketType, expectedPacketData string) {
 	//t.Log(buffer)
 	if len(buf) < headerSize {
-		t.Errorf("len(buf) %d < headerSize %d", len(buf), headerSize)
+		t.Fatalf("len(buf) %d < headerSize %d", len(buf), headerSize)
 	}
 
 	header := Endian.Uint64(buf[:headerSize])
 	magic := (header >> (typeBits + dataSizeBits)) & maxMagic
 	if magic != magicNumber {
-		t.Errorf("magic %d != magicNumber %d", magic, magicNumber)
+		t.Fatalf("magic %d != magicNumber %d", magic, magicNumber)
 	}
 
 	packetType := PacketType((header >> dataSizeBits) & maxType)
 	if packetType != expectedPacketType {
-		t.Errorf("packetType %d != expectedPacketType %d", packetType, expectedPacketType)
+		t.Fatalf("packetType %d != expectedPacketType %d", packetType, expectedPacketType)
 	}
 
 	dataSize := int(header & maxDataSize)
 	if dataSize != len([]byte(expectedPacketData)) {
-		t.Errorf("dataSize %d != len([]byte(expectedPacketData)) %d ", dataSize, len([]byte(expectedPacketData)))
+		t.Fatalf("dataSize %d != len([]byte(expectedPacketData)) %d ", dataSize, len([]byte(expectedPacketData)))
 	}
 
 	data := buf[headerSize : headerSize+dataSize]
 	if string(data) != expectedPacketData {
-		t.Errorf("data %s != expectedPacketData %s", data, expectedPacketData)
+		t.Fatalf("data %s != expectedPacketData %s", data, expectedPacketData)
 	}
 }
 
 func runTestClient(t *testing.T, address string) {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	defer conn.Close()
@@ -58,7 +58,7 @@ func runTestClient(t *testing.T, address string) {
 	// Err test
 	_, err = conn.Write([]byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 0})
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	msg := errTestRequestFailed.Error()
@@ -66,7 +66,7 @@ func runTestClient(t *testing.T, address string) {
 
 	n, err := io.ReadFull(conn, buf)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	checkTestBytes(t, buf[:n], packetTypeError, msg)
@@ -74,7 +74,7 @@ func runTestClient(t *testing.T, address string) {
 	// OK test
 	_, err = conn.Write([]byte{0xC, 0x63, 0x8B, packetTypeTest, 0, 0, 0, 9, 'k', 'e', 'y', ' ', 'v', 'a', 'l', 'u', 'e'})
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	msg = "key value"
@@ -82,7 +82,7 @@ func runTestClient(t *testing.T, address string) {
 
 	n, err = conn.Read(buf[:])
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	checkTestBytes(t, buf[:n], packetTypeStandard, msg)
@@ -107,7 +107,7 @@ func TestRouterHandle(t *testing.T) {
 
 	go func() {
 		if err := server.Serve(); err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 	}()
 

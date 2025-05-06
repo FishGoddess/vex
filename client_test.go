@@ -61,7 +61,7 @@ func TestClient(t *testing.T) {
 
 	client, err := NewClient(address)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	defer client.Close()
@@ -73,17 +73,17 @@ func TestClient(t *testing.T) {
 
 		_, err = client.Write([]byte(msg))
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		n, err := client.Read(buf[:])
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		received := string(buf[:n])
 		if received != msg {
-			t.Errorf("received %s != msg %s", received, msg)
+			t.Fatalf("received %s != msg %s", received, msg)
 		}
 	}
 }

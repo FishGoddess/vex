@@ -1,7 +1,5 @@
 module github.com/FishGoddess/vex
 
-go 1.23
-
-toolchain go1.23.7
+go 1.25
 
 require github.com/FishGoddess/rego v0.3.0

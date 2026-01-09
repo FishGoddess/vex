@@ -20,13 +20,23 @@ type Packet struct {
 	data     []byte
 }
 
-// New returns a packet with given values.
-func New(ptype PacketType, sequence uint64, data []byte) Packet {
-	return Packet{
-		magic:    magic,
-		ptype:    ptype,
-		length:   uint32(len(data)),
-		sequence: sequence,
-		data:     data,
-	}
+// Type returns the type of packet.
+func (p *Packet) Type() PacketType {
+	return p.ptype
+}
+
+// Data returns the data of packet.
+func (p *Packet) Data() []byte {
+	return p.data
+}
+
+// SetType sets the type of packet.
+func (p *Packet) SetType(ptype PacketType) {
+	p.ptype = ptype
+}
+
+// SetType sets the type of packet.
+func (p *Packet) SetData(data []byte) {
+	p.length = uint32(len(data))
+	p.data = data
 }

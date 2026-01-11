@@ -18,29 +18,50 @@ import (
 	packets "github.com/FishGoddess/vex/internal/packet"
 )
 
+// Handler is for handling the data from client and returns the new data or an error if failed.
+type Handler interface {
+	Handle(ctx context.Context, data []byte) ([]byte, error)
+}
+
+// Server is the interface of vex server.
 type Server interface {
 	Serve() error
 	Close() error
 }
 
 type server struct {
+	conf *config
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
 	address  string
 	listener net.Listener
+	handler  Handler
 
 	group sync.WaitGroup
 	lock  sync.RWMutex
 }
 
-func NewServer(address string) Server {
+// NewServer creates a server with address and handler.
+func NewServer(address string, handler Handler, opts ...Option) Server {
+	conf := newConfig().apply(opts...)
 	ctx, cancel := context.WithCancel(context.Background())
 
+	if address == "" {
+		panic("vex: server address is nil")
+	}
+
+	if handler == nil {
+		panic("vex: server handler is nil")
+	}
+
 	server := &server{
+		conf:    conf,
 		ctx:     ctx,
 		cancel:  cancel,
 		address: address,
+		handler: handler,
 	}
 
 	go server.watchSignals()
@@ -48,38 +69,57 @@ func NewServer(address string) Server {
 }
 
 func (s *server) watchSignals() {
+	logger := s.conf.logger
+
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
-	_ = <-signalCh
+	sg := <-signalCh
+	logger.Info("received a signal", "signal", sg)
 
 	if err := s.Close(); err != nil {
-
+		logger.Error("close server failed", "err", err)
 	}
 }
 
 func (s *server) handlePacket(reader io.Reader, writer io.Writer) {
+	logger := s.conf.logger
+
 	packet, err := packets.Decode(reader)
 	if err != nil {
+		logger.Error("decode packet failed", "err", err)
 		return
 	}
 
 	if packet.Type() != packets.PacketTypeRequest {
+		logger.Debug("packet type is wrong", "type", packet.Type())
 		return
 	}
 
 	s.group.Go(func() {
-		// TODO 处理包
-		packet.SetType(packets.PacketTypeResponse)
+		data := packet.Data()
+
+		data, err = s.handler.Handle(s.ctx, data)
+		if err == nil {
+			packet.SetType(packets.PacketTypeResponse)
+			packet.SetData(data)
+		} else {
+			packet.SetType(packets.PacketTypeError)
+			packet.SetData([]byte(err.Error()))
+		}
 
 		err = packets.Encode(writer, packet)
 		if err != nil {
+			logger.Error("encode packet failed", "err", err, "packet", packet)
 			return
 		}
 	})
 }
 
 func (s *server) handleConn(conn net.Conn) {
+	logger := s.conf.logger
+	logger.Debug("handle conn", "address", conn.RemoteAddr())
+
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	defer writer.Flush()
@@ -87,6 +127,7 @@ func (s *server) handleConn(conn net.Conn) {
 	for {
 		select {
 		case <-s.ctx.Done():
+			logger.Debug("context is done", "address", conn.RemoteAddr())
 			return
 		default:
 			s.handlePacket(reader, writer)
@@ -95,13 +136,18 @@ func (s *server) handleConn(conn net.Conn) {
 }
 
 func (s *server) serve() error {
+	logger := s.conf.logger
+	logger.Info("server is serving", "address", s.address)
+
 	for {
 		conn, err := s.listener.Accept()
 		if errors.Is(err, net.ErrClosed) {
+			logger.Info("listener is closed")
 			break
 		}
 
 		if err != nil {
+			logger.Error("accept conn failed", "err", err)
 			continue
 		}
 
@@ -115,11 +161,14 @@ func (s *server) serve() error {
 	return nil
 }
 
+// Serve serves on address and returns an error if failed.
 func (s *server) Serve() error {
-	var lc net.ListenConfig
+	logger := s.conf.logger
 
+	var lc net.ListenConfig
 	listener, err := lc.Listen(s.ctx, "tcp", s.address)
 	if err != nil {
+		logger.Error("listen tcp failed", "err", err, "address", s.address)
 		return err
 	}
 
@@ -130,6 +179,7 @@ func (s *server) Serve() error {
 	return s.serve()
 }
 
+// Close closes the server and returns an error if failed.
 func (s *server) Close() error {
 	s.lock.Lock()
 	defer s.lock.Unlock()

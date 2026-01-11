@@ -96,24 +96,20 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) {
 		return
 	}
 
-	s.group.Go(func() {
-		data := packet.Data()
+	data, err := s.handler.Handle(s.ctx, packet.Data())
+	if err == nil {
+		packet.SetType(packets.PacketTypeResponse)
+		packet.SetData(data)
+	} else {
+		packet.SetType(packets.PacketTypeError)
+		packet.SetData([]byte(err.Error()))
+	}
 
-		data, err = s.handler.Handle(s.ctx, data)
-		if err == nil {
-			packet.SetType(packets.PacketTypeResponse)
-			packet.SetData(data)
-		} else {
-			packet.SetType(packets.PacketTypeError)
-			packet.SetData([]byte(err.Error()))
-		}
-
-		err = packets.Encode(writer, packet)
-		if err != nil {
-			logger.Error("encode packet failed", "err", err, "packet", packet)
-			return
-		}
-	})
+	err = packets.Encode(writer, packet)
+	if err != nil {
+		logger.Error("encode packet failed", "err", err, "packet", packet)
+		return
+	}
 }
 
 func (s *server) handleConn(conn net.Conn) {
@@ -165,6 +161,13 @@ func (s *server) serve() error {
 func (s *server) Serve() error {
 	logger := s.conf.logger
 
+	s.lock.Lock()
+	if s.listener != nil {
+		s.lock.Unlock()
+
+		return errors.New("vex: server is already serving")
+	}
+
 	var lc net.ListenConfig
 	listener, err := lc.Listen(s.ctx, "tcp", s.address)
 	if err != nil {
@@ -172,10 +175,8 @@ func (s *server) Serve() error {
 		return err
 	}
 
-	s.lock.Lock()
 	s.listener = listener
 	s.lock.Unlock()
-
 	return s.serve()
 }
 
@@ -185,7 +186,9 @@ func (s *server) Close() error {
 	defer s.lock.Unlock()
 
 	if s.listener != nil {
-		return s.listener.Close()
+		if err := s.listener.Close(); err != nil {
+			return err
+		}
 	}
 
 	s.cancel()

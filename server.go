@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -82,39 +83,44 @@ func (s *server) watchSignals() {
 	}
 }
 
-func (s *server) handlePacket(reader io.Reader, writer io.Writer) {
+func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 	logger := s.conf.logger
 
 	packet, err := packets.Decode(reader)
 	if err != nil {
 		logger.Error("decode packet failed", "err", err)
-		return
+		return err
 	}
 
-	if packet.Type() != packets.PacketTypeRequest {
-		logger.Debug("packet type is wrong", "type", packet.Type())
-		return
-	}
-
-	data, err := s.handler.Handle(s.ctx, packet.Data())
-	if err == nil {
-		packet.SetType(packets.PacketTypeResponse)
-		packet.SetData(data)
+	if packet.Type == packets.PacketTypeRequest {
+		data, err := s.handler.Handle(s.ctx, packet.Data)
+		if err == nil {
+			packet.Type = packets.PacketTypeResponse
+			packet.With(data)
+		} else {
+			packet.Type = packets.PacketTypeError
+			packet.With(data)
+		}
 	} else {
-		packet.SetType(packets.PacketTypeError)
-		packet.SetData([]byte(err.Error()))
+		err = fmt.Errorf("vex: packet type %v is wrong", packet.Type)
+
+		packet.Type = packets.PacketTypeError
+		packet.With([]byte(err.Error()))
 	}
 
 	err = packets.Encode(writer, packet)
 	if err != nil {
 		logger.Error("encode packet failed", "err", err, "packet", packet)
-		return
+		return err
 	}
+
+	return nil
 }
 
 func (s *server) handleConn(conn net.Conn) {
 	logger := s.conf.logger
 	logger.Debug("handle conn", "address", conn.RemoteAddr())
+	defer logger.Debug("handle conn done", "address", conn.RemoteAddr())
 
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
@@ -123,10 +129,13 @@ func (s *server) handleConn(conn net.Conn) {
 	for {
 		select {
 		case <-s.ctx.Done():
-			logger.Debug("context is done", "address", conn.RemoteAddr())
 			return
 		default:
-			s.handlePacket(reader, writer)
+			writer.Flush()
+		}
+
+		if err := s.handlePacket(reader, writer); err != nil {
+			return
 		}
 	}
 }
@@ -138,7 +147,7 @@ func (s *server) serve() error {
 	for {
 		conn, err := s.listener.Accept()
 		if errors.Is(err, net.ErrClosed) {
-			logger.Info("listener is closed")
+			logger.Info("listener is closed", "address", s.address)
 			break
 		}
 

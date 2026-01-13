@@ -13,30 +13,15 @@ const (
 type PacketType = uint8
 
 type Packet struct {
-	magic    uint32
-	ptype    PacketType
-	length   uint32
-	sequence uint64
-	data     []byte
+	Magic    uint32
+	Type     PacketType
+	Length   uint32
+	Sequence uint64
+	Data     []byte
 }
 
-// Type returns the type of packet.
-func (p *Packet) Type() PacketType {
-	return p.ptype
-}
-
-// Data returns the data of packet.
-func (p *Packet) Data() []byte {
-	return p.data
-}
-
-// SetType sets the type of packet.
-func (p *Packet) SetType(ptype PacketType) {
-	p.ptype = ptype
-}
-
-// SetType sets the type of packet.
-func (p *Packet) SetData(data []byte) {
-	p.length = uint32(len(data))
-	p.data = data
+// With sets the length and data to packet.
+func (p *Packet) With(data []byte) {
+	p.Length = uint32(len(data))
+	p.Data = data
 }

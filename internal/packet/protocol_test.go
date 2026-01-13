@@ -27,9 +27,9 @@ func TestDecode(t *testing.T) {
 			err:         io.EOF,
 		},
 		{
-			packetBytes: make([]byte, headerBytes),
+			packetBytes: make([]byte, HeaderBytes),
 			packet:      Packet{},
-			err:         errWrongMagic,
+			err:         ErrWrongMagic,
 		},
 		{
 			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
@@ -38,12 +38,12 @@ func TestDecode(t *testing.T) {
 		},
 		{
 			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9},
-			packet:      Packet{magic: magic, ptype: PacketTypeError, length: 0, sequence: 9},
+			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 0, Sequence: 9},
 			err:         nil,
 		},
 		{
 			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 9, 6, 7, 8},
-			packet:      Packet{magic: magic, ptype: PacketTypeError, length: 3, sequence: 9, data: []byte{6, 7, 8}},
+			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 3, Sequence: 9, Data: []byte{6, 7, 8}},
 			err:         nil,
 		},
 	}
@@ -76,21 +76,21 @@ func TestEncode(t *testing.T) {
 		{
 			packetBytes: []byte{},
 			packet:      Packet{},
-			err:         errWrongMagic,
+			err:         ErrWrongMagic,
 		},
 		{
 			packetBytes: []byte{},
-			packet:      Packet{magic: magic, ptype: PacketTypeError, length: 1, sequence: 6},
-			err:         errWrongLength,
+			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 1, Sequence: 6},
+			err:         ErrWrongLength,
 		},
 		{
 			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9},
-			packet:      Packet{magic: magic, ptype: PacketTypeError, length: 0, sequence: 9},
+			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 0, Sequence: 9},
 			err:         nil,
 		},
 		{
 			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 9, 6, 7, 8},
-			packet:      Packet{magic: magic, ptype: PacketTypeError, length: 3, sequence: 9, data: []byte{6, 7, 8}},
+			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 3, Sequence: 9, Data: []byte{6, 7, 8}},
 			err:         nil,
 		},
 	}

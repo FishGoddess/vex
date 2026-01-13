@@ -11,18 +11,18 @@ import (
 )
 
 const (
-	magic       = 0xC638B // 811915
-	headerBytes = 16      // magic + type + length + sequence
+	Magic       = 0xC638B // 811915
+	HeaderBytes = 16      // magic + type + length + sequence
 )
 
 var (
-	errWrongMagic  = errors.New("vex: magic is wrong")
-	errWrongLength = errors.New("vex: length is wrong")
+	ErrWrongMagic  = errors.New("vex: magic is wrong")
+	ErrWrongLength = errors.New("vex: length is wrong")
 )
 
 // Decode decodes the packet from reader and returns an error if failed.
 func Decode(reader io.Reader) (packet Packet, err error) {
-	var header [headerBytes]byte
+	var header [HeaderBytes]byte
 
 	_, err = io.ReadFull(reader, header[:])
 	if err != nil {
@@ -31,43 +31,43 @@ func Decode(reader io.Reader) (packet Packet, err error) {
 
 	endian := binary.BigEndian
 	magicAndType := endian.Uint32(header[0:4])
-	packet.magic = magicAndType >> 8
-	packet.ptype = PacketType(magicAndType & 0xFF)
-	packet.length = endian.Uint32(header[4:8])
-	packet.sequence = endian.Uint64(header[8:16])
+	packet.Magic = magicAndType >> 8
+	packet.Type = PacketType(magicAndType & 0xFF)
+	packet.Length = endian.Uint32(header[4:8])
+	packet.Sequence = endian.Uint64(header[8:16])
 
-	if packet.magic != magic {
-		return packet, errWrongMagic
+	if packet.Magic != Magic {
+		return packet, ErrWrongMagic
 	}
 
-	if packet.length == 0 {
+	if packet.Length == 0 {
 		return packet, nil
 	}
 
-	packet.data = make([]byte, packet.length)
+	packet.Data = make([]byte, packet.Length)
 
-	_, err = io.ReadFull(reader, packet.data)
+	_, err = io.ReadFull(reader, packet.Data)
 	return packet, err
 }
 
 // Encode encodes the packet to writer and returns an error if failed.
 func Encode(writer io.Writer, packet Packet) (err error) {
-	if packet.magic != magic {
-		return errWrongMagic
+	if packet.Magic != Magic {
+		return ErrWrongMagic
 	}
 
-	length := uint32(len(packet.data))
-	if packet.length != length {
-		return errWrongLength
+	length := uint32(len(packet.Data))
+	if packet.Length != length {
+		return ErrWrongLength
 	}
 
 	endian := binary.BigEndian
-	magicAndType := (packet.magic << 8) | uint32(packet.ptype)
-	packetBytes := make([]byte, 0, headerBytes+packet.length)
+	magicAndType := (packet.Magic << 8) | uint32(packet.Type)
+	packetBytes := make([]byte, 0, HeaderBytes+packet.Length)
 	packetBytes = endian.AppendUint32(packetBytes, magicAndType)
-	packetBytes = endian.AppendUint32(packetBytes, packet.length)
-	packetBytes = endian.AppendUint64(packetBytes, packet.sequence)
-	packetBytes = append(packetBytes, packet.data...)
+	packetBytes = endian.AppendUint32(packetBytes, packet.Length)
+	packetBytes = endian.AppendUint64(packetBytes, packet.Sequence)
+	packetBytes = append(packetBytes, packet.Data...)
 
 	_, err = writer.Write(packetBytes)
 	return err

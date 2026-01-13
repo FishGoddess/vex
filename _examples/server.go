@@ -1,0 +1,24 @@
+// Copyright 2025 FishGoddess. All rights reserved.
+// Use of this source code is governed by a MIT style
+// license that can be found in the LICENSE file.
+
+package main
+
+import (
+	"context"
+
+	"github.com/FishGoddess/vex"
+)
+
+type EchoHandler struct{}
+
+func (EchoHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+	return data, nil
+}
+
+func main() {
+	server := vex.NewServer("127.0.0.1:9876", EchoHandler{})
+	if err := server.Serve(); err != nil {
+		panic(err)
+	}
+}

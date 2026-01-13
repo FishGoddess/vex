@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	packets "github.com/FishGoddess/vex/internal/packet"
 )
@@ -87,6 +88,16 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 	logger := s.conf.logger
 
 	packet, err := packets.Decode(reader)
+	if err == io.EOF {
+		logger.Debug("decode packet eof", "err", err)
+		return err
+	}
+
+	if errors.Is(err, net.ErrClosed) {
+		logger.Debug("decode packet but closed", "err", err)
+		return err
+	}
+
 	if err != nil {
 		logger.Error("decode packet failed", "err", err)
 		return err
@@ -126,14 +137,22 @@ func (s *server) handleConn(conn net.Conn) {
 	writer := bufio.NewWriter(conn)
 	defer writer.Flush()
 
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		default:
-			writer.Flush()
-		}
+	s.group.Go(func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
 
+		for {
+			select {
+			case <-s.ctx.Done():
+				conn.Close()
+				return
+			case <-ticker.C:
+				writer.Flush()
+			}
+		}
+	})
+
+	for {
 		if err := s.handlePacket(reader, writer); err != nil {
 			return
 		}

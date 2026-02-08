@@ -6,6 +6,7 @@ package vex
 
 import (
 	"log/slog"
+	"time"
 )
 
 // Logger is for logging some messages in different levels.
@@ -17,12 +18,16 @@ type Logger interface {
 }
 
 type config struct {
-	logger Logger
+	logger         Logger
+	flushInterval  time.Duration
+	connectTimeout time.Duration
 }
 
 func newConfig() *config {
 	conf := &config{
-		logger: slog.Default(),
+		logger:         slog.Default(),
+		flushInterval:  time.Second,
+		connectTimeout: 3 * time.Second,
 	}
 
 	return conf
@@ -43,5 +48,19 @@ type Option func(c *config)
 func WithLogger(logger Logger) Option {
 	return func(c *config) {
 		c.logger = logger
+	}
+}
+
+// WithFlushInterval sets the flush interval to config.
+func WithFlushInterval(interval time.Duration) Option {
+	return func(c *config) {
+		c.flushInterval = interval
+	}
+}
+
+// WithConnectTimeout sets the connect timeout to config.
+func WithConnectTimeout(timeout time.Duration) Option {
+	return func(c *config) {
+		c.connectTimeout = timeout
 	}
 }

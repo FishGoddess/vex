@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 )
 
 // go test -v -cover -run=^TestWithLogger$
@@ -22,5 +23,19 @@ func TestWithLogger(t *testing.T) {
 	want := fmt.Sprintf("%p", logger)
 	if got != want {
 		t.Fatalf("got %s != want %s", got, want)
+	}
+}
+
+// go test -v -cover -run=^TestWithFlushInterval$
+func TestWithFlushInterval(t *testing.T) {
+	interval := time.Millisecond
+
+	conf := &config{flushInterval: 0}
+	WithFlushInterval(interval)(conf)
+
+	got := conf.flushInterval
+	want := interval
+	if got != want {
+		t.Fatalf("got %d != want %d", got, want)
 	}
 }

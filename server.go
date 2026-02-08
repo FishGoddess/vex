@@ -137,7 +137,7 @@ func (s *server) handleConn(conn net.Conn) {
 	defer writer.Flush()
 
 	s.group.Go(func() {
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(s.conf.flushInterval)
 		defer ticker.Stop()
 
 		for {

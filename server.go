@@ -103,20 +103,19 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
+	var data []byte
 	if packet.Type == packets.PacketTypeRequest {
-		data, err := s.handler.Handle(s.ctx, packet.Data)
-		if err == nil {
-			packet.Type = packets.PacketTypeResponse
-			packet.With(data)
-		} else {
-			packet.Type = packets.PacketTypeError
-			packet.With(data)
-		}
+		data, err = s.handler.Handle(s.ctx, packet.Data)
 	} else {
 		err = fmt.Errorf("vex: packet type %v is wrong", packet.Type)
+	}
 
+	if err != nil {
 		packet.Type = packets.PacketTypeError
 		packet.With([]byte(err.Error()))
+	} else {
+		packet.Type = packets.PacketTypeResponse
+		packet.With(data)
 	}
 
 	err = packets.Encode(writer, packet)

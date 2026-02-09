@@ -18,6 +18,8 @@ func (EchoHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
 
 func main() {
 	server := vex.NewServer("127.0.0.1:9876", EchoHandler{})
+	defer server.Close()
+
 	if err := server.Serve(); err != nil {
 		panic(err)
 	}

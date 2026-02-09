@@ -5,6 +5,7 @@
 package vex
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -25,10 +26,11 @@ type client struct {
 	conf *config
 
 	conn     net.Conn
-	sequence uint64
-	inflight map[uint64]chan packets.Packet
+	sequence atomic.Uint64
+	inflight map[uint64]chan *packets.Packet
 	done     chan struct{}
 
+	once sync.Once
 	lock sync.Mutex
 }
 
@@ -44,19 +46,20 @@ func NewClient(address string, opts ...Option) (Client, error) {
 	client := &client{
 		conf:     conf,
 		conn:     conn,
-		sequence: 0,
-		inflight: make(map[uint64]chan packets.Packet, 256),
+		inflight: make(map[uint64]chan *packets.Packet, 256),
 		done:     make(chan struct{}),
 	}
 
-	go client.readLoop()
+	go client.inflightLoop()
 	return client, nil
 }
 
-func (c *client) readLoop() {
+func (c *client) inflightLoop() {
+	reader := bufio.NewReader(c.conn)
 	for {
-		packet, err := packets.Decode(c.conn)
+		packet, err := packets.Decode(reader)
 		if err != nil {
+			c.Close()
 			return
 		}
 
@@ -64,73 +67,48 @@ func (c *client) readLoop() {
 		case <-c.done:
 			return
 		default:
-			c.dispatch(packet)
+			c.lock.Lock()
+			ch := c.inflight[packet.Sequence]
+			c.lock.Unlock()
+
+			if ch != nil {
+				ch <- &packet
+			}
 		}
 	}
 }
 
-func (c *client) dispatch(packet packets.Packet) {
-	c.lock.Lock()
-	ch := c.inflight[packet.Sequence]
-	c.lock.Unlock()
-
-	if ch == nil {
-		return
-	}
-
-	select {
-	case ch <- packet:
-	default:
-	}
-}
-
-func (c *client) send(ctx context.Context, sequence uint64, data []byte, ch chan packets.Packet) ([]byte, error) {
-	packet := packets.Packet{Magic: packets.Magic, Type: packets.PacketTypeRequest, Sequence: sequence}
-	packet.With(data)
-
-	err := packets.Encode(c.conn, packet)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case packet, ok := <-ch:
-		if !ok {
-			err = errors.New("vex: inflight channel is closed")
-			return nil, err
-		}
-
-		if packet.Type == packets.PacketTypeResponse {
-			return packet.Data, nil
-		}
-
-		if packet.Type == packets.PacketTypeError {
-			err = errors.New(string(packet.Data))
-			return nil, err
-		}
-
-		err = fmt.Errorf("vex: packet type %v is wrong", packet.Type)
-		return nil, err
-	case <-ctx.Done():
-		err = ctx.Err()
-		return nil, err
-	case <-c.done:
+func (c *client) handlePacket(packet *packets.Packet) ([]byte, error) {
+	if packet == nil {
 		err := errors.New("vex: client is closed")
 		return nil, err
 	}
+
+	if packet.Type == packets.PacketTypeResponse {
+		return packet.Data, nil
+	}
+
+	if packet.Type == packets.PacketTypeError {
+		err := errors.New(string(packet.Data))
+		return nil, err
+	}
+
+	err := fmt.Errorf("vex: packet type %v is wrong", packet.Type)
+	return nil, err
 }
 
 // Send sends data and gets a new data.
 // Returns an error if failed.
 func (c *client) Send(ctx context.Context, data []byte) ([]byte, error) {
-	sequence := atomic.AndUint64(&c.sequence, 1)
-	ch := make(chan packets.Packet, 1)
+	sequence := c.sequence.Add(1)
+	ch := make(chan *packets.Packet, 1)
 
+	// inflight
 	c.lock.Lock()
 	if c.inflight == nil {
 		c.lock.Unlock()
 
-		err := errors.New("vex: inflight map is nil")
+		err := errors.New("vex: client is closed")
 		return nil, err
 	}
 
@@ -143,7 +121,25 @@ func (c *client) Send(ctx context.Context, data []byte) ([]byte, error) {
 		c.lock.Unlock()
 	}()
 
-	return c.send(ctx, sequence, data, ch)
+	// packet
+	packet := packets.Packet{Magic: packets.Magic, Type: packets.PacketTypeRequest, Sequence: sequence}
+	packet.With(data)
+
+	err := packets.Encode(c.conn, packet)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case packet := <-ch:
+		return c.handlePacket(packet)
+	case <-ctx.Done():
+		err = ctx.Err()
+		return nil, err
+	case <-c.done:
+		err := errors.New("vex: client is closed")
+		return nil, err
+	}
 }
 
 // Close closes the client and returns an error if failed.
@@ -156,10 +152,11 @@ func (c *client) Close() error {
 	}
 
 	for _, ch := range c.inflight {
-		close(ch)
+		ch <- nil
 	}
 
-	c.sequence = 0
+	c.once.Do(func() { close(c.done) })
+	c.sequence.Store(0)
 	c.inflight = nil
 	return nil
 }

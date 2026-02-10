@@ -26,7 +26,7 @@ type config struct {
 func newConfig() *config {
 	conf := &config{
 		logger:        slog.Default(),
-		flushInterval: time.Second,
+		flushInterval: 10 * time.Millisecond,
 		dialTimeout:   3 * time.Second,
 	}
 

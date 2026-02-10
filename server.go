@@ -15,7 +15,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	packets "github.com/FishGoddess/vex/internal/packet"
 )
@@ -129,25 +128,13 @@ func (s *server) handleConn(conn net.Conn) {
 	logger.Debug("handle conn", "address", conn.RemoteAddr())
 	defer logger.Debug("handle conn done", "address", conn.RemoteAddr())
 
-	reader := bufio.NewReader(conn)
-	writer := bufio.NewWriter(conn)
-	defer writer.Flush()
-
 	s.group.Go(func() {
-		ticker := time.NewTicker(s.conf.flushInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-s.ctx.Done():
-				conn.Close()
-				return
-			case <-ticker.C:
-				writer.Flush()
-			}
-		}
+		<-s.ctx.Done()
+		conn.Close()
 	})
 
+	reader := bufio.NewReader(conn)
+	writer := conn
 	for {
 		if err := s.handlePacket(reader, writer); err != nil {
 			return

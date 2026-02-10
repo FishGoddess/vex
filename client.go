@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -26,7 +25,7 @@ type client struct {
 	conf *config
 
 	conn     net.Conn
-	sequence atomic.Uint64
+	id       atomic.Uint64
 	inflight map[uint64]chan *packets.Packet
 	done     chan struct{}
 
@@ -38,7 +37,7 @@ type client struct {
 func NewClient(address string, opts ...Option) (Client, error) {
 	conf := newConfig().apply(opts...)
 
-	conn, err := net.DialTimeout("tcp", address, conf.connectTimeout)
+	conn, err := net.DialTimeout("tcp", address, conf.dialTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -57,18 +56,20 @@ func NewClient(address string, opts ...Option) (Client, error) {
 func (c *client) inflightLoop() {
 	reader := bufio.NewReader(c.conn)
 	for {
-		packet, err := packets.Decode(reader)
+		// Packet
+		packet, err := packets.ReadPacket(reader)
 		if err != nil {
 			c.Close()
 			return
 		}
 
+		// Inflight
 		select {
 		case <-c.done:
 			return
 		default:
 			c.lock.Lock()
-			ch := c.inflight[packet.Sequence]
+			ch := c.inflight[packet.ID()]
 			c.lock.Unlock()
 
 			if ch != nil {
@@ -78,32 +79,13 @@ func (c *client) inflightLoop() {
 	}
 }
 
-func (c *client) handlePacket(packet *packets.Packet) ([]byte, error) {
-	if packet == nil {
-		err := errors.New("vex: client is closed")
-		return nil, err
-	}
-
-	if packet.Type == packets.PacketTypeResponse {
-		return packet.Data, nil
-	}
-
-	if packet.Type == packets.PacketTypeError {
-		err := errors.New(string(packet.Data))
-		return nil, err
-	}
-
-	err := fmt.Errorf("vex: packet type %v is wrong", packet.Type)
-	return nil, err
-}
-
 // Send sends data and gets a new data.
 // Returns an error if failed.
 func (c *client) Send(ctx context.Context, data []byte) ([]byte, error) {
-	sequence := c.sequence.Add(1)
+	// Inflight
+	id := c.id.Add(1)
 	ch := make(chan *packets.Packet, 1)
 
-	// inflight
 	c.lock.Lock()
 	if c.inflight == nil {
 		c.lock.Unlock()
@@ -112,27 +94,32 @@ func (c *client) Send(ctx context.Context, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	c.inflight[sequence] = ch
+	c.inflight[id] = ch
 	c.lock.Unlock()
 
 	defer func() {
 		c.lock.Lock()
-		delete(c.inflight, sequence)
+		delete(c.inflight, id)
 		c.lock.Unlock()
 	}()
 
-	// packet
-	packet := packets.Packet{Magic: packets.Magic, Type: packets.PacketTypeRequest, Sequence: sequence}
-	packet.With(data)
+	// Packet
+	packet := packets.New(id)
+	packet.SetData(data)
 
-	err := packets.Encode(c.conn, packet)
+	err := packets.WritePacket(c.conn, packet)
 	if err != nil {
 		return nil, err
 	}
 
 	select {
 	case packet := <-ch:
-		return c.handlePacket(packet)
+		if packet == nil {
+			err := errors.New("vex: client is closed")
+			return nil, err
+		}
+
+		return packet.Data()
 	case <-ctx.Done():
 		err = ctx.Err()
 		return nil, err
@@ -156,7 +143,7 @@ func (c *client) Close() error {
 	}
 
 	c.once.Do(func() { close(c.done) })
-	c.sequence.Store(0)
+	c.id.Store(0)
 	c.inflight = nil
 	return nil
 }

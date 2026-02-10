@@ -4,24 +4,61 @@
 
 package packet
 
+import "errors"
+
 const (
-	PacketTypeRequest  PacketType = 1
-	PacketTypeResponse PacketType = 2
-	PacketTypeError    PacketType = 3
+	flagError = 0x1
 )
 
-type PacketType = uint8
-
 type Packet struct {
-	Magic    uint32
-	Type     PacketType
-	Length   uint32
-	Sequence uint64
-	Data     []byte
+	id     uint64
+	magic  uint32
+	flags  uint64
+	length uint32
+	data   []byte
 }
 
-// With sets the length and data to packet.
-func (p *Packet) With(data []byte) {
-	p.Length = uint32(len(data))
-	p.Data = data
+// New returns a new packet with id.
+func New(id uint64) Packet {
+	packet := Packet{id: id, magic: magic}
+	return packet
+}
+
+func (p *Packet) flagSet(flag uint64) bool {
+	return (p.flags & flag) > 0
+}
+
+// ID returns the id of packet.
+func (p *Packet) ID() uint64 {
+	return p.id
+}
+
+// Data returns the data of packet and returns an error if it's an error packet.
+func (p *Packet) Data() ([]byte, error) {
+	if p.flagSet(flagError) {
+		err := errors.New(string(p.data))
+		return nil, err
+	}
+
+	return p.data, nil
+}
+
+func (p *Packet) setFlag(flag uint64) {
+	p.flags = p.flags | flag
+}
+
+// SetData sets the data and its length to packet.
+func (p *Packet) SetData(data []byte) {
+	p.length = uint32(len(data))
+	p.data = data
+}
+
+// SetError sets the error and an error flag to packet.
+func (p *Packet) SetError(err error) {
+	if err == nil {
+		return
+	}
+
+	p.setFlag(flagError)
+	p.SetData([]byte(err.Error()))
 }

@@ -10,19 +10,22 @@ import (
 	"io"
 )
 
+const magic = 1997811915
+
 const (
-	Magic       = 0xC638B // 811915
-	HeaderBytes = 16      // magic + type + length + sequence
+	headerBytes  = 24
+	maxDataBytes = uint32(1<<32 - 1) // 4GB
 )
 
 var (
-	ErrWrongMagic  = errors.New("vex: magic is wrong")
-	ErrWrongLength = errors.New("vex: length is wrong")
+	errWrongMagic   = errors.New("vex: magic is wrong")
+	errWrongLength  = errors.New("vex: length is wrong")
+	errDataTooLarge = errors.New("vex: data is too large")
 )
 
-// Decode decodes the packet from reader and returns an error if failed.
-func Decode(reader io.Reader) (packet Packet, err error) {
-	var header [HeaderBytes]byte
+// ReadPacket reads a packet from reader and returns an error if failed.
+func ReadPacket(reader io.Reader) (packet Packet, err error) {
+	var header [headerBytes]byte
 
 	_, err = io.ReadFull(reader, header[:])
 	if err != nil {
@@ -30,44 +33,47 @@ func Decode(reader io.Reader) (packet Packet, err error) {
 	}
 
 	endian := binary.BigEndian
-	magicAndType := endian.Uint32(header[0:4])
-	packet.Magic = magicAndType >> 8
-	packet.Type = PacketType(magicAndType & 0xFF)
-	packet.Length = endian.Uint32(header[4:8])
-	packet.Sequence = endian.Uint64(header[8:16])
+	packet.id = endian.Uint64(header[0:8])
+	packet.magic = endian.Uint32(header[8:12])
+	packet.flags = endian.Uint64(header[12:20])
+	packet.length = endian.Uint32(header[20:24])
 
-	if packet.Magic != Magic {
-		return packet, ErrWrongMagic
+	if packet.magic != magic {
+		return packet, errWrongMagic
 	}
 
-	if packet.Length == 0 {
+	if packet.length <= 0 {
 		return packet, nil
 	}
 
-	packet.Data = make([]byte, packet.Length)
+	packet.data = make([]byte, packet.length)
 
-	_, err = io.ReadFull(reader, packet.Data)
+	_, err = io.ReadFull(reader, packet.data)
 	return packet, err
 }
 
-// Encode encodes the packet to writer and returns an error if failed.
-func Encode(writer io.Writer, packet Packet) (err error) {
-	if packet.Magic != Magic {
-		return ErrWrongMagic
+// WritePacket writes a packet to writer and returns an error if failed.
+func WritePacket(writer io.Writer, packet Packet) (err error) {
+	if packet.magic != magic {
+		return errWrongMagic
 	}
 
-	length := uint32(len(packet.Data))
-	if packet.Length != length {
-		return ErrWrongLength
+	length := uint32(len(packet.data))
+	if packet.length != length {
+		return errWrongLength
+	}
+
+	if packet.length > maxDataBytes {
+		return errDataTooLarge
 	}
 
 	endian := binary.BigEndian
-	magicAndType := (packet.Magic << 8) | uint32(packet.Type)
-	packetBytes := make([]byte, 0, HeaderBytes+packet.Length)
-	packetBytes = endian.AppendUint32(packetBytes, magicAndType)
-	packetBytes = endian.AppendUint32(packetBytes, packet.Length)
-	packetBytes = endian.AppendUint64(packetBytes, packet.Sequence)
-	packetBytes = append(packetBytes, packet.Data...)
+	packetBytes := make([]byte, 0, headerBytes+packet.length)
+	packetBytes = endian.AppendUint64(packetBytes, packet.id)
+	packetBytes = endian.AppendUint32(packetBytes, packet.magic)
+	packetBytes = endian.AppendUint64(packetBytes, packet.flags)
+	packetBytes = endian.AppendUint32(packetBytes, packet.length)
+	packetBytes = append(packetBytes, packet.data...)
 
 	_, err = writer.Write(packetBytes)
 	return err

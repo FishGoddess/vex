@@ -24,23 +24,23 @@ _历史版本的特性请查看 [HISTORY.md](./HISTORY.md)。未来版本的新�
 ABNF：
 
 ```abnf
-PACKET = MAGIC TYPE LENGTH SEQUENCE DATA
-MAGIC = 3OCTET ; 魔数，目前是 0xC638B（811915）
-TYPE = OCTET ; 类型，0x00-0xFF
+PACKET = ID MAGIC FLAGS LENGTH DATA
+ID = 8OCTET ; 编号，用来区分不同的数据包
+MAGIC = 4OCTET ; 魔数，目前是 1997811915
+FLAGS = 8OCTET ; 标志位，比如是否为错误包
 LENGTH = 4OCTET ; 长度，最大 4GB
-SEQUENCE = 8OCTET ; 序号，用来区分不同的数据包
-DATA = *OCTET ; 数据，实际大小需要靠 LENGTH 来确认
+DATA = *OCTET ; 数据，需要靠 LENGTH 来确认
 ```
 
 人话：
 
 ```
 数据包：
-magic     type     length    sequence     {data}
-3byte     1byte     4byte     8byte       unknown
+id       magic     flags     length     {data}
+8byte    3byte     1byte     4byte      unknown
 ```
 
-_你会发现协议没有版本号的字段，其实是我们选择将版本号融入到类型字段中，因为每个版本可能对应的类型都不一样。_
+_你会发现协议没有版本号的字段，其实是我们选择将版本号融入到魔数字段中，所以每个版本可能对应的魔数不一样。_
 
 ### 🔦 使用案例
 

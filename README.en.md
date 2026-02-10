@@ -24,23 +24,23 @@ _Check [HISTORY.md](./HISTORY.md) and [FUTURE.md](./FUTURE.md) to know about mor
 ABNF:
 
 ```abnf
-PACKET = MAGIC TYPE LENGTH SEQUENCE DATA
-MAGIC = 3OCTET ; value is 0xC638B (811915)
-TYPE = OCTET ; 255 at most
+PACKET = ID MAGIC FLAGS LENGTH DATA
+ID = 8OCTET ; Identify different packets
+MAGIC = 3OCTET ; value is 1997811915
+FLAGS = 8OCTET ; Set some flags of packet
 LENGTH = 4OCTET ; 4GB at most
-SEQUENCE = 8OCTET ; For distinguishing different packets
-DATA = *OCTET ; Size is determined by LENGTH
+DATA = *OCTET ; Determined by LENGTH
 ```
 
 In human:
 
 ```
 Packet:
-magic     type     length    sequence     {data}
-3byte     1byte     4byte     8byte       unknown
+id       magic     flags     length     {data}
+8byte    3byte     1byte     4byte      unknown
 ```
 
-_The version of protocol is in type because we think different versions may have different types._
+_The version of protocol is in magic because we think different versions may have different magics._
 
 ### 🔦 Examples
 

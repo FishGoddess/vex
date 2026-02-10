@@ -52,11 +52,12 @@ func TestServerHandler(t *testing.T) {
 
 		defer conn.Close()
 
-		sequence := uint64(12345)
-		packet := packets.Packet{Magic: packets.Magic, Type: packets.PacketTypeRequest, Sequence: sequence}
-		packet.With([]byte("test"))
+		id := uint64(12345)
+		data := []byte("test")
+		packet := packets.New(id)
+		packet.SetData(data)
 
-		err = packets.Encode(conn, packet)
+		err = packets.WritePacket(conn, packet)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,29 +70,22 @@ func TestServerHandler(t *testing.T) {
 			t.Fatalf("%d: got %s != want %s", i, got, want)
 		}
 
-		decodePacket, err := packets.Decode(conn)
+		readPacket, err := packets.ReadPacket(conn)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if decodePacket.Magic != packets.Magic {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Magic, packets.Magic)
+		if readPacket.ID() != id {
+			t.Fatalf("%d: got %d != want %d", i, readPacket.ID(), id)
 		}
 
-		if decodePacket.Type != packets.PacketTypeResponse {
-			t.Fatalf("%d: got %v != want %v", i, decodePacket.Type, packets.PacketTypeResponse)
+		readData, err := readPacket.Data()
+		if err != nil {
+			t.Fatal(err)
 		}
 
-		if decodePacket.Length != uint32(len(decodePacket.Data)) {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Length, uint32(len(packet.Data)))
-		}
-
-		if decodePacket.Sequence != sequence {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Sequence, sequence)
-		}
-
-		got = string(decodePacket.Data)
-		want = string(packet.Data)
+		got = string(readData)
+		want = string(data)
 		if got != want {
 			t.Fatalf("%d: got %s != want %s", i, got, want)
 		}
@@ -142,11 +136,12 @@ func TestServerError(t *testing.T) {
 
 		defer conn.Close()
 
-		sequence := uint64(12345)
-		packet := packets.Packet{Magic: packets.Magic, Type: 0, Sequence: sequence}
-		packet.With([]byte("test"))
+		id := uint64(12345)
+		data := []byte("test")
+		packet := packets.New(id)
+		packet.SetData(data)
 
-		err = packets.Encode(conn, packet)
+		err = packets.WritePacket(conn, packet)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -154,34 +149,27 @@ func TestServerError(t *testing.T) {
 		time.Sleep(time.Millisecond)
 
 		got := string(handler.data)
-		want := ""
+		want := strings.Repeat("test\n", i)
 		if got != want {
 			t.Fatalf("%d: got %s != want %s", i, got, want)
 		}
 
-		decodePacket, err := packets.Decode(conn)
+		readPacket, err := packets.ReadPacket(conn)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if decodePacket.Magic != packets.Magic {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Magic, packets.Magic)
+		if readPacket.ID() != id {
+			t.Fatalf("%d: got %d != want %d", i, readPacket.ID(), id)
 		}
 
-		if decodePacket.Type != packets.PacketTypeError {
-			t.Fatalf("%d: got %v != want %v", i, decodePacket.Type, packets.PacketTypeError)
+		_, err = readPacket.Data()
+		if err == nil {
+			t.Fatalf("data returns nil error")
 		}
 
-		if decodePacket.Length != uint32(len(decodePacket.Data)) {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Length, uint32(len(decodePacket.Data)))
-		}
-
-		if decodePacket.Sequence != sequence {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Sequence, sequence)
-		}
-
-		got = string(decodePacket.Data)
-		want = "vex: packet type 0 is wrong"
+		got = string(err.Error())
+		want = string(data)
 		if got != want {
 			t.Fatalf("%d: got %s != want %s", i, got, want)
 		}
@@ -218,11 +206,12 @@ func TestServerErrorHandler(t *testing.T) {
 
 		defer conn.Close()
 
-		sequence := uint64(12345)
-		packet := packets.Packet{Magic: packets.Magic, Type: packets.PacketTypeRequest, Sequence: sequence}
-		packet.With([]byte("test"))
+		id := uint64(12345)
+		data := []byte("test")
+		packet := packets.New(id)
+		packet.SetData(data)
 
-		err = packets.Encode(conn, packet)
+		err = packets.WritePacket(conn, packet)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -235,29 +224,22 @@ func TestServerErrorHandler(t *testing.T) {
 			t.Fatalf("%d: got %s != want %s", i, got, want)
 		}
 
-		decodePacket, err := packets.Decode(conn)
+		readPacket, err := packets.ReadPacket(conn)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if decodePacket.Magic != packets.Magic {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Magic, packets.Magic)
+		if readPacket.ID() != id {
+			t.Fatalf("%d: got %d != want %d", i, readPacket.ID(), id)
 		}
 
-		if decodePacket.Type != packets.PacketTypeError {
-			t.Fatalf("%d: got %v != want %v", i, decodePacket.Type, packets.PacketTypeError)
+		_, err = readPacket.Data()
+		if err == nil {
+			t.Fatalf("data returns nil error")
 		}
 
-		if decodePacket.Length != uint32(len(decodePacket.Data)) {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Length, uint32(len(decodePacket.Data)))
-		}
-
-		if decodePacket.Sequence != sequence {
-			t.Fatalf("%d: got %d != want %d", i, decodePacket.Sequence, sequence)
-		}
-
-		got = string(decodePacket.Data)
-		want = string(packet.Data)
+		got = string(err.Error())
+		want = string(data)
 		if got != want {
 			t.Fatalf("%d: got %s != want %s", i, got, want)
 		}

@@ -18,16 +18,16 @@ type Logger interface {
 }
 
 type config struct {
-	logger         Logger
-	flushInterval  time.Duration
-	connectTimeout time.Duration
+	logger        Logger
+	flushInterval time.Duration
+	dialTimeout   time.Duration
 }
 
 func newConfig() *config {
 	conf := &config{
-		logger:         slog.Default(),
-		flushInterval:  time.Second,
-		connectTimeout: 3 * time.Second,
+		logger:        slog.Default(),
+		flushInterval: time.Second,
+		dialTimeout:   3 * time.Second,
 	}
 
 	return conf
@@ -58,9 +58,9 @@ func WithFlushInterval(interval time.Duration) Option {
 	}
 }
 
-// WithConnectTimeout sets the connect timeout to config.
-func WithConnectTimeout(timeout time.Duration) Option {
+// WithDialTimeout sets the dial timeout to config.
+func WithDialTimeout(timeout time.Duration) Option {
 	return func(c *config) {
-		c.connectTimeout = timeout
+		c.dialTimeout = timeout
 	}
 }

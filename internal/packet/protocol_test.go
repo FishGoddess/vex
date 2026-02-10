@@ -12,8 +12,8 @@ import (
 	"testing"
 )
 
-// go test -v -cover -run=^TestDecode$
-func TestDecode(t *testing.T) {
+// go test -v -cover -run=^TestReadPacket$
+func TestReadPacket(t *testing.T) {
 	type testCase struct {
 		packetBytes []byte
 		packet      Packet
@@ -27,23 +27,28 @@ func TestDecode(t *testing.T) {
 			err:         io.EOF,
 		},
 		{
-			packetBytes: make([]byte, HeaderBytes),
+			packetBytes: make([]byte, headerBytes),
 			packet:      Packet{},
-			err:         ErrWrongMagic,
+			err:         errWrongMagic,
 		},
 		{
-			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			packet:      Packet{},
 			err:         io.ErrUnexpectedEOF,
 		},
 		{
-			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9},
-			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 0, Sequence: 9},
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+			packet:      Packet{id: 5, magic: magic, flags: 1, length: 0},
 			err:         nil,
 		},
 		{
-			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 9, 6, 7, 8},
-			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 3, Sequence: 9, Data: []byte{6, 7, 8}},
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, 'A', 'B', 'C'},
+			packet:      Packet{id: 5, magic: magic, flags: 1, length: 3, data: []byte("ABC")},
+			err:         nil,
+		},
+		{
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 'A', 'B', 'C'},
+			packet:      Packet{id: 5, magic: magic, flags: 0, length: 3, data: []byte("ABC")},
 			err:         nil,
 		},
 	}
@@ -51,7 +56,7 @@ func TestDecode(t *testing.T) {
 	for _, testCase := range testCases {
 		reader := bytes.NewBuffer(testCase.packetBytes)
 
-		packet, err := Decode(reader)
+		packet, err := ReadPacket(reader)
 		if err != testCase.err {
 			t.Fatalf("input %+v: got %+v != want %+v", testCase.packetBytes, err, testCase.err)
 		}
@@ -64,8 +69,8 @@ func TestDecode(t *testing.T) {
 	}
 }
 
-// go test -v -cover -run=^TestEncode$
-func TestEncode(t *testing.T) {
+// go test -v -cover -run=^TestWritePacket$
+func TestWritePacket(t *testing.T) {
 	type testCase struct {
 		packetBytes []byte
 		packet      Packet
@@ -76,21 +81,26 @@ func TestEncode(t *testing.T) {
 		{
 			packetBytes: []byte{},
 			packet:      Packet{},
-			err:         ErrWrongMagic,
+			err:         errWrongMagic,
 		},
 		{
 			packetBytes: []byte{},
-			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 1, Sequence: 6},
-			err:         ErrWrongLength,
+			packet:      Packet{id: 5, magic: magic, flags: 1, length: 3},
+			err:         errWrongLength,
 		},
 		{
-			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9},
-			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 0, Sequence: 9},
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+			packet:      Packet{id: 5, magic: magic, flags: 1, length: 0},
 			err:         nil,
 		},
 		{
-			packetBytes: []byte{0xC, 0x63, 0x8B, PacketTypeError, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 9, 6, 7, 8},
-			packet:      Packet{Magic: Magic, Type: PacketTypeError, Length: 3, Sequence: 9, Data: []byte{6, 7, 8}},
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, 'A', 'B', 'C'},
+			packet:      Packet{id: 5, magic: magic, flags: 1, length: 3, data: []byte("ABC")},
+			err:         nil,
+		},
+		{
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 'A', 'B', 'C'},
+			packet:      Packet{id: 5, magic: magic, flags: 0, length: 3, data: []byte("ABC")},
 			err:         nil,
 		},
 	}
@@ -98,7 +108,7 @@ func TestEncode(t *testing.T) {
 	for _, testCase := range testCases {
 		writer := bytes.NewBuffer(make([]byte, 0, 128))
 
-		err := Encode(writer, testCase.packet)
+		err := WritePacket(writer, testCase.packet)
 		if err != testCase.err {
 			t.Fatalf("input %+v: got %+v != want %+v", testCase.packet, err, testCase.err)
 		}

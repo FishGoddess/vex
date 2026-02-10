@@ -87,40 +87,37 @@ func (s *server) watchSignals() {
 func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 	logger := s.conf.logger
 
-	packet, err := packets.Decode(reader)
+	packet, err := packets.ReadPacket(reader)
 	if err == io.EOF {
-		logger.Debug("decode packet eof", "err", err)
+		logger.Debug("read packet eof", "err", err)
 		return err
 	}
 
 	if errors.Is(err, net.ErrClosed) {
-		logger.Debug("decode packet but closed", "err", err)
+		logger.Debug("read packet closed", "err", err)
 		return err
 	}
 
 	if err != nil {
-		logger.Error("decode packet failed", "err", err)
+		logger.Error("read packet failed", "err", err)
 		return err
 	}
 
-	var data []byte
-	if packet.Type == packets.PacketTypeRequest {
-		data, err = s.handler.Handle(s.ctx, packet.Data)
-	} else {
-		err = fmt.Errorf("vex: packet type %v is wrong", packet.Type)
+	data, err := packet.Data()
+	if err != nil {
+		return fmt.Errorf("vex: packet data returns error: %+v", err)
 	}
 
+	data, err = s.handler.Handle(s.ctx, data)
 	if err != nil {
-		packet.Type = packets.PacketTypeError
-		packet.With([]byte(err.Error()))
+		packet.SetError(err)
 	} else {
-		packet.Type = packets.PacketTypeResponse
-		packet.With(data)
+		packet.SetData(data)
 	}
 
-	err = packets.Encode(writer, packet)
+	err = packets.WritePacket(writer, packet)
 	if err != nil {
-		logger.Error("encode packet failed", "err", err, "packet", packet)
+		logger.Error("write packet failed", "err", err)
 		return err
 	}
 

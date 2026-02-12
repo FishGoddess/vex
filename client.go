@@ -27,7 +27,7 @@ type client struct {
 	cancel context.CancelFunc
 
 	conn       net.Conn
-	inflight   map[uint64]chan *packets.Packet
+	inflight   map[uint64]chan packets.Packet
 	inflightID uint64
 
 	group sync.WaitGroup
@@ -44,7 +44,7 @@ func NewClient(address string, opts ...Option) (Client, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	inflight := make(map[uint64]chan *packets.Packet, 256)
+	inflight := make(map[uint64]chan packets.Packet, 256)
 
 	client := new(client)
 	client.conf = conf
@@ -57,7 +57,7 @@ func NewClient(address string, opts ...Option) (Client, error) {
 	return client, nil
 }
 
-func (c *client) inflightPacket(packet *packets.Packet) error {
+func (c *client) inflightPacket(packet packets.Packet) error {
 	select {
 	case <-c.ctx.Done():
 		return c.ctx.Err()
@@ -83,13 +83,13 @@ func (c *client) inflightLoop() {
 			return
 		}
 
-		if err = c.inflightPacket(&packet); err != nil {
+		if err = c.inflightPacket(packet); err != nil {
 			return
 		}
 	}
 }
 
-func (c *client) handleData(data []byte) (packet packets.Packet, packetCh chan *packets.Packet, done func(), err error) {
+func (c *client) handleData(data []byte) (packet packets.Packet, packetCh chan packets.Packet, done func(), err error) {
 	c.lock.Lock()
 	if c.inflight == nil {
 		c.lock.Unlock()
@@ -100,7 +100,7 @@ func (c *client) handleData(data []byte) (packet packets.Packet, packetCh chan *
 	c.inflightID++
 	inflightID := c.inflightID
 
-	packetCh = make(chan *packets.Packet, 1)
+	packetCh = make(chan packets.Packet, 1)
 	c.inflight[inflightID] = packetCh
 	c.lock.Unlock()
 
@@ -115,7 +115,7 @@ func (c *client) handleData(data []byte) (packet packets.Packet, packetCh chan *
 	return packet, packetCh, done, nil
 }
 
-func (c *client) waitData(ctx context.Context, packetCh chan *packets.Packet) ([]byte, error) {
+func (c *client) waitData(ctx context.Context, packetCh chan packets.Packet) ([]byte, error) {
 	select {
 	case packet := <-packetCh:
 		return packet.Data()

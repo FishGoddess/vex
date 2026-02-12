@@ -10,7 +10,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"sync/atomic"
 
 	packets "github.com/FishGoddess/vex/internal/packet"
 )
@@ -24,13 +23,15 @@ type Client interface {
 type client struct {
 	conf *config
 
-	conn     net.Conn
-	id       atomic.Uint64
-	inflight map[uint64]chan *packets.Packet
-	done     chan struct{}
+	ctx    context.Context
+	cancel context.CancelFunc
 
-	once sync.Once
-	lock sync.Mutex
+	conn       net.Conn
+	inflight   map[uint64]chan *packets.Packet
+	inflightID uint64
+
+	group sync.WaitGroup
+	lock  sync.Mutex
 }
 
 // NewClient creates a client with address.
@@ -42,108 +43,120 @@ func NewClient(address string, opts ...Option) (Client, error) {
 		return nil, err
 	}
 
-	client := &client{
-		conf:     conf,
-		conn:     conn,
-		inflight: make(map[uint64]chan *packets.Packet, 256),
-		done:     make(chan struct{}),
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	inflight := make(map[uint64]chan *packets.Packet, 256)
 
-	go client.inflightLoop()
+	client := new(client)
+	client.conf = conf
+	client.ctx = ctx
+	client.cancel = cancel
+	client.conn = conn
+	client.inflight = inflight
+
+	client.group.Go(client.inflightLoop)
 	return client, nil
+}
+
+func (c *client) inflightPacket(packet *packets.Packet) error {
+	select {
+	case <-c.ctx.Done():
+		return c.ctx.Err()
+	default:
+		c.lock.Lock()
+		ch := c.inflight[packet.ID()]
+		c.lock.Unlock()
+
+		if ch != nil {
+			ch <- packet
+		}
+
+		return nil
+	}
 }
 
 func (c *client) inflightLoop() {
 	reader := bufio.NewReader(c.conn)
 	for {
-		// Packet
 		packet, err := packets.ReadPacket(reader)
 		if err != nil {
 			c.Close()
 			return
 		}
 
-		// Inflight
-		select {
-		case <-c.done:
+		if err = c.inflightPacket(&packet); err != nil {
 			return
-		default:
-			c.lock.Lock()
-			ch := c.inflight[packet.ID()]
-			c.lock.Unlock()
-
-			if ch != nil {
-				ch <- &packet
-			}
 		}
+	}
+}
+
+func (c *client) handleData(data []byte) (packet packets.Packet, packetCh chan *packets.Packet, done func(), err error) {
+	c.lock.Lock()
+	if c.inflight == nil {
+		c.lock.Unlock()
+
+		return packet, nil, nil, errors.New("vex: client is closed")
+	}
+
+	c.inflightID++
+	inflightID := c.inflightID
+
+	packetCh = make(chan *packets.Packet, 1)
+	c.inflight[inflightID] = packetCh
+	c.lock.Unlock()
+
+	done = func() {
+		c.lock.Lock()
+		delete(c.inflight, inflightID)
+		c.lock.Unlock()
+	}
+
+	packet = packets.New(inflightID)
+	packet.SetData(data)
+	return packet, packetCh, done, nil
+}
+
+func (c *client) waitData(ctx context.Context, packetCh chan *packets.Packet) ([]byte, error) {
+	select {
+	case packet := <-packetCh:
+		return packet.Data()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-c.ctx.Done():
+		return nil, errors.New("vex: client is closed")
 	}
 }
 
 // Send sends data and gets a new data.
 // Returns an error if failed.
 func (c *client) Send(ctx context.Context, data []byte) ([]byte, error) {
-	// Inflight
-	id := c.id.Add(1)
-	ch := make(chan *packets.Packet, 1)
-
-	c.lock.Lock()
-	if c.inflight == nil {
-		c.lock.Unlock()
-
-		err := errors.New("vex: client is closed")
-		return nil, err
-	}
-
-	c.inflight[id] = ch
-	c.lock.Unlock()
-
-	defer func() {
-		c.lock.Lock()
-		delete(c.inflight, id)
-		c.lock.Unlock()
-	}()
-
-	// Packet
-	packet := packets.New(id)
-	packet.SetData(data)
-
-	err := packets.WritePacket(c.conn, packet)
+	packet, packetCh, done, err := c.handleData(data)
 	if err != nil {
 		return nil, err
 	}
 
-	select {
-	case packet := <-ch:
-		if packet == nil {
-			err := errors.New("vex: client is closed")
-			return nil, err
-		}
+	defer done()
 
-		return packet.Data()
-	case <-ctx.Done():
-		err = ctx.Err()
-		return nil, err
-	case <-c.done:
-		err := errors.New("vex: client is closed")
+	err = packets.WritePacket(c.conn, packet)
+	if err != nil {
 		return nil, err
 	}
+
+	return c.waitData(ctx, packetCh)
 }
 
 // Close closes the client and returns an error if failed.
 func (c *client) Close() error {
 	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	if err := c.conn.Close(); err != nil {
+		c.lock.Unlock()
+
 		return err
 	}
 
-	for _, ch := range c.inflight {
-		ch <- nil
-	}
-
-	c.once.Do(func() { close(c.done) })
-	c.id.Store(0)
+	c.cancel()
 	c.inflight = nil
+	c.inflightID = 0
+	c.lock.Unlock()
+	c.group.Wait()
 	return nil
 }

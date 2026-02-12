@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -47,7 +46,6 @@ type server struct {
 // NewServer creates a server with address and handler.
 func NewServer(address string, handler Handler, opts ...Option) Server {
 	conf := newConfig().apply(opts...)
-	ctx, cancel := context.WithCancel(context.Background())
 
 	if address == "" {
 		panic("vex: server address is nil")
@@ -57,15 +55,16 @@ func NewServer(address string, handler Handler, opts ...Option) Server {
 		panic("vex: server handler is nil")
 	}
 
-	server := &server{
-		conf:    conf,
-		ctx:     ctx,
-		cancel:  cancel,
-		address: address,
-		handler: handler,
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	go server.watchSignals()
+	server := new(server)
+	server.conf = conf
+	server.ctx = ctx
+	server.cancel = cancel
+	server.address = address
+	server.handler = handler
+
+	server.group.Go(server.watchSignals)
 	return server
 }
 
@@ -75,36 +74,27 @@ func (s *server) watchSignals() {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
-	sg := <-signalCh
-	logger.Info("received a signal", "signal", sg)
+	select {
+	case sg := <-signalCh:
+		logger.Info("received a signal", "signal", sg)
 
-	if err := s.Close(); err != nil {
-		logger.Error("close server failed", "err", err)
+		if err := s.Close(); err != nil {
+			logger.Error("close server failed", "err", err)
+		}
+	case <-s.ctx.Done():
+		logger.Debug("context is done")
 	}
 }
 
 func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
-	logger := s.conf.logger
-
 	packet, err := packets.ReadPacket(reader)
-	if err == io.EOF {
-		logger.Debug("read packet eof", "err", err)
-		return err
-	}
-
-	if errors.Is(err, net.ErrClosed) {
-		logger.Debug("read packet closed", "err", err)
-		return err
-	}
-
 	if err != nil {
-		logger.Error("read packet failed", "err", err)
 		return err
 	}
 
 	data, err := packet.Data()
 	if err != nil {
-		return fmt.Errorf("vex: packet data returns error: %+v", err)
+		return err
 	}
 
 	data, err = s.handler.Handle(s.ctx, data)
@@ -116,7 +106,6 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 
 	err = packets.WritePacket(writer, packet)
 	if err != nil {
-		logger.Error("write packet failed", "err", err)
 		return err
 	}
 
@@ -125,18 +114,22 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 
 func (s *server) handleConn(conn net.Conn) {
 	logger := s.conf.logger
-	logger.Debug("handle conn", "address", conn.RemoteAddr())
-	defer logger.Debug("handle conn done", "address", conn.RemoteAddr())
-
-	s.group.Go(func() {
-		<-s.ctx.Done()
-		conn.Close()
-	})
 
 	reader := bufio.NewReader(conn)
-	writer := conn
 	for {
-		if err := s.handlePacket(reader, writer); err != nil {
+		err := s.handlePacket(reader, conn)
+		if err == io.EOF {
+			logger.Debug("read packet eof", "err", err)
+			return
+		}
+
+		if errors.Is(err, net.ErrClosed) {
+			logger.Debug("read packet closed", "err", err)
+			return
+		}
+
+		if err != nil {
+			logger.Error("handle packet failed", "err", err)
 			return
 		}
 	}
@@ -161,7 +154,9 @@ func (s *server) serve() error {
 		s.group.Go(func() {
 			defer conn.Close()
 
+			logger.Info("handle conn start", "address", conn.RemoteAddr())
 			s.handleConn(conn)
+			logger.Info("handle conn end", "address", conn.RemoteAddr())
 		})
 	}
 
@@ -176,10 +171,12 @@ func (s *server) Serve() error {
 	if s.listener != nil {
 		s.lock.Unlock()
 
+		logger.Error("server is already serving")
 		return errors.New("vex: server is already serving")
 	}
 
 	var lc net.ListenConfig
+
 	listener, err := lc.Listen(s.ctx, "tcp", s.address)
 	if err != nil {
 		logger.Error("listen tcp failed", "err", err, "address", s.address)
@@ -194,15 +191,16 @@ func (s *server) Serve() error {
 // Close closes the server and returns an error if failed.
 func (s *server) Close() error {
 	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	if s.listener != nil {
 		if err := s.listener.Close(); err != nil {
+			s.lock.Unlock()
+
 			return err
 		}
 	}
 
 	s.cancel()
+	s.lock.Unlock()
 	s.group.Wait()
 	return nil
 }

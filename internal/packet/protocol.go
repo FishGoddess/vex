@@ -25,9 +25,9 @@ var (
 
 // ReadPacket reads a packet from reader and returns an error if failed.
 func ReadPacket(reader io.Reader) (packet Packet, err error) {
-	var header [headerBytes]byte
+	header := make([]byte, headerBytes)
 
-	_, err = io.ReadFull(reader, header[:])
+	_, err = io.ReadFull(reader, header)
 	if err != nil {
 		return packet, err
 	}
@@ -44,6 +44,10 @@ func ReadPacket(reader io.Reader) (packet Packet, err error) {
 
 	if packet.length <= 0 {
 		return packet, nil
+	}
+
+	if packet.length > maxDataBytes {
+		return packet, errDataTooLarge
 	}
 
 	packet.data = make([]byte, packet.length)

@@ -52,7 +52,7 @@ func TestServerHandler(t *testing.T) {
 
 		defer conn.Close()
 
-		id := uint64(12345)
+		id := uint64(i)
 		data := []byte("test")
 		packet := packets.New(id)
 		packet.SetData(data)
@@ -136,7 +136,7 @@ func TestServerError(t *testing.T) {
 
 		defer conn.Close()
 
-		id := uint64(12345)
+		id := uint64(i)
 		data := []byte("test")
 		packet := packets.New(id)
 		packet.SetData(data)
@@ -206,7 +206,7 @@ func TestServerErrorHandler(t *testing.T) {
 
 		defer conn.Close()
 
-		id := uint64(12345)
+		id := uint64(i)
 		data := []byte("test")
 		packet := packets.New(id)
 		packet.SetData(data)

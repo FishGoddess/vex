@@ -119,12 +119,12 @@ func (s *server) handleConn(conn net.Conn) {
 	for {
 		err := s.handlePacket(reader, conn)
 		if err == io.EOF {
-			logger.Debug("read packet eof", "err", err)
+			logger.Debug("handle packet eof", "err", err)
 			return
 		}
 
 		if errors.Is(err, net.ErrClosed) {
-			logger.Debug("read packet closed", "err", err)
+			logger.Debug("handle packet closed", "err", err)
 			return
 		}
 

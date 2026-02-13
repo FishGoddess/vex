@@ -90,7 +90,7 @@ func (s *server) watchSignals() {
 			logger.Error("close server failed", "err", err)
 		}
 	case <-s.ctx.Done():
-		logger.Info("context is done")
+		logger.Debug("server context is done")
 	}
 }
 
@@ -195,7 +195,7 @@ func (s *server) Serve() error {
 	if s.listener != nil {
 		s.lock.Unlock()
 
-		logger.Error("server is already serving")
+		logger.Error("server is already serving", "address", s.address)
 		return errServerAlreadyServing
 	}
 

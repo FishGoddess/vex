@@ -42,8 +42,8 @@ func TestPacketFlagSet(t *testing.T) {
 func TestPacketID(t *testing.T) {
 	packet := Packet{id: 1234567890}
 
-	if packet.id != 1234567890 {
-		t.Fatalf("got %+v is wrong", packet.id)
+	if packet.ID() != 1234567890 {
+		t.Fatalf("got %+v is wrong", packet.ID())
 	}
 }
 
@@ -95,8 +95,16 @@ func TestPacketSetFlag(t *testing.T) {
 func TestPacketSetData(t *testing.T) {
 	data := []byte("终不似少年游")
 
-	packet := Packet{length: 0, data: nil}
+	packet := Packet{flags: 0, length: 0, data: nil}
 	packet.SetData(data)
+
+	if packet.flags != 0 {
+		t.Fatalf("got %d != want 0", packet.flags)
+	}
+
+	if int(packet.length) != len(data) {
+		t.Fatalf("got %d != want %d", packet.length, len(data))
+	}
 
 	got := packet.data
 	if !slices.Equal(got, data) {
@@ -106,10 +114,31 @@ func TestPacketSetData(t *testing.T) {
 
 // go test -v -cover -run=^TestPacketSetError$
 func TestPacketSetError(t *testing.T) {
-	err := io.EOF
+	packet := Packet{flags: 0, length: 0, data: nil}
+	packet.SetError(nil)
 
-	packet := Packet{length: 0, data: nil}
+	if packet.flags != 0 {
+		t.Fatalf("got %d != want 0", packet.flags)
+	}
+
+	if packet.length != 0 {
+		t.Fatalf("got %d != want 0", packet.length)
+	}
+
+	if packet.data != nil {
+		t.Fatalf("got %+v != want nil", packet.data)
+	}
+
+	err := io.EOF
 	packet.SetError(err)
+
+	if packet.flags != flagError {
+		t.Fatalf("got %d != want %d", packet.flags, flagError)
+	}
+
+	if int(packet.length) != len(err.Error()) {
+		t.Fatalf("got %d != want %d", packet.length, len(err.Error()))
+	}
 
 	got := packet.data
 	want := []byte(err.Error())

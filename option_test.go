@@ -16,11 +16,12 @@ import (
 func TestConfigApply(t *testing.T) {
 	var conf config
 
-	opt1 := func(c *config) { c.flushInterval = 1 }
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	opt1 := func(c *config) { c.logger = logger }
 	opt2 := func(c *config) { c.dialTimeout = 2 }
 
 	got := *conf.apply(opt1, opt2)
-	want := config{flushInterval: 1, dialTimeout: 2}
+	want := config{logger: logger, dialTimeout: 2}
 	if got != want {
 		t.Fatalf("got %+v != want %+v", got, want)
 	}
@@ -37,20 +38,6 @@ func TestWithLogger(t *testing.T) {
 	want := fmt.Sprintf("%p", logger)
 	if got != want {
 		t.Fatalf("got %s != want %s", got, want)
-	}
-}
-
-// go test -v -cover -run=^TestWithFlushInterval$
-func TestWithFlushInterval(t *testing.T) {
-	interval := time.Millisecond
-
-	conf := &config{flushInterval: 0}
-	WithFlushInterval(interval)(conf)
-
-	got := conf.flushInterval
-	want := interval
-	if got != want {
-		t.Fatalf("got %d != want %d", got, want)
 	}
 }
 

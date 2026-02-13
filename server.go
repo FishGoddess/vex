@@ -18,6 +18,10 @@ import (
 	packets "github.com/FishGoddess/vex/internal/packet"
 )
 
+var (
+	errServerAlreadyServing = errors.New("vex: server is already serving")
+)
+
 // Handler is for handling the data from client and returns the new data or an error if failed.
 type Handler interface {
 	Handle(ctx context.Context, data []byte) ([]byte, error)
@@ -37,6 +41,8 @@ type server struct {
 
 	address  string
 	listener net.Listener
+	conns    map[uint64]net.Conn
+	connID   uint64
 	handler  Handler
 
 	group sync.WaitGroup
@@ -62,9 +68,11 @@ func NewServer(address string, handler Handler, opts ...Option) Server {
 	server.ctx = ctx
 	server.cancel = cancel
 	server.address = address
+	server.conns = make(map[uint64]net.Conn, 64)
+	server.connID = 0
 	server.handler = handler
 
-	server.group.Go(server.watchSignals)
+	go server.watchSignals()
 	return server
 }
 
@@ -82,8 +90,13 @@ func (s *server) watchSignals() {
 			logger.Error("close server failed", "err", err)
 		}
 	case <-s.ctx.Done():
-		logger.Debug("context is done")
+		logger.Info("context is done")
 	}
+}
+
+func (s *server) nextConnID() uint64 {
+	s.connID++
+	return s.connID
 }
 
 func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
@@ -151,8 +164,19 @@ func (s *server) serve() error {
 			continue
 		}
 
+		s.lock.Lock()
+		connID := s.nextConnID()
+		s.conns[connID] = conn
+		s.lock.Unlock()
+
 		s.group.Go(func() {
 			defer conn.Close()
+
+			defer func() {
+				s.lock.Lock()
+				delete(s.conns, connID)
+				s.lock.Unlock()
+			}()
 
 			logger.Info("handle conn start", "address", conn.RemoteAddr())
 			s.handleConn(conn)
@@ -172,13 +196,15 @@ func (s *server) Serve() error {
 		s.lock.Unlock()
 
 		logger.Error("server is already serving")
-		return errors.New("vex: server is already serving")
+		return errServerAlreadyServing
 	}
 
 	var lc net.ListenConfig
 
 	listener, err := lc.Listen(s.ctx, "tcp", s.address)
 	if err != nil {
+		s.lock.Unlock()
+
 		logger.Error("listen tcp failed", "err", err, "address", s.address)
 		return err
 	}
@@ -199,7 +225,18 @@ func (s *server) Close() error {
 		}
 	}
 
+	for _, conn := range s.conns {
+		if err := conn.Close(); err != nil {
+			s.lock.Unlock()
+
+			return err
+		}
+	}
+
 	s.cancel()
+	s.listener = nil
+	s.conns = nil
+	s.connID = 0
 	s.lock.Unlock()
 	s.group.Wait()
 	return nil

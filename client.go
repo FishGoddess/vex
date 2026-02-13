@@ -14,6 +14,10 @@ import (
 	packets "github.com/FishGoddess/vex/internal/packet"
 )
 
+var (
+	errClientClosed = errors.New("vex: client is closed")
+)
+
 // Client is the interface of vex client.
 type Client interface {
 	Send(ctx context.Context, data []byte) ([]byte, error)
@@ -30,8 +34,7 @@ type client struct {
 	inflight   map[uint64]chan packets.Packet
 	inflightID uint64
 
-	group sync.WaitGroup
-	lock  sync.Mutex
+	lock sync.Mutex
 }
 
 // NewClient creates a client with address.
@@ -44,7 +47,7 @@ func NewClient(address string, opts ...Option) (Client, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	inflight := make(map[uint64]chan packets.Packet, 256)
+	inflight := make(map[uint64]chan packets.Packet, 1024)
 
 	client := new(client)
 	client.conf = conf
@@ -53,7 +56,7 @@ func NewClient(address string, opts ...Option) (Client, error) {
 	client.conn = conn
 	client.inflight = inflight
 
-	client.group.Go(client.inflightLoop)
+	go client.inflightLoop()
 	return client, nil
 }
 
@@ -89,17 +92,20 @@ func (c *client) inflightLoop() {
 	}
 }
 
+func (c *client) nextInflightID() uint64 {
+	c.inflightID++
+	return c.inflightID
+}
+
 func (c *client) handleData(data []byte) (packet packets.Packet, packetCh chan packets.Packet, done func(), err error) {
 	c.lock.Lock()
 	if c.inflight == nil {
 		c.lock.Unlock()
 
-		return packet, nil, nil, errors.New("vex: client is closed")
+		return packet, nil, nil, errClientClosed
 	}
 
-	c.inflightID++
-	inflightID := c.inflightID
-
+	inflightID := c.nextInflightID()
 	packetCh = make(chan packets.Packet, 1)
 	c.inflight[inflightID] = packetCh
 	c.lock.Unlock()
@@ -122,7 +128,7 @@ func (c *client) waitData(ctx context.Context, packetCh chan packets.Packet) ([]
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-c.ctx.Done():
-		return nil, errors.New("vex: client is closed")
+		return nil, errClientClosed
 	}
 }
 
@@ -157,6 +163,5 @@ func (c *client) Close() error {
 	c.inflight = nil
 	c.inflightID = 0
 	c.lock.Unlock()
-	c.group.Wait()
 	return nil
 }

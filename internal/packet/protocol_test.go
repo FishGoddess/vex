@@ -14,6 +14,8 @@ import (
 
 // go test -v -cover -run=^TestReadPacket$
 func TestReadPacket(t *testing.T) {
+	maxDataBytes = 8
+
 	type testCase struct {
 		packetBytes []byte
 		packet      Packet
@@ -35,6 +37,11 @@ func TestReadPacket(t *testing.T) {
 			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			packet:      Packet{},
 			err:         io.ErrUnexpectedEOF,
+		},
+		{
+			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 10, '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'},
+			packet:      Packet{id: 5, magic: magic, flags: 1, length: 10, data: []byte{}},
+			err:         errDataTooLarge,
 		},
 		{
 			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
@@ -71,6 +78,8 @@ func TestReadPacket(t *testing.T) {
 
 // go test -v -cover -run=^TestWritePacket$
 func TestWritePacket(t *testing.T) {
+	maxDataBytes = 8
+
 	type testCase struct {
 		packetBytes []byte
 		packet      Packet
@@ -87,6 +96,11 @@ func TestWritePacket(t *testing.T) {
 			packetBytes: []byte{},
 			packet:      Packet{id: 5, magic: magic, flags: 1, length: 3},
 			err:         errWrongLength,
+		},
+		{
+			packetBytes: []byte{},
+			packet:      Packet{id: 5, magic: magic, flags: 1, length: 10, data: []byte("0123456789")},
+			err:         errDataTooLarge,
 		},
 		{
 			packetBytes: []byte{0, 0, 0, 0, 0, 0, 0, 5, 0x77, 0x14, 0x30, 0xCB, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},

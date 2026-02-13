@@ -10,10 +10,12 @@ import (
 	"io"
 )
 
-const magic = 1997811915
-
 const (
-	headerBytes  = 24
+	magic       = 1997811915
+	headerBytes = 24
+)
+
+var (
 	maxDataBytes = uint32(1<<32 - 1) // 4GB
 )
 

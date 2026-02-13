@@ -8,8 +8,10 @@ import (
 	"context"
 	"errors"
 	"net"
+	"os"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -28,6 +30,111 @@ func (h *testHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
 	h.data = append(h.data, data...)
 	h.data = append(h.data, '\n')
 	return data, nil
+}
+
+// go test -v -cover -run=^xxx$
+func TestNewServer(t *testing.T) {
+	handler := new(testHandler)
+
+	t.Run("nil address", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("nil address returns a nil recover")
+			}
+		}()
+
+		NewServer("", handler)
+	})
+
+	t.Run("nil handler", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("nil handler returns a nil recover")
+			}
+		}()
+
+		NewServer("127.0.0.1:0", nil)
+	})
+
+	t.Run("wrong address", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatal("new server panics")
+			}
+		}()
+
+		svr := NewServer("127.0.0.1", handler)
+
+		if err := svr.Serve(); err == nil {
+			t.Fatal(err)
+		}
+
+		if err := svr.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("new server", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatal("new server panics")
+			}
+		}()
+
+		svr := NewServer("127.0.0.1:0", handler)
+
+		go func() {
+			if err := svr.Serve(); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		time.Sleep(time.Second)
+
+		err := syscall.Kill(os.Getpid(), syscall.SIGQUIT)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(time.Second)
+
+		select {
+		case <-svr.(*server).ctx.Done():
+			t.Log("server context is done")
+		default:
+			t.Fatal("server context not done")
+		}
+
+		if err = svr.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("double serve", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatal("new server panics")
+			}
+		}()
+
+		svr := NewServer("127.0.0.1:0", handler)
+
+		go func() {
+			if err := svr.Serve(); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		time.Sleep(time.Second)
+
+		if err := svr.Serve(); err != errServerAlreadyServing {
+			t.Fatal(err)
+		}
+
+		if err := svr.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
 }
 
 // go test -v -cover -run=^TestServerHandler$

@@ -5,287 +5,239 @@
 package vex
 
 import (
+	"bufio"
+	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
-	"github.com/FishGoddess/vex/log"
-)
-
-const (
-	network = "tcp"
+	packets "github.com/FishGoddess/vex/internal/packet"
 )
 
 var (
-	errAcquireTokenTimeout = errors.New("vex: acquire token timeout")
+	errServerAlreadyServing = errors.New("vex: server is already serving")
 )
 
-// HandleFunc is a function for handling connected context.
-// You should design your own handler function for your server.
-type HandleFunc func(ctx *Context)
-
-type Status struct {
-	// Connected is the quantity of connected connections.
-	Connected uint64 `json:"connected"`
+// Handler is for handling the data from client and returns the new data or an error if failed.
+type Handler interface {
+	Handle(ctx context.Context, data []byte) ([]byte, error)
 }
 
+// Server is the interface of vex server.
 type Server interface {
-	io.Closer
-
 	Serve() error
-	Status() Status
+	Close() error
 }
 
 type server struct {
-	Config
+	conf *config
 
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	address  string
 	listener net.Listener
-	handle   HandleFunc
+	conns    map[uint64]net.Conn
+	connID   uint64
+	handler  Handler
 
-	status   Status
-	contexts *sync.Pool
-
-	tokenCh chan struct{}
-	closeCh chan struct{}
-
-	wg   sync.WaitGroup
-	lock sync.RWMutex
+	group sync.WaitGroup
+	lock  sync.RWMutex
 }
 
-// NewServer creates a new server serving on address.
-// Handler is an interface of handling a connection.
-func NewServer(address string, handle HandleFunc, opts ...Option) Server {
-	conf := newServerConfig(address).ApplyOptions(opts)
+// NewServer creates a server with address and handler.
+func NewServer(address string, handler Handler, opts ...Option) Server {
+	conf := newConfig().apply(opts...)
 
-	contexts := &sync.Pool{New: func() any {
-		return new(Context)
-	}}
-
-	server := &server{
-		Config:   *conf,
-		handle:   handle,
-		contexts: contexts,
-		tokenCh:  make(chan struct{}, conf.maxConnections),
-		closeCh:  make(chan struct{}),
+	if address == "" {
+		panic("vex: server address is nil")
 	}
 
+	if handler == nil {
+		panic("vex: server handler is nil")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	server := new(server)
+	server.conf = conf
+	server.ctx = ctx
+	server.cancel = cancel
+	server.address = address
+	server.conns = make(map[uint64]net.Conn, 64)
+	server.connID = 0
+	server.handler = handler
+
+	go server.watchSignals()
 	return server
 }
 
-func (s *server) acquireToken() (shouldRetry bool, err error) {
-	timer := time.NewTimer(s.connectTimeout)
-	defer timer.Stop()
+func (s *server) watchSignals() {
+	logger := s.conf.logger
 
-	select {
-	case s.tokenCh <- struct{}{}:
-		return true, nil
-	case <-s.closeCh:
-		return false, nil
-	case <-timer.C:
-		return false, errAcquireTokenTimeout
-	}
-}
-
-func (s *server) releaseToken() {
-	select {
-	case <-s.tokenCh:
-		return
-	case <-s.closeCh:
-		return
-	}
-}
-
-func (s *server) newContext(conn net.Conn) *Context {
-	ctx := s.contexts.Get().(*Context)
-	ctx.setup(conn)
-
-	return ctx
-}
-
-func (s *server) freeContext(ctx *Context) {
-	if err := ctx.finish(); err != nil {
-		log.Error(err, "server %s finished %s failed", s.name, ctx.RemoteAddr())
-	}
-
-	s.contexts.Put(ctx)
-}
-
-func (s *server) handleConn(conn net.Conn) {
-	remoteAddr := conn.RemoteAddr()
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error(fmt.Errorf("%+v", r), "server %s recovered from handling %s", s.name, remoteAddr)
-		}
-	}()
-
-	defer func() {
-		s.lock.Lock()
-		s.status.Connected--
-		s.lock.Unlock()
-	}()
-
-	ctx := s.newContext(conn)
-	defer s.freeContext(ctx)
-
-	log.Debug("server %s handles %s begin", s.name, remoteAddr)
-	defer log.Debug("server %s handles %s end", s.name, remoteAddr)
-
-	s.beforeHandling(ctx)
-	defer s.afterHandling(ctx)
-
-	select {
-	case <-ctx.Done():
-		return
-	default:
-		s.handle(ctx)
-	}
-}
-
-func (s *server) acceptConn(conn net.Conn) {
-	var err error
-
-	defer func() {
-		if err == nil {
-			return
-		}
-
-		s.releaseToken()
-		log.Error(err, "server %s accepts %s failed", s.name, conn.RemoteAddr())
-
-		if err = conn.Close(); err != nil {
-			log.Error(err, "server %s closes %s failed", s.name, conn.RemoteAddr())
-		}
-	}()
-
-	if err = setupConn(&s.Config, conn); err != nil {
-		log.Error(err, "server %s setups %s failed", s.name, conn.RemoteAddr())
-		return
-	}
-
-	s.lock.Lock()
-	s.status.Connected++
-	s.lock.Unlock()
-
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		defer s.releaseToken()
-
-		s.handleConn(conn)
-	}()
-}
-
-func (s *server) wait() error {
-	go func() {
-		s.wg.Wait()
-
-		close(s.closeCh)
-	}()
-
-	close(s.tokenCh)
-	s.afterServing(s.address)
-
-	timer := time.NewTimer(s.closeTimeout)
-	defer timer.Stop()
-
-	select {
-	case <-s.closeCh:
-		s.afterClosing(s.address)
-
-		log.Info("server %s closed", s.name)
-		return nil
-	case <-timer.C:
-		return fmt.Errorf("vex: close server %s timeout", s.name)
-	}
-}
-
-func (s *server) serve() error {
-	for {
-		shouldRetry, err := s.acquireToken()
-		if err != nil {
-			log.Error(err, "server %s acquires token failed", s.name)
-			continue
-		}
-
-		if !shouldRetry {
-			break
-		}
-
-		conn, err := s.listener.Accept()
-		if err == nil {
-			s.acceptConn(conn)
-			continue
-		}
-
-		// Listener has been closed.
-		if errors.Is(err, net.ErrClosed) {
-			break
-		}
-
-		s.releaseToken()
-		log.Error(err, "server %s accepts failed", s.name)
-	}
-
-	return s.wait()
-}
-
-func (s *server) monitorSignals() {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
-	sig := <-signalCh
-	log.Info("server %s received signal %+v", s.name, sig)
+	select {
+	case sg := <-signalCh:
+		logger.Info("received a signal", "signal", sg)
 
-	if err := s.Close(); err != nil {
-		log.Error(err, "close server %s failed", s.name)
+		if err := s.Close(); err != nil {
+			logger.Error("close server failed", "err", err)
+		}
+	case <-s.ctx.Done():
+		logger.Debug("server context is done")
 	}
 }
 
-func (s *server) Serve() error {
-	listener, err := net.Listen(network, s.address)
+func (s *server) nextConnID() uint64 {
+	s.connID++
+	return s.connID
+}
+
+func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
+	packet, err := packets.ReadPacket(reader)
 	if err != nil {
 		return err
 	}
 
+	data, err := packet.Data()
+	if err != nil {
+		return err
+	}
+
+	data, err = s.handler.Handle(s.ctx, data)
+	if err != nil {
+		packet.SetError(err)
+	} else {
+		packet.SetData(data)
+	}
+
+	err = packets.WritePacket(writer, packet)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *server) handleConn(conn net.Conn) {
+	logger := s.conf.logger
+
+	reader := bufio.NewReader(conn)
+	for {
+		err := s.handlePacket(reader, conn)
+		if err == io.EOF {
+			logger.Debug("handle packet eof", "err", err)
+			return
+		}
+
+		if errors.Is(err, net.ErrClosed) {
+			logger.Debug("handle packet closed", "err", err)
+			return
+		}
+
+		if err != nil {
+			logger.Error("handle packet failed", "err", err)
+			return
+		}
+	}
+}
+
+func (s *server) serve() error {
+	logger := s.conf.logger
+	logger.Info("server is serving", "address", s.address)
+
+	for {
+		conn, err := s.listener.Accept()
+		if errors.Is(err, net.ErrClosed) {
+			logger.Info("listener is closed", "address", s.address)
+			break
+		}
+
+		if err != nil {
+			logger.Error("accept conn failed", "err", err)
+			continue
+		}
+
+		s.lock.Lock()
+		connID := s.nextConnID()
+		s.conns[connID] = conn
+		s.lock.Unlock()
+
+		s.group.Go(func() {
+			defer conn.Close()
+
+			defer func() {
+				s.lock.Lock()
+				delete(s.conns, connID)
+				s.lock.Unlock()
+			}()
+
+			logger.Info("handle conn start", "address", conn.RemoteAddr())
+			s.handleConn(conn)
+			logger.Info("handle conn end", "address", conn.RemoteAddr())
+		})
+	}
+
+	return nil
+}
+
+// Serve serves on address and returns an error if failed.
+func (s *server) Serve() error {
+	logger := s.conf.logger
+
 	s.lock.Lock()
 	if s.listener != nil {
-		return fmt.Errorf("vex: server %s already serving", s.name)
+		s.lock.Unlock()
+
+		logger.Error("server is already serving", "address", s.address)
+		return errServerAlreadyServing
+	}
+
+	var lc net.ListenConfig
+
+	listener, err := lc.Listen(s.ctx, "tcp", s.address)
+	if err != nil {
+		s.lock.Unlock()
+
+		logger.Error("listen tcp failed", "err", err, "address", s.address)
+		return err
 	}
 
 	s.listener = listener
 	s.lock.Unlock()
-
-	go s.monitorSignals()
-	log.Info("server %s is serving on %s", s.name, s.address)
-
-	s.beforeServing(s.address)
 	return s.serve()
 }
 
-// Status returns the status of the server.
-func (s *server) Status() Status {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	return s.status
-}
-
+// Close closes the server and returns an error if failed.
 func (s *server) Close() error {
-	s.beforeClosing(s.address)
-
 	s.lock.Lock()
-	defer s.lock.Unlock()
+	if s.listener != nil {
+		if err := s.listener.Close(); err != nil {
+			s.lock.Unlock()
 
-	if s.listener == nil {
-		return nil
+			return err
+		}
 	}
 
-	return s.listener.Close()
+	for _, conn := range s.conns {
+		if err := conn.Close(); err != nil {
+			s.lock.Unlock()
+
+			return err
+		}
+	}
+
+	s.cancel()
+	s.listener = nil
+	s.conns = nil
+	s.connID = 0
+	s.lock.Unlock()
+	s.group.Wait()
+	return nil
 }

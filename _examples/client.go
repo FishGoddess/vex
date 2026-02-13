@@ -5,29 +5,33 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/FishGoddess/vex"
 )
 
 func main() {
-	client, err := vex.NewClient("127.0.0.1:6789")
+	client, err := vex.NewClient("127.0.0.1:9876")
 	if err != nil {
 		panic(err)
 	}
 
 	defer client.Close()
 
-	msg := []byte("hello")
-	if _, err := client.Write(msg); err != nil {
-		panic(err)
-	}
+	ctx := context.Background()
+	for i := range 10 {
+		data := []byte(strconv.Itoa(i))
+		fmt.Printf("client send: %s\n", data)
 
-	var buf [1024]byte
-	n, err := client.Read(buf[:])
-	if err != nil {
-		panic(err)
-	}
+		data, err = client.Send(ctx, data)
+		if err != nil {
+			panic(err)
+		}
 
-	fmt.Println("Received:", string(buf[:n]))
+		fmt.Printf("client receive: %s\n", data)
+		time.Sleep(100 * time.Millisecond)
+	}
 }

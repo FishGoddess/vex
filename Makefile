@@ -6,10 +6,7 @@ fmt:
 	go fmt ./...
 
 test:
-	go test -v -cover -count=1 -test.cpu=1 ./...
+	go test -v -cover ./...
 
 bench:
-	go test -v -run=. -bench=. -benchtime=1s ./_examples/performance_test.go
-
-benchpack:
-	go test -v -run=. -bench=. -benchtime=1s ./_examples/pack_test.go
+	go test -v -run=. -bench=. -benchmem -benchtime=1s ./_examples/packet_test.go

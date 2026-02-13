@@ -5,82 +5,163 @@
 package vex
 
 import (
-	"io"
+	"bufio"
+	"context"
+	"errors"
 	"net"
+	"sync"
 
-	"github.com/FishGoddess/vex/log"
+	packets "github.com/FishGoddess/vex/internal/packet"
 )
 
+var (
+	errClientClosed = errors.New("vex: client is closed")
+)
+
+// Client is the interface of vex client.
 type Client interface {
-	io.ReadWriteCloser
+	Send(ctx context.Context, data []byte) ([]byte, error)
+	Close() error
 }
 
 type client struct {
-	Config
+	conf *config
 
-	conn        net.Conn
-	connAddress string
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	conn       net.Conn
+	inflight   map[uint64]chan packets.Packet
+	inflightID uint64
+
+	lock sync.Mutex
 }
 
-// NewClient creates a new client connecting to address.
-// Return an error if connect failed.
+// NewClient creates a client with address.
 func NewClient(address string, opts ...Option) (Client, error) {
-	conf := newClientConfig(address).ApplyOptions(opts)
+	conf := newConfig().apply(opts...)
 
-	client := &client{
-		Config: *conf,
-	}
-
-	if err := client.connect(); err != nil {
+	conn, err := net.DialTimeout("tcp", address, conf.dialTimeout)
+	if err != nil {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	inflight := make(map[uint64]chan packets.Packet, 1024)
+
+	client := new(client)
+	client.conf = conf
+	client.ctx = ctx
+	client.cancel = cancel
+	client.conn = conn
+	client.inflight = inflight
+
+	go client.inflightLoop()
 	return client, nil
 }
 
-func (c *client) connect() (err error) {
-	defer func() {
-		if err == nil {
-			c.onConnected(c.connAddress, c.address)
-			log.Debug("client %s has connected to %s", c.connAddress, c.address)
+func (c *client) inflightPacket(packet packets.Packet) error {
+	select {
+	case <-c.ctx.Done():
+		return c.ctx.Err()
+	default:
+		c.lock.Lock()
+		ch := c.inflight[packet.ID()]
+		c.lock.Unlock()
+
+		if ch != nil {
+			ch <- packet
 		}
-	}()
 
-	conn, err := net.DialTimeout(network, c.address, c.connectTimeout)
+		return nil
+	}
+}
+
+func (c *client) inflightLoop() {
+	reader := bufio.NewReader(c.conn)
+	for {
+		packet, err := packets.ReadPacket(reader)
+		if err != nil {
+			c.Close()
+			return
+		}
+
+		if err = c.inflightPacket(packet); err != nil {
+			return
+		}
+	}
+}
+
+func (c *client) nextInflightID() uint64 {
+	c.inflightID++
+	return c.inflightID
+}
+
+func (c *client) handleData(data []byte) (packet packets.Packet, packetCh chan packets.Packet, done func(), err error) {
+	c.lock.Lock()
+	if c.inflight == nil {
+		c.lock.Unlock()
+
+		return packet, nil, nil, errClientClosed
+	}
+
+	inflightID := c.nextInflightID()
+	packetCh = make(chan packets.Packet, 1)
+	c.inflight[inflightID] = packetCh
+	c.lock.Unlock()
+
+	done = func() {
+		c.lock.Lock()
+		delete(c.inflight, inflightID)
+		c.lock.Unlock()
+	}
+
+	packet = packets.New(inflightID)
+	packet.SetData(data)
+	return packet, packetCh, done, nil
+}
+
+func (c *client) waitData(ctx context.Context, packetCh chan packets.Packet) ([]byte, error) {
+	select {
+	case packet := <-packetCh:
+		return packet.Data()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-c.ctx.Done():
+		return nil, errClientClosed
+	}
+}
+
+// Send sends data and gets a new data.
+// Returns an error if failed.
+func (c *client) Send(ctx context.Context, data []byte) ([]byte, error) {
+	packet, packetCh, done, err := c.handleData(data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err = setupConn(&c.Config, conn); err != nil {
-		return err
+	defer done()
+
+	err = packets.WritePacket(c.conn, packet)
+	if err != nil {
+		return nil, err
 	}
 
-	c.conn = conn
-	c.connAddress = c.conn.LocalAddr().String()
-
-	return nil
-}
-
-// Read reads data to p.
-// See io.Reader.
-func (c *client) Read(p []byte) (n int, err error) {
-	return c.conn.Read(p)
-}
-
-// Write writes p to data.
-// See io.Writer.
-func (c *client) Write(p []byte) (n int, err error) {
-	return c.conn.Write(p)
+	return c.waitData(ctx, packetCh)
 }
 
 // Close closes the client and returns an error if failed.
-func (c *client) Close() (err error) {
-	defer func() {
-		if err == nil {
-			c.onDisconnected(c.connAddress, c.address)
-			log.Debug("client %s has disconnected from %s", c.connAddress, c.address)
-		}
-	}()
+func (c *client) Close() error {
+	c.lock.Lock()
+	if err := c.conn.Close(); err != nil {
+		c.lock.Unlock()
 
-	return c.conn.Close()
+		return err
+	}
+
+	c.cancel()
+	c.inflight = nil
+	c.inflightID = 0
+	c.lock.Unlock()
+	return nil
 }

@@ -5,185 +5,52 @@
 package vex
 
 import (
+	"fmt"
+	"log/slog"
+	"os"
 	"testing"
 	"time"
-	"unsafe"
 )
 
-// go test -v -cover -run=^TestWithName$
-func TestWithName(t *testing.T) {
-	name := "test-name"
+// go test -v -cover -run=^TestConfigApply$
+func TestConfigApply(t *testing.T) {
+	var conf config
 
-	conf := &Config{name: ""}
-	WithName(name)(conf)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	opt1 := func(c *config) { c.logger = logger }
+	opt2 := func(c *config) { c.dialTimeout = 2 }
 
-	if conf.name != name {
-		t.Errorf("c.name %s is wrong", conf.name)
+	got := *conf.apply(opt1, opt2)
+	want := config{logger: logger, dialTimeout: 2}
+	if got != want {
+		t.Fatalf("got %+v != want %+v", got, want)
 	}
 }
 
-// go test -v -cover -run=^TestWithReadTimeout$
-func TestWithReadTimeout(t *testing.T) {
-	conf := &Config{readTimeout: 0}
-	WithReadTimeout(time.Hour)(conf)
+// go test -v -cover -run=^TestWithLogger$
+func TestWithLogger(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	if conf.readTimeout != time.Hour {
-		t.Errorf("c.readTimeout %d is wrong", conf.readTimeout)
+	conf := &config{logger: nil}
+	WithLogger(logger)(conf)
+
+	got := fmt.Sprintf("%p", conf.logger)
+	want := fmt.Sprintf("%p", logger)
+	if got != want {
+		t.Fatalf("got %s != want %s", got, want)
 	}
 }
 
-// go test -v -cover -run=^TestWithWriteTimeout$
-func TestWithWriteTimeout(t *testing.T) {
-	conf := &Config{writeTimeout: 0}
-	WithWriteTimeout(time.Minute)(conf)
+// go test -v -cover -run=^TestWithDialTimeout$
+func TestWithDialTimeout(t *testing.T) {
+	timeout := time.Millisecond
 
-	if conf.writeTimeout != time.Minute {
-		t.Errorf("c.writeTimeout %d is wrong", conf.writeTimeout)
-	}
-}
+	conf := &config{dialTimeout: 0}
+	WithDialTimeout(timeout)(conf)
 
-// go test -v -cover -run=^TestWithConnectTimeout$
-func TestWithConnectTimeout(t *testing.T) {
-	conf := &Config{connectTimeout: 0}
-	WithConnectTimeout(time.Hour)(conf)
-
-	if conf.connectTimeout != time.Hour {
-		t.Errorf("c.connectTimeout %d is wrong", conf.connectTimeout)
-	}
-}
-
-// go test -v -cover -run=^TestWithCloseTimeout$
-func TestWithCloseTimeout(t *testing.T) {
-	conf := &Config{closeTimeout: 0}
-	WithCloseTimeout(time.Hour)(conf)
-
-	if conf.closeTimeout != time.Hour {
-		t.Errorf("c.closeTimeout %d is wrong", conf.closeTimeout)
-	}
-}
-
-// go test -v -cover -run=^TestWithReadBufferSize$
-func TestWithReadBufferSize(t *testing.T) {
-	conf := &Config{readBufferSize: 0}
-	WithReadBufferSize(64)(conf)
-
-	if conf.readBufferSize != 64 {
-		t.Errorf("c.readBufferSize %d is wrong", conf.readBufferSize)
-	}
-}
-
-// go test -v -cover -run=^TestWithWriteBufferSize$
-func TestWithWriteBufferSize(t *testing.T) {
-	conf := &Config{writeBufferSize: 0}
-	WithWriteBufferSize(512)(conf)
-
-	if conf.writeBufferSize != 512 {
-		t.Errorf("c.writeBufferSize %d is wrong", conf.writeBufferSize)
-	}
-}
-
-// go test -v -cover -run=^TestWithMaxConnections$
-func TestWithMaxConnections(t *testing.T) {
-	conf := &Config{maxConnections: 0}
-	WithMaxConnections(512)(conf)
-
-	if conf.maxConnections != 512 {
-		t.Errorf("c.maxConnections %d is wrong", conf.maxConnections)
-	}
-}
-
-// go test -v -cover -run=^TestWithOnConnected$
-func TestWithOnConnected(t *testing.T) {
-	onConnectedFunc := func(clientAddress string, serverAddress string) {}
-
-	conf := &Config{onConnectedFunc: nil}
-	WithOnConnected(onConnectedFunc)(conf)
-
-	if unsafe.Sizeof(conf.onConnectedFunc) != unsafe.Sizeof(onConnectedFunc) {
-		t.Errorf("c.onConnectedFunc %d is wrong", unsafe.Sizeof(conf.onConnectedFunc))
-	}
-}
-
-// go test -v -cover -run=^TestWithOnDisconnected$
-func TestWithOnDisconnected(t *testing.T) {
-	onDisconnectedFunc := func(clientAddress string, serverAddress string) {}
-
-	conf := &Config{onDisconnectedFunc: nil}
-	WithOnDisconnected(onDisconnectedFunc)(conf)
-
-	if unsafe.Sizeof(conf.onDisconnectedFunc) != unsafe.Sizeof(onDisconnectedFunc) {
-		t.Errorf("c.onDisconnectedFunc %d is wrong", unsafe.Sizeof(conf.onDisconnectedFunc))
-	}
-}
-
-// go test -v -cover -run=^TestWithBeforeServing$
-func TestWithBeforeServing(t *testing.T) {
-	beforeServingFunc := func(address string) {}
-
-	conf := &Config{beforeServingFunc: nil}
-	WithBeforeServing(beforeServingFunc)(conf)
-
-	if unsafe.Sizeof(conf.beforeServingFunc) != unsafe.Sizeof(beforeServingFunc) {
-		t.Errorf("c.beforeServingFunc %d is wrong", unsafe.Sizeof(conf.beforeServingFunc))
-	}
-}
-
-// go test -v -cover -run=^TestWithAfterServing$
-func TestWithAfterServing(t *testing.T) {
-	afterServingFunc := func(address string) {}
-
-	conf := &Config{afterServingFunc: nil}
-	WithAfterServing(afterServingFunc)(conf)
-
-	if unsafe.Sizeof(conf.afterServingFunc) != unsafe.Sizeof(afterServingFunc) {
-		t.Errorf("c.afterServingFunc %d is wrong", unsafe.Sizeof(conf.afterServingFunc))
-	}
-}
-
-// go test -v -cover -run=^TestWithBeforeHandling$
-func TestWithBeforeHandling(t *testing.T) {
-	beforeHandlingFunc := func(ctx *Context) {}
-
-	conf := &Config{beforeHandlingFunc: nil}
-	WithBeforeHandling(beforeHandlingFunc)(conf)
-
-	if unsafe.Sizeof(conf.beforeHandlingFunc) != unsafe.Sizeof(beforeHandlingFunc) {
-		t.Errorf("c.beforeHandlingFunc %d is wrong", unsafe.Sizeof(conf.beforeHandlingFunc))
-	}
-}
-
-// go test -v -cover -run=^TestWithAfterHandling$
-func TestWithAfterHandling(t *testing.T) {
-	afterHandlingFunc := func(ctx *Context) {}
-
-	conf := &Config{afterHandlingFunc: nil}
-	WithAfterHandling(afterHandlingFunc)(conf)
-
-	if unsafe.Sizeof(conf.afterHandlingFunc) != unsafe.Sizeof(afterHandlingFunc) {
-		t.Errorf("c.afterHandlingFunc %d is wrong", unsafe.Sizeof(conf.afterHandlingFunc))
-	}
-}
-
-// go test -v -cover -run=^TestWithBeforeClosing$
-func TestWithBeforeClosing(t *testing.T) {
-	beforeClosingFunc := func(address string) {}
-
-	conf := &Config{beforeClosingFunc: nil}
-	WithBeforeClosing(beforeClosingFunc)(conf)
-
-	if unsafe.Sizeof(conf.beforeClosingFunc) != unsafe.Sizeof(beforeClosingFunc) {
-		t.Errorf("c.beforeClosingFunc %d is wrong", unsafe.Sizeof(conf.beforeClosingFunc))
-	}
-}
-
-// go test -v -cover -run=^TestWithAfterClosing$
-func TestWithAfterClosing(t *testing.T) {
-	afterClosingFunc := func(address string) {}
-
-	conf := &Config{afterClosingFunc: nil}
-	WithAfterClosing(afterClosingFunc)(conf)
-
-	if unsafe.Sizeof(conf.afterClosingFunc) != unsafe.Sizeof(afterClosingFunc) {
-		t.Errorf("c.afterClosingFunc %d is wrong", unsafe.Sizeof(conf.afterClosingFunc))
+	got := conf.dialTimeout
+	want := timeout
+	if got != want {
+		t.Fatalf("got %d != want %d", got, want)
 	}
 }

@@ -5,89 +5,358 @@
 package vex
 
 import (
-	"io"
-	"math/rand"
+	"context"
+	"errors"
 	"net"
-	"strconv"
+	"os"
+	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
+
+	packets "github.com/FishGoddess/vex/internal/packet"
 )
 
-func testHandle(ctx *Context) {
-	var buf [1024]byte
-	for {
-		n, err := ctx.Read(buf[:])
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			panic(err)
-		}
-
-		_, err = ctx.Write(buf[:n])
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			panic(err)
-		}
-	}
+type testHandler struct {
+	data []byte
+	lock sync.Mutex
 }
 
-func runTestClient(t *testing.T, address string, ch chan struct{}, closeCh chan struct{}) {
-	<-ch
-	time.Sleep(time.Second)
+func (h *testHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
 
-	conn, err := net.Dial(network, address)
-	if err != nil {
-		t.Error(err)
-	}
-
-	defer conn.Close()
-
-	var buf [1024]byte
-	for i := 0; i < 100; i++ {
-		msg := strconv.FormatUint(rand.Uint64(), 10)
-		t.Log(msg)
-
-		_, err := conn.Write([]byte(msg))
-		if err != nil {
-			t.Error(err)
-		}
-
-		n, err := conn.Read(buf[:])
-		if err != nil {
-			t.Error(err)
-		}
-
-		received := string(buf[:n])
-		if received != msg {
-			t.Errorf("received %s != msg %s", received, msg)
-		}
-	}
-
-	close(closeCh)
+	h.data = append(h.data, data...)
+	h.data = append(h.data, '\n')
+	return data, nil
 }
 
-// go test -v -cover -run=^TestServer$
-func TestServer(t *testing.T) {
-	address := "127.0.0.1:54321"
+// go test -v -cover -run=^xxx$
+func TestNewServer(t *testing.T) {
+	handler := new(testHandler)
 
-	ch := make(chan struct{})
-	closeCh := make(chan struct{})
-	go runTestClient(t, address, ch, closeCh)
+	t.Run("nil address", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("nil address returns a nil recover")
+			}
+		}()
 
-	server := NewServer(address, testHandle)
-	close(ch)
+		NewServer("", handler)
+	})
+
+	t.Run("nil handler", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("nil handler returns a nil recover")
+			}
+		}()
+
+		NewServer("127.0.0.1:0", nil)
+	})
+
+	t.Run("wrong address", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatal("new server panics")
+			}
+		}()
+
+		svr := NewServer("127.0.0.1", handler)
+
+		if err := svr.Serve(); err == nil {
+			t.Fatal(err)
+		}
+
+		if err := svr.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("new server", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatal("new server panics")
+			}
+		}()
+
+		svr := NewServer("127.0.0.1:0", handler)
+
+		go func() {
+			if err := svr.Serve(); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		time.Sleep(time.Second)
+
+		err := syscall.Kill(os.Getpid(), syscall.SIGQUIT)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(time.Second)
+
+		select {
+		case <-svr.(*server).ctx.Done():
+			t.Log("server context is done")
+		default:
+			t.Fatal("server context not done")
+		}
+
+		if err = svr.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("double serve", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatal("new server panics")
+			}
+		}()
+
+		svr := NewServer("127.0.0.1:0", handler)
+
+		go func() {
+			if err := svr.Serve(); err != nil {
+				t.Error(err)
+			}
+		}()
+
+		time.Sleep(time.Second)
+
+		if err := svr.Serve(); err != errServerAlreadyServing {
+			t.Fatal(err)
+		}
+
+		if err := svr.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+// go test -v -cover -run=^TestServerHandler$
+func TestServerHandler(t *testing.T) {
+	handler := new(testHandler)
+	svr := NewServer("127.0.0.1:0", handler)
 
 	go func() {
-		<-closeCh
-		server.Close()
+		if err := svr.Serve(); err != nil {
+			t.Error(err)
+		}
 	}()
 
-	if err := server.Serve(); err != nil {
-		t.Error(err)
+	time.Sleep(100 * time.Millisecond)
+	address := svr.(*server).listener.Addr().String()
+
+	testCase := func(i int) {
+		conn, err := net.Dial("tcp", address)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer conn.Close()
+
+		id := uint64(i)
+		data := []byte("test")
+		packet := packets.New(id)
+		packet.SetData(data)
+
+		err = packets.WritePacket(conn, packet)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(time.Millisecond)
+
+		got := string(handler.data)
+		want := strings.Repeat("test\n", i)
+		if got != want {
+			t.Fatalf("%d: got %s != want %s", i, got, want)
+		}
+
+		readPacket, err := packets.ReadPacket(conn)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if readPacket.ID() != id {
+			t.Fatalf("%d: got %d != want %d", i, readPacket.ID(), id)
+		}
+
+		readData, err := readPacket.Data()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		got = string(readData)
+		want = string(data)
+		if got != want {
+			t.Fatalf("%d: got %s != want %s", i, got, want)
+		}
+	}
+
+	for i := range 10 {
+		testCase(i + 1)
+	}
+
+	if err := svr.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type testErrorHandler struct {
+	data []byte
+	lock sync.Mutex
+}
+
+func (h *testErrorHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+
+	h.data = append(h.data, data...)
+	h.data = append(h.data, '\n')
+	return nil, errors.New(string(data))
+}
+
+// go test -v -cover -run=^TestServerError$
+func TestServerError(t *testing.T) {
+	handler := new(testErrorHandler)
+	svr := NewServer("127.0.0.1:0", handler)
+
+	go func() {
+		if err := svr.Serve(); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	address := svr.(*server).listener.Addr().String()
+
+	testCase := func(i int) {
+		conn, err := net.Dial("tcp", address)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer conn.Close()
+
+		id := uint64(i)
+		data := []byte("test")
+		packet := packets.New(id)
+		packet.SetData(data)
+
+		err = packets.WritePacket(conn, packet)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(time.Millisecond)
+
+		got := string(handler.data)
+		want := strings.Repeat("test\n", i)
+		if got != want {
+			t.Fatalf("%d: got %s != want %s", i, got, want)
+		}
+
+		readPacket, err := packets.ReadPacket(conn)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if readPacket.ID() != id {
+			t.Fatalf("%d: got %d != want %d", i, readPacket.ID(), id)
+		}
+
+		_, err = readPacket.Data()
+		if err == nil {
+			t.Fatalf("data returns nil error")
+		}
+
+		got = string(err.Error())
+		want = string(data)
+		if got != want {
+			t.Fatalf("%d: got %s != want %s", i, got, want)
+		}
+	}
+
+	for i := range 10 {
+		testCase(i + 1)
+	}
+
+	if err := svr.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// go test -v -cover -run=^TestServerErrorHandler$
+func TestServerErrorHandler(t *testing.T) {
+	handler := new(testErrorHandler)
+	svr := NewServer("127.0.0.1:0", handler)
+
+	go func() {
+		if err := svr.Serve(); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	address := svr.(*server).listener.Addr().String()
+
+	testCase := func(i int) {
+		conn, err := net.Dial("tcp", address)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer conn.Close()
+
+		id := uint64(i)
+		data := []byte("test")
+		packet := packets.New(id)
+		packet.SetData(data)
+
+		err = packets.WritePacket(conn, packet)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(time.Millisecond)
+
+		got := string(handler.data)
+		want := strings.Repeat("test\n", i)
+		if got != want {
+			t.Fatalf("%d: got %s != want %s", i, got, want)
+		}
+
+		readPacket, err := packets.ReadPacket(conn)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if readPacket.ID() != id {
+			t.Fatalf("%d: got %d != want %d", i, readPacket.ID(), id)
+		}
+
+		_, err = readPacket.Data()
+		if err == nil {
+			t.Fatalf("data returns nil error")
+		}
+
+		got = string(err.Error())
+		want = string(data)
+		if got != want {
+			t.Fatalf("%d: got %s != want %s", i, got, want)
+		}
+	}
+
+	for i := range 10 {
+		testCase(i + 1)
+	}
+
+	if err := svr.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

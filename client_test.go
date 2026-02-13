@@ -5,85 +5,266 @@
 package vex
 
 import (
-	"io"
-	"math/rand"
+	"context"
+	"errors"
 	"net"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
+
+	packets "github.com/FishGoddess/vex/internal/packet"
 )
 
-func runTestServer(t *testing.T, address string, ch chan struct{}) {
-	listener, err := net.Listen(network, address)
+func runTestServer() (string, func(), error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Error(err)
+		return "", nil, err
 	}
 
-	defer listener.Close()
-	close(ch)
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if errors.Is(err, net.ErrClosed) {
+				break
+			}
 
-	conn, err := listener.Accept()
-	if err != nil {
-		t.Error(err)
+			if err != nil {
+				continue
+			}
+
+			go func() {
+				defer conn.Close()
+
+				for {
+					packet, err := packets.ReadPacket(conn)
+					if err != nil {
+						return
+					}
+
+					data, err := packet.Data()
+					if err != nil {
+						return
+					}
+
+					ii, err := strconv.Atoi(string(data))
+					if err != nil {
+						return
+					}
+
+					if ii%2 == 0 {
+						err = errors.New(string(data))
+						packet.SetError(err)
+					}
+
+					err = packets.WritePacket(conn, packet)
+					if err != nil {
+						return
+					}
+				}
+			}()
+		}
+	}()
+
+	address := listener.Addr().String()
+	done := func() { listener.Close() }
+	return address, done, nil
+}
+
+// go test -v -cover -run=^TestNewClient$
+func TestNewClient(t *testing.T) {
+	ctx := context.Background()
+	zeroClient := new(client)
+
+	_, err := zeroClient.Send(ctx, nil)
+	if err != errClientClosed {
+		t.Fatalf("got %+v != want %+v", err, errClientClosed)
 	}
 
-	var buf [1024]byte
-	for {
-		n, err := conn.Read(buf[:])
-		if err == io.EOF {
-			break
-		}
+	client, err := NewClient("")
+	if err == nil {
+		t.Fatal("new client returns a nil error")
+	}
 
-		if err != nil {
-			t.Error(err)
-		}
+	address, done, err := runTestServer()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		_, err = conn.Write(buf[:n])
-		if err == io.EOF {
-			break
-		}
+	defer done()
 
-		if err != nil {
-			t.Error(err)
-		}
+	client, err = NewClient(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
-// go test -v -cover -run=^TestClient$
-func TestClient(t *testing.T) {
-	address := "127.0.0.1:12345"
+// go test -v -cover -run=^TestClientSend$
+func TestClientSend(t *testing.T) {
+	address, done, err := runTestServer()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	ch := make(chan struct{})
-	go runTestServer(t, address, ch)
-
-	<-ch
-	time.Sleep(time.Second)
+	defer done()
 
 	client, err := NewClient(address)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
-	defer client.Close()
-
-	var buf [1024]byte
-	for i := 0; i < 100; i++ {
-		msg := strconv.FormatUint(rand.Uint64(), 10)
-		t.Log(msg)
-
-		_, err = client.Write([]byte(msg))
-		if err != nil {
-			t.Error(err)
+	defer func() {
+		if err := client.Close(); err != nil {
+			t.Fatal(err)
 		}
+	}()
 
-		n, err := client.Read(buf[:])
-		if err != nil {
-			t.Error(err)
-		}
+	ctx := context.Background()
 
-		received := string(buf[:n])
-		if received != msg {
-			t.Errorf("received %s != msg %s", received, msg)
+	var group sync.WaitGroup
+	for i := 1; i <= 100; i++ {
+		ii := i
+
+		group.Go(func() {
+			data := []byte(strconv.Itoa(ii))
+
+			gotData, err := client.Send(ctx, data)
+			if ii%2 == 0 {
+				if err == nil {
+					t.Error("send returns a nil error")
+				}
+
+				got := err.Error()
+				want := string(data)
+				if got != want {
+					t.Errorf("got %s != want %s", got, want)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Error(err)
+			}
+
+			got := string(gotData)
+			want := string(data)
+			if got != want {
+				t.Errorf("got %s != want %s", got, want)
+			}
+		})
+	}
+
+	group.Wait()
+}
+
+// go test -v -cover -run=^TestClientSendTimeout$
+func TestClientSendTimeout(t *testing.T) {
+	address, done, err := runTestServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer done()
+
+	client, err := NewClient(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := client.Close(); err != nil {
+			t.Fatal(err)
 		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	var group sync.WaitGroup
+	for i := 1; i <= 100; i++ {
+		ii := i
+
+		group.Go(func() {
+			if ii%2 == 0 {
+				time.Sleep(150 * time.Millisecond)
+			}
+
+			data := []byte(strconv.Itoa(ii))
+
+			gotData, err := client.Send(ctx, data)
+			if ii%2 == 0 {
+				if err == nil {
+					t.Error("send returns a nil error")
+				}
+
+				got := err.Error()
+				want := context.DeadlineExceeded.Error()
+				if got != want {
+					t.Errorf("got %s != want %s", got, want)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Error(err)
+			}
+
+			got := string(gotData)
+			want := string(data)
+			if got != want {
+				t.Errorf("got %s != want %s", got, want)
+			}
+		})
+	}
+
+	group.Wait()
+}
+
+// go test -v -cover -run=^TestClientClose$
+func TestClientClose(t *testing.T) {
+	address, done, err := runTestServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer done()
+
+	cli, err := NewClient(address)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	client := cli.(*client)
+
+	select {
+	case <-client.ctx.Done():
+		t.Log("client context is done")
+	default:
+		t.Fatal("client context not done")
+	}
+
+	if client.inflight != nil {
+		t.Fatal("client inflight not nil")
+	}
+
+	if client.inflightID != 0 {
+		t.Fatal("client inflight not zero")
+	}
+
+	ctx := context.Background()
+
+	_, err = cli.Send(ctx, nil)
+	if err != errClientClosed {
+		t.Fatalf("got %+v != want %+v", err, errClientClosed)
 	}
 }

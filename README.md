@@ -126,11 +126,14 @@ goos: linux
 goarch: amd64
 cpu: Intel(R) Xeon(R) CPU E5-26xx v4
 
-BenchmarkPacket-2          29292             38818 ns/op            4600 B/op          9 allocs/op
+BenchmarkPacket-2          48885             25712 ns/op            4600 B/op          9 allocs/op
+BenchmarkPacketPool-2      58665             21461 ns/op            4601 B/op          9 allocs/op
 ```
 
 > 测试文件：[_examples/packet_test.go](./_examples/packet_test.go)。
 
+> 连接池性能测试使用的连接数是 2，单网卡已经达到瓶颈。
+
 ### 👥 贡献者
 
-如果您觉得 goes 缺少您需要的功能，请不要犹豫，马上参与进来，发起一个 _**issue**_。
+如果您觉得 vex 缺少您需要的功能，请不要犹豫，马上参与进来，发起一个 _**issue**_。

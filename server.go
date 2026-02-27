@@ -24,7 +24,7 @@ var (
 
 // Handler is for handling the data from client and returns the new data or an error if failed.
 type Handler interface {
-	Handle(ctx context.Context, data []byte) ([]byte, error)
+	Handle(ctx *Context, data []byte) ([]byte, error)
 }
 
 // Server is the interface of vex server.
@@ -110,7 +110,10 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
-	data, err = s.handler.Handle(s.ctx, data)
+	ctx := acquireContext(s.ctx)
+	defer releaseContext(ctx)
+
+	data, err = s.handler.Handle(ctx, data)
 	if err != nil {
 		packet.SetError(err)
 	} else {

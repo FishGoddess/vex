@@ -5,7 +5,6 @@
 package vex
 
 import (
-	"context"
 	"errors"
 	"net"
 	"os"
@@ -23,7 +22,7 @@ type testHandler struct {
 	lock sync.Mutex
 }
 
-func (h *testHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+func (h *testHandler) Handle(ctx *Context, data []byte) ([]byte, error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
@@ -212,7 +211,7 @@ type testErrorHandler struct {
 	lock sync.Mutex
 }
 
-func (h *testErrorHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+func (h *testErrorHandler) Handle(ctx *Context, data []byte) ([]byte, error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 

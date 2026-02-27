@@ -5,14 +5,12 @@
 package main
 
 import (
-	"context"
-
 	"github.com/FishGoddess/vex"
 )
 
 type EchoHandler struct{}
 
-func (EchoHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+func (EchoHandler) Handle(ctx *vex.Context, data []byte) ([]byte, error) {
 	return data, nil
 }
 

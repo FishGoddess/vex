@@ -19,7 +19,7 @@ var (
 
 type BenchmarkHandler struct{}
 
-func (BenchmarkHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+func (BenchmarkHandler) Handle(ctx *vex.Context, data []byte) ([]byte, error) {
 	return data, nil
 }
 

@@ -20,7 +20,7 @@ func main() {
 	defer client.Close()
 
 	ctx := context.Background()
-	data := []byte("落得湖面圆满月，独守湖边酒哀愁")
+	data := []byte("落得湖面月圆满，独守湖边酒哀愁")
 
 	received, err := client.Send(ctx, data)
 	if err != nil {

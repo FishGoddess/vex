@@ -20,7 +20,7 @@ func main() {
 	defer pool.Close()
 
 	ctx := context.Background()
-	data := []byte("落得湖面圆满月，独守湖边酒哀愁")
+	data := []byte("落得湖面月圆满，独守湖边酒哀愁")
 
 	client, err := pool.Get(ctx)
 	if err != nil {

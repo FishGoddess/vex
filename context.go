@@ -19,13 +19,15 @@ var contextPool = sync.Pool{
 func acquireContext(parentCtx context.Context, conn net.Conn) *Context {
 	ctx := contextPool.Get().(*Context)
 	ctx.Context = parentCtx
-	ctx.clientAddr = conn.RemoteAddr().String()
+	ctx.localAddress = conn.LocalAddr().String()
+	ctx.remoteAddress = conn.RemoteAddr().String()
 	return ctx
 }
 
 func releaseContext(ctx *Context) {
 	ctx.Context = nil
-	ctx.clientAddr = ""
+	ctx.localAddress = ""
+	ctx.remoteAddress = ""
 
 	contextPool.Put(ctx)
 }
@@ -34,10 +36,16 @@ func releaseContext(ctx *Context) {
 type Context struct {
 	context.Context
 
-	clientAddr string
+	localAddress  string
+	remoteAddress string
 }
 
-// ClientAddr returns the client address of connection.
-func (c *Context) ClientAddr() string {
-	return c.clientAddr
+// LocalAddress returns the address of server.
+func (c *Context) LocalAddress() string {
+	return c.localAddress
+}
+
+// RemoteAddress returns the address of client.
+func (c *Context) RemoteAddress() string {
+	return c.remoteAddress
 }

@@ -14,8 +14,8 @@ import (
 type EchoHandler struct{}
 
 func (EchoHandler) Handle(ctx *vex.Context, data []byte) ([]byte, error) {
-	clientAddr := ctx.ClientAddr()
-	slog.Info(fmt.Sprintf("client %s send %s\n", clientAddr, data))
+	remoteAddress := ctx.RemoteAddress()
+	slog.Info(fmt.Sprintf("client %s send %s\n", remoteAddress, data))
 
 	data = []byte("好！！！")
 	return data, nil

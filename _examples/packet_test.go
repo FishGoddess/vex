@@ -32,7 +32,7 @@ func newBenchmarkClient(address string) vex.Client {
 	return client
 }
 
-func newBenchmarkClientPool(addresses []string) *vex.ClientPool {
+func newBenchmarkPool(addresses []string) *vex.Pool {
 	var index atomic.Int64
 
 	dial := func(ctx context.Context) (vex.Client, error) {
@@ -41,8 +41,8 @@ func newBenchmarkClientPool(addresses []string) *vex.ClientPool {
 	}
 
 	limit := uint64(len(addresses)) * 2
-	clientPool := vex.NewClientPool(limit, dial)
-	return clientPool
+	pool := vex.NewPool(limit, dial)
+	return pool
 }
 
 func newBenchmarkServer(address string) vex.Server {
@@ -78,16 +78,19 @@ func BenchmarkPacket(b *testing.B) {
 	client := newBenchmarkClient(address)
 	defer client.Close()
 
+	ctx := context.Background()
+	task := func() {
+		_, err := client.Send(ctx, benchmarkData)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+
 	b.ReportAllocs()
 	b.ResetTimer()
-
-	ctx := context.Background()
 	b.RunParallel(func(p *testing.PB) {
 		for p.Next() {
-			_, err := client.Send(ctx, benchmarkData)
-			if err != nil {
-				b.Error(err)
-			}
+			task()
 		}
 	})
 }
@@ -101,19 +104,29 @@ func BenchmarkPacketPool(b *testing.B) {
 		defer servers[i].Close()
 	}
 
-	clientPool := newBenchmarkClientPool(addresses)
-	defer clientPool.Close()
+	pool := newBenchmarkPool(addresses)
+	defer pool.Close()
+
+	ctx := context.Background()
+	task := func() {
+		client, err := pool.Get(ctx)
+		if err != nil {
+			b.Error(err)
+		}
+
+		defer client.Close()
+
+		_, err = client.Send(ctx, benchmarkData)
+		if err != nil {
+			b.Error(err)
+		}
+	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
-
-	ctx := context.Background()
 	b.RunParallel(func(p *testing.PB) {
 		for p.Next() {
-			_, err := clientPool.Send(ctx, benchmarkData)
-			if err != nil {
-				b.Error(err)
-			}
+			task()
 		}
 	})
 }

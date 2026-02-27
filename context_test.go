@@ -24,9 +24,14 @@ func TestContext(t *testing.T) {
 		t.Fatalf("got %+v != want %+v", ctx.Context, parentCtx)
 	}
 
-	clientAddr := conn.RemoteAddr().String()
-	if ctx.clientAddr != clientAddr {
-		t.Fatalf("got %s != want %s", ctx.clientAddr, clientAddr)
+	localAddress := conn.LocalAddr().String()
+	if ctx.localAddress != localAddress {
+		t.Fatalf("got %s != want %s", ctx.localAddress, localAddress)
+	}
+
+	remoteAddress := conn.RemoteAddr().String()
+	if ctx.remoteAddress != remoteAddress {
+		t.Fatalf("got %s != want %s", ctx.remoteAddress, remoteAddress)
 	}
 
 	releaseContext(ctx)
@@ -34,7 +39,11 @@ func TestContext(t *testing.T) {
 		t.Fatalf("got %+v != nil", ctx.Context)
 	}
 
-	if ctx.clientAddr != "" {
-		t.Fatalf("got %+v != ''", ctx.clientAddr)
+	if ctx.localAddress != "" {
+		t.Fatalf("got %+v != ''", ctx.localAddress)
+	}
+
+	if ctx.remoteAddress != "" {
+		t.Fatalf("got %+v != ''", ctx.remoteAddress)
 	}
 }

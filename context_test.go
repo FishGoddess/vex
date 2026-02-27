@@ -6,6 +6,7 @@ package vex
 
 import (
 	"context"
+	"net"
 	"testing"
 )
 
@@ -13,13 +14,27 @@ import (
 func TestContext(t *testing.T) {
 	parentCtx := context.Background()
 
-	ctx := acquireContext(parentCtx)
+	conn, err := net.Dial("tcp", "www.google.com:80")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := acquireContext(parentCtx, conn)
 	if ctx.Context != parentCtx {
 		t.Fatalf("got %+v != want %+v", ctx.Context, parentCtx)
+	}
+
+	clientAddr := conn.RemoteAddr().String()
+	if ctx.clientAddr != clientAddr {
+		t.Fatalf("got %s != want %s", ctx.clientAddr, clientAddr)
 	}
 
 	releaseContext(ctx)
 	if ctx.Context != nil {
 		t.Fatalf("got %+v != nil", ctx.Context)
+	}
+
+	if ctx.clientAddr != "" {
+		t.Fatalf("got %+v != ''", ctx.clientAddr)
 	}
 }

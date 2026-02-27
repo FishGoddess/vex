@@ -28,5 +28,5 @@ func main() {
 	}
 
 	fmt.Printf("client send: %s\n", data)
-	fmt.Printf("client receive: %s\n", received)
+	fmt.Printf("server send: %s\n", received)
 }

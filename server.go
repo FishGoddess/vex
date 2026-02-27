@@ -99,7 +99,7 @@ func (s *server) nextConnID() uint64 {
 	return s.connID
 }
 
-func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
+func (s *server) handlePacket(conn net.Conn, reader io.Reader, writer io.Writer) error {
 	packet, err := packets.ReadPacket(reader)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
-	ctx := acquireContext(s.ctx)
+	ctx := acquireContext(s.ctx, conn)
 	defer releaseContext(ctx)
 
 	data, err = s.handler.Handle(ctx, data)
@@ -132,8 +132,9 @@ func (s *server) handleConn(conn net.Conn) {
 	logger := s.conf.logger
 
 	reader := bufio.NewReader(conn)
+	writer := conn
 	for {
-		err := s.handlePacket(reader, conn)
+		err := s.handlePacket(conn, reader, writer)
 		if err == io.EOF {
 			logger.Debug("handle packet eof", "err", err)
 			return

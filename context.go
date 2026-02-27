@@ -6,6 +6,7 @@ package vex
 
 import (
 	"context"
+	"net"
 	"sync"
 )
 
@@ -15,17 +16,28 @@ var contextPool = sync.Pool{
 	},
 }
 
-type Context struct {
-	context.Context
-}
-
-func acquireContext(parentCtx context.Context) *Context {
+func acquireContext(parentCtx context.Context, conn net.Conn) *Context {
 	ctx := contextPool.Get().(*Context)
 	ctx.Context = parentCtx
+	ctx.clientAddr = conn.RemoteAddr().String()
 	return ctx
 }
 
 func releaseContext(ctx *Context) {
 	ctx.Context = nil
+	ctx.clientAddr = ""
+
 	contextPool.Put(ctx)
+}
+
+// Context wraps a context inside and carries some attributes for using.
+type Context struct {
+	context.Context
+
+	clientAddr string
+}
+
+// ClientAddr returns the client address of connection.
+func (c *Context) ClientAddr() string {
+	return c.clientAddr
 }

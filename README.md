@@ -54,34 +54,28 @@ $ go get -u github.com/FishGoddess/vex
 package main
 
 import (
-	"context"
 	"fmt"
-	"strconv"
-	"time"
+	"log/slog"
 
 	"github.com/FishGoddess/vex"
 )
 
+type EchoHandler struct{}
+
+func (EchoHandler) Handle(ctx *vex.Context, data []byte) ([]byte, error) {
+	clientAddr := ctx.ClientAddr()
+	slog.Info(fmt.Sprintf("client %s send %s\n", clientAddr, data))
+
+	data = []byte("好！！！")
+	return data, nil
+}
+
 func main() {
-	client, err := vex.NewClient("127.0.0.1:9876")
-	if err != nil {
+	server := vex.NewServer("127.0.0.1:9876", EchoHandler{})
+	defer server.Close()
+
+	if err := server.Serve(); err != nil {
 		panic(err)
-	}
-
-	defer client.Close()
-
-	ctx := context.Background()
-	for i := range 10 {
-		data := []byte(strconv.Itoa(i))
-		fmt.Printf("client send: %s\n", data)
-
-		data, err = client.Send(ctx, data)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("client receive: %s\n", data)
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 ```

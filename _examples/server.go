@@ -5,12 +5,19 @@
 package main
 
 import (
+	"fmt"
+	"log/slog"
+
 	"github.com/FishGoddess/vex"
 )
 
 type EchoHandler struct{}
 
 func (EchoHandler) Handle(ctx *vex.Context, data []byte) ([]byte, error) {
+	clientAddr := ctx.ClientAddr()
+	slog.Info(fmt.Sprintf("client %s send %s\n", clientAddr, data))
+
+	data = []byte("好！！！")
 	return data, nil
 }
 

@@ -56,8 +56,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/FishGoddess/vex"
 )
@@ -71,18 +69,15 @@ func main() {
 	defer client.Close()
 
 	ctx := context.Background()
-	for i := range 10 {
-		data := []byte(strconv.Itoa(i))
-		fmt.Printf("client send: %s\n", data)
+	data := []byte("落得湖面月圆满，独守湖边酒哀愁")
 
-		data, err = client.Send(ctx, data)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("client receive: %s\n", data)
-		time.Sleep(100 * time.Millisecond)
+	received, err := client.Send(ctx, data)
+	if err != nil {
+		panic(err)
 	}
+
+	fmt.Printf("client send: %s\n", data)
+	fmt.Printf("server send: %s\n", received)
 }
 ```
 
@@ -92,14 +87,19 @@ Server:
 package main
 
 import (
-	"context"
+	"fmt"
+	"log/slog"
 
 	"github.com/FishGoddess/vex"
 )
 
 type EchoHandler struct{}
 
-func (EchoHandler) Handle(ctx context.Context, data []byte) ([]byte, error) {
+func (EchoHandler) Handle(ctx *vex.Context, data []byte) ([]byte, error) {
+	clientAddr := ctx.ClientAddr()
+	slog.Info(fmt.Sprintf("client %s send %s\n", clientAddr, data))
+
+	data = []byte("好！！！")
 	return data, nil
 }
 
@@ -126,10 +126,13 @@ goos: linux
 goarch: amd64
 cpu: Intel(R) Xeon(R) CPU E5-26xx v4
 
-BenchmarkPacket-2          29292             38818 ns/op            4600 B/op          9 allocs/op
+BenchmarkPacket-2          48885             25712 ns/op            4600 B/op          9 allocs/op
+BenchmarkPacketPool-2      58665             21461 ns/op            4601 B/op          9 allocs/op
 ```
 
 > Benchmark: [_examples/packet_test.go](./_examples/packet_test.go).
+
+> Pool benchmark uses 2 clients and the network card is the bottleneck.
 
 ### 👥 Contributing
 

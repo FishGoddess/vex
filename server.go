@@ -24,7 +24,7 @@ var (
 
 // Handler is for handling the data from client and returns the new data or an error if failed.
 type Handler interface {
-	Handle(ctx context.Context, data []byte) ([]byte, error)
+	Handle(ctx *Context, data []byte) ([]byte, error)
 }
 
 // Server is the interface of vex server.
@@ -99,7 +99,7 @@ func (s *server) nextConnID() uint64 {
 	return s.connID
 }
 
-func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
+func (s *server) handlePacket(conn net.Conn, reader io.Reader, writer io.Writer) error {
 	packet, err := packets.ReadPacket(reader)
 	if err != nil {
 		return err
@@ -110,7 +110,10 @@ func (s *server) handlePacket(reader io.Reader, writer io.Writer) error {
 		return err
 	}
 
-	data, err = s.handler.Handle(s.ctx, data)
+	ctx := acquireContext(s.ctx, conn)
+	defer releaseContext(ctx)
+
+	data, err = s.handler.Handle(ctx, data)
 	if err != nil {
 		packet.SetError(err)
 	} else {
@@ -129,8 +132,9 @@ func (s *server) handleConn(conn net.Conn) {
 	logger := s.conf.logger
 
 	reader := bufio.NewReader(conn)
+	writer := conn
 	for {
-		err := s.handlePacket(reader, conn)
+		err := s.handlePacket(conn, reader, writer)
 		if err == io.EOF {
 			logger.Debug("handle packet eof", "err", err)
 			return

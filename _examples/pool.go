@@ -12,15 +12,22 @@ import (
 )
 
 func main() {
-	client, err := vex.NewClient("127.0.0.1:9876")
+	dial := func(ctx context.Context) (vex.Client, error) {
+		return vex.NewClient("127.0.0.1:9876")
+	}
+
+	pool := vex.NewPool(4, dial)
+	defer pool.Close()
+
+	ctx := context.Background()
+	data := []byte("落得湖面月圆满，独守湖边酒哀愁")
+
+	client, err := pool.Get(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	defer client.Close()
-
-	ctx := context.Background()
-	data := []byte("落得湖面月圆满，独守湖边酒哀愁")
 
 	received, err := client.Send(ctx, data)
 	if err != nil {

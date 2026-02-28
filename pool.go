@@ -10,6 +10,9 @@ import (
 	"github.com/FishGoddess/rego"
 )
 
+// Status is the status information of pool.
+type Status rego.Status
+
 type poolClient struct {
 	pool *Pool
 
@@ -67,6 +70,12 @@ func NewPool(limit uint64, dial DialFunc, opts ...Option) *Pool {
 // Get gets a client from pool and returns an error if failed.
 func (p *Pool) Get(ctx context.Context) (Client, error) {
 	return p.clients.Acquire(ctx)
+}
+
+// Status returns the status of pool.
+func (p *Pool) Status() Status {
+	status := p.clients.Status()
+	return Status(status)
 }
 
 // Close closes the pool and releases all clients in it.

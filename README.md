@@ -121,8 +121,8 @@ goos: linux
 goarch: amd64
 cpu: Intel(R) Xeon(R) CPU E5-26xx v4
 
-BenchmarkPacket-2          48885             25712 ns/op            4600 B/op          9 allocs/op
-BenchmarkPacketPool-2      58665             21461 ns/op            4601 B/op          9 allocs/op
+BenchmarkPacket-2                  43992             26818 ns/op            4664 B/op         15 allocs/op
+BenchmarkPacketPool-2              56511             20681 ns/op            4690 B/op         16 allocs/op
 ```
 
 > 测试文件：[_examples/packet_test.go](./_examples/packet_test.go)。

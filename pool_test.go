@@ -12,7 +12,7 @@ import (
 )
 
 // go test -v -cover -run=^TestNewPool$
-func TestNewPool(t *testing.T) {
+func TestPool(t *testing.T) {
 	ctx := context.Background()
 
 	address, done, err := runTestServer()
@@ -73,5 +73,14 @@ func TestNewPool(t *testing.T) {
 	wantStatus := Status{Limit: 4, Using: 0, Idle: 1, Waiting: 0}
 	if status != wantStatus {
 		t.Fatalf("got %+v != want %+v", status, wantStatus)
+	}
+
+	if err = pool.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = pool.Get(ctx)
+	if err != errPoolClosed {
+		t.Fatalf("got %+v != want %+v", err, errPoolClosed)
 	}
 }
